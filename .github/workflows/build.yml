@@ -39,8 +39,10 @@ jobs:
     - name: Build iOS App (Release without codesigning)
       run: flutter build ios --release --no-codesign
 
-    - name: Upload IPA Artifact
+    - name: Find and Upload IPA
       uses: actions/upload-artifact@v4
       with:
         name: ios-app
-        path: build/ios/iphoneos/Runner.ipa
+        path: |
+          build/ios/iphoneos/*.ipa
+          **/Runner.ipa
