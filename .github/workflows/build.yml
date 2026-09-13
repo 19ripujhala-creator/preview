@@ -23,10 +23,17 @@ jobs:
       with:
         flutter-version: '3.19.x'
         channel: 'stable'
-        cache: true
+
+    - name: Verify Flutter Version
+      run: flutter --version
 
     - name: Install Dependencies
       run: flutter pub get
 
-    - name: Build iOS App (Release without codesigning for now)
+    - name: Install CocoaPods
+      run: |
+        cd ios
+        pod install
+
+    - name: Build iOS App (Release without codesigning)
       run: flutter build ios --release --no-codesign
