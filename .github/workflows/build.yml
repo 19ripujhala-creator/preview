@@ -28,9 +28,12 @@ jobs:
     - name: Install Dependencies
       run: flutter pub get
 
-    - name: Install CocoaPods
+    - name: Create Podfile if missing and Install CocoaPods
       run: |
         cd ios
+        if [ ! -f "Podfile" ]; then
+          pod init
+        fi
         pod install
 
     - name: Build iOS App (Release without codesigning)
