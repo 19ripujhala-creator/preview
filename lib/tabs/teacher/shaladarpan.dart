@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 const String kAppFont = 'PlusJakartaSans';
 
@@ -102,7 +103,6 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
       "date": "2/15/2026 - 2/18/2026",
       "reason": "Hospital recovery and prescription",
       "status": "Pending",
-      "icon": CupertinoIcons.bandage,
     },
     {
       "id": "LR-02",
@@ -113,7 +113,6 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
       "date": "3/01/2026 - 3/01/2026",
       "reason": "Family obligation in native town",
       "status": "Pending",
-      "icon": CupertinoIcons.calendar_today,
     }
   ];
 
@@ -134,47 +133,59 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
     return "${parts[0][0]}${parts[parts.length - 1][0]}".toUpperCase();
   }
 
+  void _haptic() => HapticFeedback.selectionClick();
+
   void _showAppleToast(String message, {IconData icon = CupertinoIcons.checkmark_circle_fill}) {
+    _haptic();
     final overlay = Overlay.of(context);
-    final entry = OverlayEntry(
+    final topInset = MediaQuery.of(context).padding.top;
+
+    late OverlayEntry entry;
+    entry = OverlayEntry(
       builder: (context) => Positioned(
-        top: 24,
+        top: topInset + 14,
         left: 20,
         right: 20,
         child: Center(
           child: Material(
             color: Colors.transparent,
             child: TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 280),
+              duration: const Duration(milliseconds: 320),
               curve: Curves.easeOutBack,
               tween: Tween(begin: 0.0, end: 1.0),
               builder: (context, value, child) {
                 return Opacity(
                   opacity: value.clamp(0.0, 1.0),
                   child: Transform.translate(
-                    offset: Offset(0, -16 * (1 - value)),
+                    offset: Offset(0, -20 * (1 - value)),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                       decoration: BoxDecoration(
                         color: const Color(0xFF0F172A),
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(26),
+                        border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withOpacity(0.18),
-                            blurRadius: 16,
+                            blurRadius: 18,
                             offset: const Offset(0, 6),
-                          )
+                          ),
                         ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(icon, color: const Color(0xFF34C759), size: 18),
+                          Icon(icon, color: const Color(0xFF34C759), size: 16),
                           const SizedBox(width: 8),
                           Flexible(
                             child: Text(
                               message,
-                              style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: Colors.white),
+                              style: const TextStyle(
+                                fontFamily: kAppFont,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -191,10 +202,11 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
     );
 
     overlay.insert(entry);
-    Future.delayed(const Duration(milliseconds: 2000), () => entry.remove());
+    Future.delayed(const Duration(milliseconds: 2200), () => entry.remove());
   }
 
   void _showStatusPicker(Map<String, dynamic> teacher) {
+    _haptic();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -218,7 +230,12 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                     Expanded(
                       child: Text(
                         "Update Status: ${teacher['name']}",
-                        style: const TextStyle(fontFamily: kAppFont, fontSize: 16.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                        style: const TextStyle(
+                          fontFamily: kAppFont,
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0F172A),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -231,34 +248,41 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
               Expanded(
                 child: ListView.builder(
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   itemCount: _attendanceOptions.length,
                   itemBuilder: (context, idx) {
                     final opt = _attendanceOptions[idx];
                     final bool isSelected = teacher["attendanceCode"] == opt["code"];
 
-                    Color themeColor;
+                    Color optBg;
+                    Color optText;
+
                     if (opt["code"] == "0") {
-                      themeColor = const Color(0xFF34C759);
+                      optBg = const Color(0xFF34C759);
+                      optText = Colors.white;
                     } else if (opt["code"] == "88" || opt["code"] == "89") {
-                      themeColor = const Color(0xFFFFF59D);
+                      optBg = const Color(0xFFFFF59D);
+                      optText = const Color(0xFF0F172A);
+                    } else if (opt["code"] == "90") {
+                      optBg = const Color(0xFFFFF5F5);
+                      optText = const Color(0xFFE03131);
                     } else {
-                      themeColor = const Color(0xFF0F172A);
+                      optBg = const Color(0xFFE2E8F0);
+                      optText = const Color(0xFF1E293B);
                     }
 
                     return GestureDetector(
                       onTap: () {
+                        _haptic();
                         setState(() => teacher["attendanceCode"] = opt["code"]);
                         Navigator.pop(context);
                       },
                       behavior: HitTestBehavior.opaque,
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                         decoration: BoxDecoration(
-                          color: isSelected && opt["code"] != "88" && opt["code"] != "89"
-                              ? themeColor.withOpacity(0.08)
-                              : isSelected ? const Color(0xFFFFF59D) : Colors.transparent,
+                          color: isSelected ? optBg : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
@@ -269,19 +293,13 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                                 opt["label"]!,
                                 style: TextStyle(
                                   fontFamily: kAppFont,
-                                  fontSize: 13.0,
+                                  fontSize: 12.5,
                                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected && (opt["code"] == "88" || opt["code"] == "89")
-                                      ? const Color(0xFF0F172A)
-                                      : isSelected ? themeColor : const Color(0xFF334155),
+                                  color: isSelected ? optText : const Color(0xFF334155),
                                 ),
                               ),
                             ),
-                            if (isSelected)
-                              Icon(Icons.check_circle_rounded,
-                                color: (opt["code"] == "88" || opt["code"] == "89") ? const Color(0xFF0F172A) : themeColor,
-                                size: 18,
-                              ),
+                            if (isSelected) Icon(Icons.check_circle_rounded, color: optText, size: 17),
                           ],
                         ),
                       ),
@@ -297,6 +315,7 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
   }
 
   void _showStaffPicker(Map<String, dynamic> item, String key2) {
+    _haptic();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -341,6 +360,7 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
 
                     return GestureDetector(
                       onTap: () {
+                        _haptic();
                         setState(() => item[key2] = staff["name"]);
                         Navigator.pop(context);
                       },
@@ -386,7 +406,7 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Search Bar for Shaladarpan
+        // Search Bar
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
           child: Container(
@@ -424,15 +444,14 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                 padding: const EdgeInsets.only(right: 8.0),
                 child: GestureDetector(
                   onTap: () {
-                    setState(() {
-                      _selectedModuleIndex = index;
-                    });
+                    _haptic();
+                    setState(() => _selectedModuleIndex = index);
                   },
                   behavior: HitTestBehavior.opaque,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.0),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFF0F172A) : Colors.transparent,
+                      color: isSelected ? const Color(0xFF0F172A) : Colors.white,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: isSelected ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0)),
                     ),
@@ -454,7 +473,7 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
 
         const SizedBox(height: 12),
 
-        // Main Content Wrapper
+        // Main Content Area with Fixed Bottom Bar
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -476,7 +495,7 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
   }
 
   // =========================================================================
-  // ATTENDANCE ENGINE (KPI Tiles shown directly above employee list)
+  // ATTENDANCE ENGINE (Optimized Spatial Hierarchy & Full Name Visibility)
   // =========================================================================
   Widget _buildAttendanceEngine() {
     final filteredStaff = _staffList.where((teacher) {
@@ -488,6 +507,7 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
 
     return Column(
       children: [
+        // KPI Overview Strip
         Container(
           margin: const EdgeInsets.only(bottom: 12.0),
           padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -511,6 +531,7 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
           ),
         ),
 
+        // Scrollable Staff Table
         Expanded(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
@@ -524,17 +545,76 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Table Header with Aligned Proportions
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: const BoxDecoration(
                       color: Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
                       border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
                     ),
                     child: Row(
-                      children: const [
-                        Expanded(child: Text("EMPLOYEE DETAILS", style: TextStyle(fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w700, color: Color(0xFF64748B), letterSpacing: 0.3))),
-                        SizedBox(width: 135, child: Text("ATTENDANCE", style: TextStyle(fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w700, color: Color(0xFF64748B), letterSpacing: 0.3))),
+                      children: [
+                        const SizedBox(
+                          width: 22,
+                          child: Text(
+                            "#",
+                            style: TextStyle(
+                              fontFamily: kAppFont,
+                              fontSize: 11.0,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Text(
+                                "EMPLOYEE DETAILS",
+                                style: TextStyle(
+                                  fontFamily: kAppFont,
+                                  fontSize: 11.0,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF64748B),
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0F172A),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  "${filteredStaff.length.toString().padLeft(2, '0')}",
+                                  style: const TextStyle(
+                                    fontFamily: kAppFont,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 120,
+                          child: Text(
+                            "ATTENDANCE",
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontFamily: kAppFont,
+                              fontSize: 11.0,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF64748B),
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -542,7 +622,7 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                   ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: 4),
                     itemCount: filteredStaff.length,
                     separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
                     itemBuilder: (context, index) {
@@ -551,51 +631,99 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                       final bool hasAppliedLeave = teacher["appliedLeave"] != null;
 
                       Color dropdownBgColor;
-                      Color dropdownTextColor = Colors.white;
+                      Color dropdownTextColor;
+                      Color dropdownBorderColor;
 
                       if (currentCode == "0") {
                         dropdownBgColor = const Color(0xFF34C759);
+                        dropdownTextColor = Colors.white;
+                        dropdownBorderColor = const Color(0xFF34C759);
                       } else if (currentCode == "88" || currentCode == "89") {
                         dropdownBgColor = const Color(0xFFFFF59D);
                         dropdownTextColor = const Color(0xFF0F172A);
+                        dropdownBorderColor = const Color(0xFFF0E68C);
+                      } else if (currentCode == "90") {
+                        dropdownBgColor = const Color(0xFFFFF5F5);
+                        dropdownTextColor = const Color(0xFFE03131);
+                        dropdownBorderColor = const Color(0xFFFFA39E);
                       } else {
-                        dropdownBgColor = const Color(0xFF0F172A);
+                        dropdownBgColor = const Color(0xFFE2E8F0);
+                        dropdownTextColor = const Color(0xFF1E293B);
+                        dropdownBorderColor = const Color(0xFFCBD5E1);
                       }
 
                       final String fullStatusLabel = _attendanceOptions.firstWhere((o) => o["code"] == currentCode)["label"]!;
+                      final String serialNumber = (index + 1).toString().padLeft(2, '0');
 
                       return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         child: Row(
                           children: [
+                            // 1. Compact Serial Number Column
+                            SizedBox(
+                              width: 22,
+                              child: Text(
+                                serialNumber,
+                                style: const TextStyle(
+                                  fontFamily: kAppFont,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF94A3B8),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+
+                            // 2. Avatar & Employee Details
                             Expanded(
                               child: Row(
                                 children: [
                                   Container(
-                                    width: 32, height: 32,
-                                    decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8)),
+                                    width: 30,
+                                    height: 30,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF1F5F9),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                     child: Center(
                                       child: Text(
                                         _getInitials(teacher["name"]),
-                                        style: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                                        style: const TextStyle(
+                                          fontFamily: kAppFont,
+                                          fontSize: 11.0,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF0F172A),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           teacher["name"],
-                                          maxLines: 1, overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontFamily: kAppFont,
+                                            fontSize: 13.0,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF0F172A),
+                                          ),
                                         ),
                                         const SizedBox(height: 1.5),
                                         Text(
-                                          "ID: ${teacher["staffId"]} • ${teacher["designation"]}",
-                                          maxLines: 1, overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w500, color: Color(0xFF64748B)),
+                                          "${teacher["staffId"]} • ${teacher["designation"]}",
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontFamily: kAppFont,
+                                            fontSize: 10.0,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xFF64748B),
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -603,16 +731,17 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
 
+                            // 3. Compact Attendance Dropdown Action
                             SizedBox(
-                              width: 135,
+                              width: 120,
                               child: hasAppliedLeave
                                   ? Container(
                                       height: 32,
                                       padding: const EdgeInsets.symmetric(horizontal: 8),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
+                                        color: const Color(0xFFF8FAFC),
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(color: const Color(0xFFE2E8F0)),
                                       ),
@@ -624,11 +753,11 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                                               teacher["appliedLeave"],
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                                              style: const TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
                                             ),
                                           ),
-                                          const SizedBox(width: 4),
-                                          const Icon(CupertinoIcons.lock, size: 12, color: Color(0xFF94A3B8)),
+                                          const SizedBox(width: 2),
+                                          const Icon(CupertinoIcons.lock, size: 11, color: Color(0xFF94A3B8)),
                                         ],
                                       ),
                                     )
@@ -637,10 +766,11 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                                       behavior: HitTestBehavior.opaque,
                                       child: Container(
                                         height: 32,
-                                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8),
                                         decoration: BoxDecoration(
                                           color: dropdownBgColor,
                                           borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: dropdownBorderColor, width: 0.8),
                                         ),
                                         child: Row(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -650,11 +780,11 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                                                 fullStatusLabel,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w700, color: dropdownTextColor),
+                                                style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w700, color: dropdownTextColor),
                                               ),
                                             ),
                                             const SizedBox(width: 2),
-                                            Icon(CupertinoIcons.chevron_down, size: 12, color: dropdownTextColor),
+                                            Icon(CupertinoIcons.chevron_down, size: 11, color: dropdownTextColor),
                                           ],
                                         ),
                                       ),
@@ -665,17 +795,50 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                       );
                     },
                   ),
+
+                  // Bottom Summary Counter Row
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.vertical(bottom: Radius.circular(11)),
+                      border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Showing ${filteredStaff.length.toString().padLeft(2, '0')} of ${_staffList.length.toString().padLeft(2, '0')} employees",
+                          style: const TextStyle(
+                            fontFamily: kAppFont,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        Text(
+                          "${_presentCount.toString().padLeft(2, '0')} Present • ${_absentCount.toString().padLeft(2, '0')} Absent",
+                          style: const TextStyle(
+                            fontFamily: kAppFont,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
         ),
 
-        // Bottom Action Bar
+        // Pinned Bottom Action Bar
         SafeArea(
           top: false,
           child: Container(
-            padding: const EdgeInsets.only(top: 4, bottom: 8),
+            padding: const EdgeInsets.only(top: 6, bottom: 8),
             child: Row(
               children: [
                 Expanded(
@@ -683,6 +846,7 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                     height: 44.0,
                     child: OutlinedButton(
                       onPressed: () {
+                        _haptic();
                         setState(() {
                           for (var s in _staffList) {
                             if (s["appliedLeave"] == null) s["attendanceCode"] = "0";
@@ -727,7 +891,7 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [
                         BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.15), blurRadius: 6, offset: const Offset(0, 3))
-                      ]
+                      ],
                     ),
                     child: ElevatedButton(
                       onPressed: () => _showAppleToast("Staff attendance submitted successfully"),
@@ -769,7 +933,7 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
   }
 
   // =========================================================================
-  // FIGMA LEAVE APPROVALS (Shaladarpan Admin Side)
+  // LEAVE APPROVALS (Restored Minimalist & Natural Reject Action)
   // =========================================================================
   Widget _buildFigmaLeaveApprovals() {
     return SingleChildScrollView(
@@ -792,10 +956,19 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                 border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
               ),
               child: Row(
-                children: const [
-                  Icon(CupertinoIcons.calendar_today, size: 16, color: Color(0xFF64748B)),
-                  SizedBox(width: 6),
-                  Text("Leave Requests", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                children: [
+                  Image.asset(
+                    'assets/icons/leave.png',
+                    width: 15,
+                    height: 15,
+                    color: const Color(0xFF64748B),
+                    errorBuilder: (c, e, s) => const Icon(CupertinoIcons.calendar_today, size: 15, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(width: 7),
+                  const Text(
+                    "Leave Requests",
+                    style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                  ),
                 ],
               ),
             ),
@@ -848,9 +1021,22 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  Icon(leave["icon"], size: 12, color: const Color(0xFF64748B)),
-                                  const SizedBox(width: 4),
-                                  Expanded(child: Text("${leave["type"]} • ${leave["duration"]}", maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: kAppFont, fontSize: 11.0, color: Color(0xFF64748B)))),
+                                  Image.asset(
+                                    'assets/icons/leave.png',
+                                    width: 13,
+                                    height: 13,
+                                    color: const Color(0xFF64748B),
+                                    errorBuilder: (c, e, s) => const Icon(CupertinoIcons.calendar, size: 13, color: Color(0xFF64748B)),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Expanded(
+                                    child: Text(
+                                      "${leave["type"]} • ${leave["duration"]}",
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontFamily: kAppFont, fontSize: 11.0, color: Color(0xFF64748B)),
+                                    ),
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 2),
@@ -867,16 +1053,31 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                                       child: Text(leave["status"], style: const TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFFD97706))),
                                     ),
                                     const Spacer(),
+                                    // Restored Clean & Natural Text Button
                                     GestureDetector(
-                                      onTap: (){
+                                      onTap: () {
+                                        _haptic();
                                         setState(() => leave["status"] = "Rejected");
                                       },
                                       behavior: HitTestBehavior.opaque,
-                                      child: const Text("Reject", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+                                      child: const Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+                                        child: Text(
+                                          "Reject",
+                                          style: TextStyle(
+                                            fontFamily: kAppFont,
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                    const SizedBox(width: 14),
+                                    const SizedBox(width: 10),
+                                    // Solid Primary Approve Button
                                     GestureDetector(
-                                      onTap: (){
+                                      onTap: () {
+                                        _haptic();
                                         setState(() {
                                           leave["status"] = "Approved";
                                           final staff = _staffList.firstWhere((s) => s["staffId"] == leave["staffId"], orElse: () => {});
@@ -888,9 +1089,20 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                                       },
                                       behavior: HitTestBehavior.opaque,
                                       child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                        decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(6)),
-                                        child: const Text("Approve", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w600, color: Colors.white)),
+                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF0F172A),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Text(
+                                          "Approve",
+                                          style: TextStyle(
+                                            fontFamily: kAppFont,
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -898,15 +1110,18 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
                               : Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                       decoration: BoxDecoration(
                                         color: leave["status"] == "Approved" ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
                                         leave["status"],
-                                        style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w700,
-                                          color: leave["status"] == "Approved" ? const Color(0xFF16A34A) : const Color(0xFFDC2626)
+                                        style: TextStyle(
+                                          fontFamily: kAppFont,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: leave["status"] == "Approved" ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
                                         ),
                                       ),
                                     ),
@@ -1023,8 +1238,8 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
             Image.asset(
               assetPath,
               width: 15, height: 15,
-              color: const Color(0xFF64748B),
-              errorBuilder: (context, error, stack) => Icon(fallbackIcon, size: 15, color: const Color(0xFF64748B)),
+              color: const Color(0xFF0F172A),
+              errorBuilder: (context, error, stack) => Icon(fallbackIcon, size: 15, color: const Color(0xFF0F172A)),
             ),
             const SizedBox(width: 6),
             Text(
@@ -1051,7 +1266,7 @@ class _ShaladarpanViewState extends State<ShaladarpanView> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, size: 15, color: const Color(0xFF64748B)),
+            Icon(icon, size: 15, color: const Color(0xFF0F172A)),
             const SizedBox(width: 6),
             Text(
               value,
