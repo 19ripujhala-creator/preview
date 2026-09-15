@@ -1,7 +1,7 @@
 name: Build iOS IPA
 
 on:
-  workflow_dispatch: # GitHub website se 'Run workflow' button dabane ke liye
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -24,12 +24,10 @@ jobs:
       - name: Install Flutter Dependencies
         run: flutter pub get
 
-      - name: Prepare iOS & CocoaPods
+      - name: Install CocoaPods Dependencies
         run: |
-          # Agar ios directory me Podfile missing hai toh Flutter se config generate karwayega
-          flutter create . --platforms=ios
           cd ios
-          pod install --repo-update
+          pod install
           cd ..
 
       - name: Build iOS App (Release without codesign)
