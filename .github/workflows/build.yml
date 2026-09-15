@@ -24,6 +24,13 @@ jobs:
       - name: Install Flutter Dependencies
         run: flutter pub get
 
+      - name: Ensure iOS Platform & Podfile Exist
+        run: |
+          # Agar ios folder ya Podfile missing hai toh Flutter se platform files generate karein
+          if [ ! -d "ios" ] || [ ! -f "ios/Podfile" ]; then
+            flutter create . --platforms=ios
+          fi
+
       - name: Install CocoaPods Dependencies
         run: |
           cd ios
