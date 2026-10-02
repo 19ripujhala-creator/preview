@@ -1,1289 +1,300 @@
-import 'dart:ui';
+// lib/tabs/teacher/shaladarpan.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:shaladarpan/services/portals/shaladarpan/leave_approval_service.dart';
+
+import 'modules/shaladarpan/attendance_view.dart';
+import 'modules/shaladarpan/leave_approvals_view.dart';
+import 'modules/shaladarpan/class_mapping_view.dart';
+import 'modules/shaladarpan/incharge_roles_view.dart';
 
 const String kAppFont = 'PlusJakartaSans';
 
 class ShaladarpanView extends StatefulWidget {
-  const ShaladarpanView({super.key});
+  final String schoolId;
+  final VoidCallback? onAttendanceUpdated;
+  final int initialSubIndex;
+
+  const ShaladarpanView({
+    super.key,
+    required this.schoolId,
+    this.onAttendanceUpdated,
+    this.initialSubIndex = 0,
+  });
 
   @override
   State<ShaladarpanView> createState() => _ShaladarpanViewState();
 }
 
-class _ShaladarpanViewState extends State<ShaladarpanView> {
-  int _selectedModuleIndex = 0;
-  String _searchQuery = "";
+class _ShaladarpanViewState extends State<ShaladarpanView>
+    with AutomaticKeepAliveClientMixin {
+  late int _selectedModuleIndex;
+  int? _pendingLeaveCount;
+  bool _leaveStatusLoading = true;
+  String? _leaveStatusError;
+  int _attendanceRefreshRevision = 0;
+  int _leaveCountRequest = 0;
+  bool _attendanceNeedsRefresh = false;
+  late final Set<int> _activatedIndices;
+  late final List<FocusScopeNode> _moduleFocus;
+  final List<GlobalKey> _moduleButtonKeys = List.generate(4, (_) => GlobalKey());
 
-  final List<String> _shalaModules = [
-    "Attendance",
-    "Leave Approvals",
-    "Class Mapping",
-    "Incharge Roles"
+  static const List<String> _shalaModules = [
+    'Attendance', 'Leave Approvals', 'Class Mapping', 'Incharge Roles',
   ];
 
-  final List<Map<String, String>> _attendanceOptions = [
-    {"code": "0", "label": "Present"},
-    {"code": "90", "label": "स्वैच्छिक अनुपस्थित"},
-    {"code": "91", "label": "Work Arrangement (Other School)"},
-    {"code": "92", "label": "Work Arrangement (Other Office)"},
-    {"code": "93", "label": "On Training"},
-    {"code": "94", "label": "On Official Travel"},
-    {"code": "89", "label": "On Leave"},
-    {"code": "88", "label": "सवैतनिक अवकाश"},
-    {"code": "95", "label": "Election Duty"},
-    {"code": "99", "label": "Other Reason"},
-    {"code": "100", "label": "2nd Saturday / Holiday"},
-    {"code": "101", "label": "Summer Vacations"},
-    {"code": "102", "label": "मध्यावधि अवकाश"},
-    {"code": "103", "label": "शीतकालीन अवकाश"},
-    {"code": "104", "label": "राज्य सरकार द्वारा घोषित अवकाश"},
-    {"code": "105", "label": "स्थानीय अवकाश (Collector)"},
-    {"code": "106", "label": "संस्था प्रधान अधिकृत अवकाश"},
-    {"code": "107", "label": "शैक्षिक सम्मेलन"},
-  ];
+  @override
+  bool get wantKeepAlive => true;
 
-  final List<Map<String, dynamic>> _staffList = [
-    {
-      "staffId": "1487701",
-      "employeeId": "RJPG201730010127",
-      "name": "Rekha Kumari Meena",
-      "designation": "Teacher Level-1",
-      "attendanceCode": "89",
-      "appliedLeave": "Leave (ML Applied)",
-    },
-    {
-      "staffId": "1553675",
-      "employeeId": "RJPG201830008276",
-      "name": "Ripudaman Singh Jhala",
-      "designation": "Teacher Level-1",
-      "attendanceCode": "0",
-      "appliedLeave": null,
-    },
-    {
-      "staffId": "1429810",
-      "employeeId": "RJPG201524009122",
-      "name": "Rajesh Sharma",
-      "designation": "Sr. Teacher (Science)",
-      "attendanceCode": "0",
-      "appliedLeave": null,
-    },
-    {
-      "staffId": "1672341",
-      "employeeId": "RJPG201911003450",
-      "name": "Sunita Verma",
-      "designation": "Teacher Level-2 (Math)",
-      "attendanceCode": "93",
-      "appliedLeave": null,
-    },
-    {
-      "staffId": "1389012",
-      "employeeId": "RJPG201402008819",
-      "name": "Anil Kumar",
-      "designation": "PTI (Physical Education)",
-      "attendanceCode": "90",
-      "appliedLeave": null,
-    },
-  ];
+  int _safeIndex(int index) => index.clamp(0, _shalaModules.length - 1).toInt();
 
-  final List<Map<String, dynamic>> _classMappings = [
-    {"class": "Class 6 - Section A", "teacher": "Rekha Kumari Meena"},
-    {"class": "Class 7 - Section B", "teacher": "Ripudaman Singh Jhala"},
-    {"class": "Class 8 - Section A", "teacher": "Rajesh Sharma"},
-  ];
-
-  final List<Map<String, dynamic>> _leaveRequests = [
-    {
-      "id": "LR-01",
-      "staffId": "1487701",
-      "name": "Rekha Kumari Meena",
-      "type": "Medical Leave",
-      "duration": "4 days",
-      "date": "2/15/2026 - 2/18/2026",
-      "reason": "Hospital recovery and prescription",
-      "status": "Pending",
-    },
-    {
-      "id": "LR-02",
-      "staffId": "1672341",
-      "name": "Sunita Verma",
-      "type": "Casual Leave",
-      "duration": "1 day",
-      "date": "3/01/2026 - 3/01/2026",
-      "reason": "Family obligation in native town",
-      "status": "Pending",
-    }
-  ];
-
-  final List<Map<String, dynamic>> _inchargeDuties = [
-    {"duty": "Mid-Day Meal (MDM)", "incharge": "Rekha Kumari Meena"},
-    {"duty": "Sports & Youth Affairs", "incharge": "Anil Kumar"},
-  ];
-
-  int get _presentCount => _staffList.where((s) => s["attendanceCode"] == "0").length;
-  int get _onLeaveCount => _staffList.where((s) => s["attendanceCode"] == "89" || s["attendanceCode"] == "88" || s["appliedLeave"] != null).length;
-  int get _otherCount => _staffList.where((s) => !["0", "90", "89", "88"].contains(s["attendanceCode"]) && s["appliedLeave"] == null).length;
-  int get _absentCount => _staffList.where((s) => s["attendanceCode"] == "90").length;
-
-  String _getInitials(String name) {
-    List<String> parts = name.trim().split(' ');
-    if (parts.isEmpty) return "";
-    if (parts.length == 1) return parts[0][0].toUpperCase();
-    return "${parts[0][0]}${parts[parts.length - 1][0]}".toUpperCase();
+  @override
+  void initState() {
+    super.initState();
+    _selectedModuleIndex = _safeIndex(widget.initialSubIndex);
+    _activatedIndices = {_selectedModuleIndex};
+    _moduleFocus = List.generate(_shalaModules.length,
+        (index) => FocusScopeNode(debugLabel: 'shaladarpan_module_$index'));
+    LeaveApprovalService.liveStatus.addListener(_onLeaveStatusChanged);
+    _loadPendingLeaveCount();
+    _restoreActiveScope();
   }
 
-  void _haptic() => HapticFeedback.selectionClick();
+  @override
+  void dispose() {
+    LeaveApprovalService.liveStatus.removeListener(_onLeaveStatusChanged);
+    _leaveCountRequest++;
+    for (final scope in _moduleFocus) {
+      scope.dispose();
+    }
+    super.dispose();
+  }
 
-  void _showAppleToast(String message, {IconData icon = CupertinoIcons.checkmark_circle_fill}) {
-    _haptic();
-    final overlay = Overlay.of(context);
-    final topInset = MediaQuery.of(context).padding.top;
+  @override
+  void didUpdateWidget(covariant ShaladarpanView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.schoolId != oldWidget.schoolId) {
+      _moduleFocus[_selectedModuleIndex].unfocus();
+      _selectedModuleIndex = _safeIndex(widget.initialSubIndex);
+      _activatedIndices
+        ..clear()
+        ..add(_selectedModuleIndex);
+      _pendingLeaveCount = null;
+      _leaveStatusLoading = true;
+      _leaveStatusError = null;
+      _attendanceNeedsRefresh = false;
+      _attendanceRefreshRevision++;
+      _loadPendingLeaveCount();
+      _restoreActiveScope();
+    } else if (widget.initialSubIndex != oldWidget.initialSubIndex) {
+      _selectModule(_safeIndex(widget.initialSubIndex), haptic: false);
+    }
+  }
 
-    late OverlayEntry entry;
-    entry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: topInset + 14,
-        left: 20,
-        right: 20,
-        child: Center(
-          child: Material(
-            color: Colors.transparent,
-            child: TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.easeOutBack,
-              tween: Tween(begin: 0.0, end: 1.0),
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value.clamp(0.0, 1.0),
-                  child: Transform.translate(
-                    offset: Offset(0, -20 * (1 - value)),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F172A),
-                        borderRadius: BorderRadius.circular(26),
-                        border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.18),
-                            blurRadius: 18,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(icon, color: const Color(0xFF34C759), size: 16),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              message,
-                              style: const TextStyle(
-                                fontFamily: kAppFont,
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+  void _selectModule(int index, {bool haptic = true}) {
+    final safeIndex = _safeIndex(index);
+    if (safeIndex == _selectedModuleIndex) {
+      _restoreActiveScope();
+      _loadPendingLeaveCount();
+      return;
+    }
+    _moduleFocus[_selectedModuleIndex].unfocus();
+    if (haptic) HapticFeedback.selectionClick();
+    setState(() {
+      if (safeIndex == 0 && _attendanceNeedsRefresh) {
+        _attendanceRefreshRevision++;
+        _attendanceNeedsRefresh = false;
+      }
+      _selectedModuleIndex = safeIndex;
+      _activatedIndices.add(safeIndex);
+    });
+    _restoreActiveScope();
+    _loadPendingLeaveCount();
+  }
+
+  void _restoreActiveScope() {
+    final index = _selectedModuleIndex;
+    final school = widget.schoolId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || index != _selectedModuleIndex || school != widget.schoolId) return;
+      final scope = _moduleFocus[index];
+      // Keep this scope enabled; visibility is gated only by ExcludeFocus.
+      // Restore after the new tab's focus tree has been attached.
+      scope.canRequestFocus = true;
+      if (!scope.hasFocus) scope.requestFocus();
+      final buttonContext = _moduleButtonKeys[index].currentContext;
+      if (buttonContext != null) {
+        Scrollable.ensureVisible(buttonContext,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          alignment: 0.5,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.explicit);
+      }
+    });
+  }
+
+  void _applyLeaveStatus(Map<String, dynamic> result) {
+    if (!mounted || result['school_id'] != widget.schoolId) return;
+    final data = result['data'];
+    final confirmed = result['success'] == true && data is Map && LeaveApprovalService.valid(data);
+    setState(() {
+      _pendingLeaveCount = confirmed ? data['pending_count'] as int : null;
+      _leaveStatusLoading = result['loading'] == true;
+      _leaveStatusError = confirmed || _leaveStatusLoading ? null :
+          result['message']?.toString() ?? 'Leave approval status could not be confirmed.';
+    });
+  }
+
+  void _onLeaveStatusChanged() {
+    final status = LeaveApprovalService.liveStatus.value;
+    if (status != null) _applyLeaveStatus(status);
+  }
+
+  Future<void> _loadPendingLeaveCount({bool fresh = false}) async {
+    final request = ++_leaveCountRequest;
+    final school = widget.schoolId;
+    try {
+      final result = await LeaveApprovalService.fetchLeaveApprovals(fresh: fresh);
+      if (!mounted || request != _leaveCountRequest || widget.schoolId != school) return;
+      _applyLeaveStatus({...result, 'school_id': school, 'loading': false});
+    } catch (_) {
+      if (!mounted || request != _leaveCountRequest || widget.schoolId != school) return;
+      _applyLeaveStatus({'school_id': school, 'success': false, 'loading': false,
+        'message': 'Leave approval status could not be confirmed.'});
+    }
+  }
+
+  Widget _attendanceModule() {
+    if (_pendingLeaveCount != null) {
+      return AttendanceView(
+        key: ValueKey('attendance_${widget.schoolId}_$_attendanceRefreshRevision'),
+        onAttendanceUpdated: () {
+          _loadPendingLeaveCount();
+          widget.onAttendanceUpdated?.call();
+        },
+      );
+    }
+    return Center(child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        if (_leaveStatusLoading) const CupertinoActivityIndicator(radius: 11),
+        const SizedBox(height: 12),
+        Text(_leaveStatusLoading ? 'Checking leave approvals' : 'Leave status not confirmed',
+          style: const TextStyle(fontFamily: kAppFont, fontSize: 14, fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        Text(_leaveStatusError ?? 'Attendance will open after the portal leave status is confirmed.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontFamily: kAppFont, fontSize: 12, color: Color(0xFF64748B))),
+        if (!_leaveStatusLoading) TextButton(
+          onPressed: () => _loadPendingLeaveCount(fresh: true),
+          child: const Text('Retry')),
+      ]),
+    ));
+  }
+
+  void _handleLeaveOrAttendanceUpdate() {
+    if (!mounted) return;
+    // A late leave callback must not dispose an active attendance search/form.
+    // Refresh the attendance roster when the user next enters that module.
+    _attendanceNeedsRefresh = true;
+    _loadPendingLeaveCount();
+    widget.onAttendanceUpdated?.call();
+  }
+
+  Widget _module(int index, Widget Function() builder) {
+    final active = _selectedModuleIndex == index;
+    return FocusScope(
+      key: ValueKey('module_scope_${widget.schoolId}_$index'),
+      node: _moduleFocus[index],
+      canRequestFocus: true,
+      child: ExcludeFocus(
+        excluding: !active,
+        child: IgnorePointer(
+          ignoring: !active,
+          child: TickerMode(
+            enabled: active,
+            child: _activatedIndices.contains(index) ? builder() : const SizedBox.shrink(),
           ),
         ),
       ),
-    );
-
-    overlay.insert(entry);
-    Future.delayed(const Duration(milliseconds: 2200), () => entry.remove());
-  }
-
-  void _showStatusPicker(Map<String, dynamic> teacher) {
-    _haptic();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return Container(
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.65),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 10),
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        "Update Status: ${teacher['name']}",
-                        style: const TextStyle(
-                          fontFamily: kAppFont,
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0F172A),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Divider(height: 1, color: Color(0xFFF1F5F9)),
-              Expanded(
-                child: ListView.builder(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  itemCount: _attendanceOptions.length,
-                  itemBuilder: (context, idx) {
-                    final opt = _attendanceOptions[idx];
-                    final bool isSelected = teacher["attendanceCode"] == opt["code"];
-
-                    Color optBg;
-                    Color optText;
-
-                    if (opt["code"] == "0") {
-                      optBg = const Color(0xFF34C759);
-                      optText = Colors.white;
-                    } else if (opt["code"] == "88" || opt["code"] == "89") {
-                      optBg = const Color(0xFFFFF59D);
-                      optText = const Color(0xFF0F172A);
-                    } else if (opt["code"] == "90") {
-                      optBg = const Color(0xFFFFF5F5);
-                      optText = const Color(0xFFE03131);
-                    } else {
-                      optBg = const Color(0xFFE2E8F0);
-                      optText = const Color(0xFF1E293B);
-                    }
-
-                    return GestureDetector(
-                      onTap: () {
-                        _haptic();
-                        setState(() => teacher["attendanceCode"] = opt["code"]);
-                        Navigator.pop(context);
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                        decoration: BoxDecoration(
-                          color: isSelected ? optBg : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                opt["label"]!,
-                                style: TextStyle(
-                                  fontFamily: kAppFont,
-                                  fontSize: 12.5,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected ? optText : const Color(0xFF334155),
-                                ),
-                              ),
-                            ),
-                            if (isSelected) Icon(Icons.check_circle_rounded, color: optText, size: 17),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showStaffPicker(Map<String, dynamic> item, String key2) {
-    _haptic();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return Container(
-          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.60),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 10),
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        "Assign to: ${item['class'] ?? item['duty']}",
-                        style: const TextStyle(fontFamily: kAppFont, fontSize: 15.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Divider(height: 1, color: Color(0xFFF1F5F9)),
-              Expanded(
-                child: ListView.builder(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  itemCount: _staffList.length,
-                  itemBuilder: (context, idx) {
-                    final staff = _staffList[idx];
-                    final bool isSelected = item[key2] == staff["name"];
-
-                    return GestureDetector(
-                      onTap: () {
-                        _haptic();
-                        setState(() => item[key2] = staff["name"]);
-                        Navigator.pop(context);
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFF0F172A).withOpacity(0.08) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                staff["name"]!,
-                                style: TextStyle(
-                                  fontFamily: kAppFont,
-                                  fontSize: 13.0,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF334155),
-                                ),
-                              ),
-                            ),
-                            if (isSelected) const Icon(Icons.check_circle_rounded, color: Color(0xFF0F172A), size: 18),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Search Bar
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: TextField(
-              onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
-              style: const TextStyle(fontFamily: kAppFont, fontSize: 13.0, color: Color(0xFF0F172A)),
-              decoration: const InputDecoration(
-                hintText: "Search employee by name, NIC or ID...",
-                hintStyle: TextStyle(fontFamily: kAppFont, fontSize: 12.0, color: Color(0xFF94A3B8)),
-                prefixIcon: Icon(CupertinoIcons.search, size: 18, color: Color(0xFF64748B)),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 11.0),
-              ),
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        // Sub-module Horizontal Tabs
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            children: List.generate(_shalaModules.length, (index) {
-              final bool isSelected = _selectedModuleIndex == index;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: GestureDetector(
-                  onTap: () {
-                    _haptic();
-                    setState(() => _selectedModuleIndex = index);
-                  },
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.0),
-                    decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFF0F172A) : Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: isSelected ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0)),
-                    ),
-                    child: Text(
-                      _shalaModules[index],
-                      style: TextStyle(
-                        fontFamily: kAppFont,
-                        fontSize: 12.0,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                        color: isSelected ? Colors.white : const Color(0xFF475569),
-                      ),
-                    ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(children: List.generate(_shalaModules.length, (index) {
+            final isSelected = _selectedModuleIndex == index;
+            final isLeaveTab = index == 1;
+            return Padding(
+              key: _moduleButtonKeys[index],
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: () => _selectModule(index),
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF0F172A) : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: isSelected
+                        ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0)),
                   ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(_shalaModules[index], style: TextStyle(
+                      fontFamily: kAppFont, fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isSelected ? Colors.white : const Color(0xFF475569),
+                    )),
+                    if (isLeaveTab && (_pendingLeaveCount == null || _pendingLeaveCount! > 0)) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.white : const Color(0xFFDC2626),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(_pendingLeaveCount?.toString() ?? (_leaveStatusLoading ? '…' : '!'), style: TextStyle(
+                          fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w700,
+                          color: isSelected ? const Color(0xFF0F172A) : Colors.white,
+                        )),
+                      ),
+                    ],
+                  ]),
                 ),
-              );
-            }),
-          ),
+              ),
+            );
+          })),
         ),
-
-        const SizedBox(height: 12),
-
-        // Main Content Area with Fixed Bottom Bar
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: _buildDynamicBody(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDynamicBody() {
-    switch (_selectedModuleIndex) {
-      case 0: return _buildAttendanceEngine();
-      case 1: return _buildFigmaLeaveApprovals();
-      case 2: return _buildEnterpriseList(_classMappings, "Class", "class", "teacher");
-      case 3: return _buildEnterpriseList(_inchargeDuties, "Committee", "duty", "incharge");
-      default: return _buildAttendanceEngine();
-    }
-  }
-
-  // =========================================================================
-  // ATTENDANCE ENGINE (Optimized Spatial Hierarchy & Full Name Visibility)
-  // =========================================================================
-  Widget _buildAttendanceEngine() {
-    final filteredStaff = _staffList.where((teacher) {
-      final name = teacher["name"].toString().toLowerCase();
-      final staffId = teacher["staffId"].toString().toLowerCase();
-      final employeeId = teacher["employeeId"].toString().toLowerCase();
-      return name.contains(_searchQuery) || staffId.contains(_searchQuery) || employeeId.contains(_searchQuery);
-    }).toList();
-
-    return Column(
-      children: [
-        // KPI Overview Strip
-        Container(
-          margin: const EdgeInsets.only(bottom: 12.0),
-          padding: const EdgeInsets.symmetric(vertical: 12.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: [BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.015), blurRadius: 4, offset: const Offset(0, 2))],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        const SizedBox(height: 8),
+        Expanded(child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: IndexedStack(
+            index: _selectedModuleIndex,
             children: [
-              _buildVerticalKpiCustom("Present", "$_presentCount", 'assets/icons/present.png', CupertinoIcons.checkmark_circle),
-              _buildDivider(),
-              _buildVerticalKpiCustom("Leave", "$_onLeaveCount", 'assets/icons/leave.png', CupertinoIcons.person_crop_circle_badge_minus),
-              _buildDivider(),
-              _buildVerticalKpiIcon("Other", "$_otherCount", CupertinoIcons.briefcase),
-              _buildDivider(),
-              _buildVerticalKpiIcon("Absent", "$_absentCount", CupertinoIcons.xmark_circle),
+              _module(0, _attendanceModule),
+              _module(1, () => LeaveApprovalsView(
+                onLeaveProcessed: _handleLeaveOrAttendanceUpdate,
+              )),
+              _module(2, () => ClassMappingView(
+                key: PageStorageKey('class_mapping_${widget.schoolId}'),
+                schoolId: widget.schoolId,
+              )),
+              _module(3, () => InchargeRolesView(
+                key: PageStorageKey('incharge_roles_${widget.schoolId}'),
+              )),
             ],
           ),
-        ),
-
-        // Scrollable Staff Table
-        Expanded(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Table Header with Aligned Proportions
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
-                      border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
-                    ),
-                    child: Row(
-                      children: [
-                        const SizedBox(
-                          width: 22,
-                          child: Text(
-                            "#",
-                            style: TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 11.0,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              const Text(
-                                "EMPLOYEE DETAILS",
-                                style: TextStyle(
-                                  fontFamily: kAppFont,
-                                  fontSize: 11.0,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF64748B),
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF0F172A),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  "${filteredStaff.length.toString().padLeft(2, '0')}",
-                                  style: const TextStyle(
-                                    fontFamily: kAppFont,
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(
-                          width: 120,
-                          child: Text(
-                            "ATTENDANCE",
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 11.0,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF64748B),
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.only(bottom: 4),
-                    itemCount: filteredStaff.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                    itemBuilder: (context, index) {
-                      final teacher = filteredStaff[index];
-                      final String currentCode = teacher["attendanceCode"];
-                      final bool hasAppliedLeave = teacher["appliedLeave"] != null;
-
-                      Color dropdownBgColor;
-                      Color dropdownTextColor;
-                      Color dropdownBorderColor;
-
-                      if (currentCode == "0") {
-                        dropdownBgColor = const Color(0xFF34C759);
-                        dropdownTextColor = Colors.white;
-                        dropdownBorderColor = const Color(0xFF34C759);
-                      } else if (currentCode == "88" || currentCode == "89") {
-                        dropdownBgColor = const Color(0xFFFFF59D);
-                        dropdownTextColor = const Color(0xFF0F172A);
-                        dropdownBorderColor = const Color(0xFFF0E68C);
-                      } else if (currentCode == "90") {
-                        dropdownBgColor = const Color(0xFFFFF5F5);
-                        dropdownTextColor = const Color(0xFFE03131);
-                        dropdownBorderColor = const Color(0xFFFFA39E);
-                      } else {
-                        dropdownBgColor = const Color(0xFFE2E8F0);
-                        dropdownTextColor = const Color(0xFF1E293B);
-                        dropdownBorderColor = const Color(0xFFCBD5E1);
-                      }
-
-                      final String fullStatusLabel = _attendanceOptions.firstWhere((o) => o["code"] == currentCode)["label"]!;
-                      final String serialNumber = (index + 1).toString().padLeft(2, '0');
-
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        child: Row(
-                          children: [
-                            // 1. Compact Serial Number Column
-                            SizedBox(
-                              width: 22,
-                              child: Text(
-                                serialNumber,
-                                style: const TextStyle(
-                                  fontFamily: kAppFont,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF94A3B8),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-
-                            // 2. Avatar & Employee Details
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 30,
-                                    height: 30,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF1F5F9),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        _getInitials(teacher["name"]),
-                                        style: const TextStyle(
-                                          fontFamily: kAppFont,
-                                          fontSize: 11.0,
-                                          fontWeight: FontWeight.w700,
-                                          color: Color(0xFF0F172A),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          teacher["name"],
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontFamily: kAppFont,
-                                            fontSize: 13.0,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 1.5),
-                                        Text(
-                                          "${teacher["staffId"]} • ${teacher["designation"]}",
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontFamily: kAppFont,
-                                            fontSize: 10.0,
-                                            fontWeight: FontWeight.w500,
-                                            color: Color(0xFF64748B),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-
-                            // 3. Compact Attendance Dropdown Action
-                            SizedBox(
-                              width: 120,
-                              child: hasAppliedLeave
-                                  ? Container(
-                                      height: 32,
-                                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF8FAFC),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              teacher["appliedLeave"],
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 2),
-                                          const Icon(CupertinoIcons.lock, size: 11, color: Color(0xFF94A3B8)),
-                                        ],
-                                      ),
-                                    )
-                                  : GestureDetector(
-                                      onTap: () => _showStatusPicker(teacher),
-                                      behavior: HitTestBehavior.opaque,
-                                      child: Container(
-                                        height: 32,
-                                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                                        decoration: BoxDecoration(
-                                          color: dropdownBgColor,
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: dropdownBorderColor, width: 0.8),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                fullStatusLabel,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w700, color: dropdownTextColor),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 2),
-                                            Icon(CupertinoIcons.chevron_down, size: 11, color: dropdownTextColor),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-
-                  // Bottom Summary Counter Row
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.vertical(bottom: Radius.circular(11)),
-                      border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "Showing ${filteredStaff.length.toString().padLeft(2, '0')} of ${_staffList.length.toString().padLeft(2, '0')} employees",
-                          style: const TextStyle(
-                            fontFamily: kAppFont,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                        Text(
-                          "${_presentCount.toString().padLeft(2, '0')} Present • ${_absentCount.toString().padLeft(2, '0')} Absent",
-                          style: const TextStyle(
-                            fontFamily: kAppFont,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // Pinned Bottom Action Bar
-        SafeArea(
-          top: false,
-          child: Container(
-            padding: const EdgeInsets.only(top: 6, bottom: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 44.0,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        _haptic();
-                        setState(() {
-                          for (var s in _staffList) {
-                            if (s["appliedLeave"] == null) s["attendanceCode"] = "0";
-                          }
-                        });
-                      },
-                      style: ButtonStyle(
-                        overlayColor: WidgetStateProperty.all(Colors.transparent),
-                        side: WidgetStateProperty.all(const BorderSide(color: Color(0xFFCBD5E1), width: 1.0)),
-                        backgroundColor: WidgetStateProperty.all(Colors.white),
-                        elevation: WidgetStateProperty.all(0),
-                        shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(CupertinoIcons.check_mark_circled, size: 16, color: Color(0xFF0F172A)),
-                            SizedBox(width: 6),
-                            Text(
-                              "Mark All Present",
-                              style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-
-                Expanded(
-                  child: Container(
-                    height: 44.0,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2E3545), Color(0xFF0F172A)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.15), blurRadius: 6, offset: const Offset(0, 3))
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () => _showAppleToast("Staff attendance submitted successfully"),
-                      style: ButtonStyle(
-                        overlayColor: WidgetStateProperty.all(Colors.transparent),
-                        backgroundColor: WidgetStateProperty.all(Colors.transparent),
-                        shadowColor: WidgetStateProperty.all(Colors.transparent),
-                        foregroundColor: WidgetStateProperty.all(Colors.white),
-                        elevation: WidgetStateProperty.all(0),
-                        shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.asset(
-                              'assets/icons/submit.png',
-                              width: 16, height: 16, color: Colors.white,
-                              errorBuilder: (context, error, stackTrace) => const Icon(CupertinoIcons.cloud_upload, size: 16, color: Colors.white),
-                            ),
-                            const SizedBox(width: 6),
-                            const Text(
-                              "Submit Attendance",
-                              style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        )),
       ],
     );
-  }
-
-  // =========================================================================
-  // LEAVE APPROVALS (Restored Minimalist & Natural Reject Action)
-  // =========================================================================
-  Widget _buildFigmaLeaveApprovals() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
-              ),
-              child: Row(
-                children: [
-                  Image.asset(
-                    'assets/icons/leave.png',
-                    width: 15,
-                    height: 15,
-                    color: const Color(0xFF64748B),
-                    errorBuilder: (c, e, s) => const Icon(CupertinoIcons.calendar_today, size: 15, color: Color(0xFF64748B)),
-                  ),
-                  const SizedBox(width: 7),
-                  const Text(
-                    "Leave Requests",
-                    style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-                  ),
-                ],
-              ),
-            ),
-
-            _leaveRequests.isEmpty
-            ? Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(CupertinoIcons.check_mark_circled, color: Color(0xFF34C759), size: 36),
-                      SizedBox(height: 8),
-                      Text("All Caught Up", style: TextStyle(fontFamily: kAppFont, fontSize: 14.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                    ],
-                  ),
-                ),
-              )
-            : ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: EdgeInsets.zero,
-                itemCount: _leaveRequests.length,
-                separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                itemBuilder: (context, index) {
-                  final leave = _leaveRequests[index];
-                  final bool isPending = leave["status"] == "Pending";
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 38, height: 38,
-                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(10)),
-                          child: Center(
-                            child: Text(
-                              _getInitials(leave["name"]),
-                              style: const TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(leave["name"], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: kAppFont, fontSize: 13.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Image.asset(
-                                    'assets/icons/leave.png',
-                                    width: 13,
-                                    height: 13,
-                                    color: const Color(0xFF64748B),
-                                    errorBuilder: (c, e, s) => const Icon(CupertinoIcons.calendar, size: 13, color: Color(0xFF64748B)),
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Expanded(
-                                    child: Text(
-                                      "${leave["type"]} • ${leave["duration"]}",
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontFamily: kAppFont, fontSize: 11.0, color: Color(0xFF64748B)),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(leave["date"], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: kAppFont, fontSize: 11.0, color: Color(0xFF94A3B8))),
-
-                              const SizedBox(height: 14),
-
-                              isPending
-                              ? Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(4)),
-                                      child: Text(leave["status"], style: const TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFFD97706))),
-                                    ),
-                                    const Spacer(),
-                                    // Restored Clean & Natural Text Button
-                                    GestureDetector(
-                                      onTap: () {
-                                        _haptic();
-                                        setState(() => leave["status"] = "Rejected");
-                                      },
-                                      behavior: HitTestBehavior.opaque,
-                                      child: const Padding(
-                                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 7),
-                                        child: Text(
-                                          "Reject",
-                                          style: TextStyle(
-                                            fontFamily: kAppFont,
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 10),
-                                    // Solid Primary Approve Button
-                                    GestureDetector(
-                                      onTap: () {
-                                        _haptic();
-                                        setState(() {
-                                          leave["status"] = "Approved";
-                                          final staff = _staffList.firstWhere((s) => s["staffId"] == leave["staffId"], orElse: () => {});
-                                          if (staff.isNotEmpty) {
-                                            staff["attendanceCode"] = "89";
-                                            staff["appliedLeave"] = "Leave (${leave["type"]})";
-                                          }
-                                        });
-                                      },
-                                      behavior: HitTestBehavior.opaque,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF0F172A),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: const Text(
-                                          "Approve",
-                                          style: TextStyle(
-                                            fontFamily: kAppFont,
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                      decoration: BoxDecoration(
-                                        color: leave["status"] == "Approved" ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        leave["status"],
-                                        style: TextStyle(
-                                          fontFamily: kAppFont,
-                                          fontSize: 10.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: leave["status"] == "Approved" ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // =========================================================================
-  // CLASS MAPPING & INCHARGE
-  // =========================================================================
-  Widget _buildEnterpriseList(List<Map<String, dynamic>> data, String col1Name, String key1, String key2) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(11)),
-                border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
-              ),
-              child: Row(
-                children: [
-                  Expanded(flex: 3, child: Text(col1Name.toUpperCase(), style: const TextStyle(fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w700, color: Color(0xFF64748B)))),
-                  Expanded(flex: 2, child: Text("ASSIGNED TO", style: const TextStyle(fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w700, color: Color(0xFF64748B)))),
-                ],
-              ),
-            ),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: EdgeInsets.zero,
-              itemCount: data.length,
-              separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
-              itemBuilder: (context, index) {
-                final item = data[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Row(
-                    children: [
-                      Expanded(flex: 3, child: Text(item[key1], style: const TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
-
-                      Expanded(
-                        flex: 2,
-                        child: GestureDetector(
-                          onTap: () => _showStaffPicker(item, key2),
-                          behavior: HitTestBehavior.opaque,
-                          child: Container(
-                            height: 32,
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    item[key2],
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                                  ),
-                                ),
-                                const Icon(CupertinoIcons.chevron_down, size: 12, color: Color(0xFF64748B)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVerticalKpiCustom(String label, String value, String assetPath, IconData fallbackIcon) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Image.asset(
-              assetPath,
-              width: 15, height: 15,
-              color: const Color(0xFF0F172A),
-              errorBuilder: (context, error, stack) => Icon(fallbackIcon, size: 15, color: const Color(0xFF0F172A)),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              value,
-              style: const TextStyle(fontFamily: kAppFont, fontSize: 18.0, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: -0.5),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVerticalKpiIcon(String label, String value, IconData icon) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Icon(icon, size: 15, color: const Color(0xFF0F172A)),
-            const SizedBox(width: 6),
-            Text(
-              value,
-              style: const TextStyle(fontFamily: kAppFont, fontSize: 18.0, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), letterSpacing: -0.5),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDivider() {
-    return Container(width: 1.0, height: 24.0, color: const Color(0xFFE2E8F0));
   }
 }

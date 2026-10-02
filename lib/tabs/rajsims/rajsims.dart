@@ -1,12 +1,24 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+// Service File Import
+import 'package:shaladarpan/services/portals/rajsims/rajsims_service.dart';
+
 const String kAppFont = 'PlusJakartaSans';
 
-// ScrollBehavior to prevent overscroll red tint / glow
+String formatDisplayDate(DateTime date) {
+  const List<String> monthAbbrev = [
+    "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+  final String dd = date.day.toString().padLeft(2, '0');
+  return "$dd-${monthAbbrev[date.month]}-${date.year}";
+}
+
 class _NoGlowScrollBehavior extends ScrollBehavior {
   const _NoGlowScrollBehavior();
 
@@ -17,7 +29,7 @@ class _NoGlowScrollBehavior extends ScrollBehavior {
 }
 
 // =========================================================================
-// 1. MAIN RAJSIMS TAB VIEW
+// 1. MAIN RAJSIMS TAB VIEW (Dynamic, Progressive & Super Fast)
 // =========================================================================
 class RajsimsTabView extends StatefulWidget {
   const RajsimsTabView({super.key});
@@ -27,36 +39,108 @@ class RajsimsTabView extends StatefulWidget {
 }
 
 class _RajsimsTabViewState extends State<RajsimsTabView> {
-  void _haptic() => HapticFeedback.selectionClick();
+  // ⚡ Progressive Loading States
+  bool _isLoadingStock = true;
+  bool _isLoadingStatus = true;
+  bool _isOnline = false;
+  bool _isStaleData = false; // 🔄 Naya: Cache sync tracking ke liye
 
-  void _openNotice(String title, String desc) {
-    _haptic();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          title,
-          style: const TextStyle(fontFamily: kAppFont, fontSize: 15.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-        ),
-        content: Text(
-          desc,
-          style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, color: Color(0xFF64748B), height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Close", style: TextStyle(fontFamily: kAppFont, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-          ),
-        ],
-      ),
-    );
+  double _wheatStock = 0.0;
+  double _riceStock = 0.0;
+  int _beneficiaryCount = 0;
+  bool _todayEntryExists = false;
+  // 🔥 Naye Dynamic Variables:
+  String _schoolName = "GOVT. SCHOOL";
+  String _inchargeName = "MDM Incharge";
+
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDataProgressive(); // 🚀 Changed to Progressive
+    // Auto-poll to keep UI synced without freezing
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _loadDataProgressive(isSilent: true); // 🚀 Changed to Progressive
+    });
   }
 
   @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  // 🚀 THE MAGIC: Progressive API Fetching with Live Sync Indicator
+  Future<void> _loadDataProgressive({bool isSilent = false}) async {
+    if (!isSilent && mounted) {
+      setState(() {
+        _isLoadingStock = true;
+        _isLoadingStatus = true;
+      });
+    }
+
+    // Step 1: Stock API
+    try {
+      final resStock = await RajsimsService.fetchStockData();
+      if (mounted) {
+        setState(() {
+          if (resStock['success'] == true && resStock['stock'] != null) {
+            _isOnline = true;
+            // Agar backend stale flag bhej raha hai to sync flag true rahega
+            _isStaleData = resStock['stale'] == true;
+            final stock = resStock['stock'];
+            _wheatStock = double.tryParse(stock['wheat']?.toString() ?? '0') ?? 0.0;
+            _riceStock = double.tryParse(stock['rice']?.toString() ?? '0') ?? 0.0;
+          } else {
+             _isOnline = false;
+             _isStaleData = false;
+          }
+          _isLoadingStock = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Stock load error: $e");
+      if(mounted) setState(() { _isLoadingStock = false; _isOnline = false; _isStaleData = false; });
+    }
+
+    // Step 2: Status API
+    try {
+      final resStatus = await RajsimsService.fetchMdmData(force: !isSilent);
+      if (mounted) {
+        setState(() {
+          if (resStatus['success'] == true) {
+            // Agar status call fresh ho gayi to stale hata dein
+            if (resStatus['stale'] != true) {
+              _isStaleData = false;
+            }
+            _beneficiaryCount = int.tryParse(resStatus['beneficiary_count']?.toString() ?? '0') ?? 0;
+            _todayEntryExists = resStatus['today_entry_exists'] ?? false;
+            
+            if (resStatus['school_name'] != null && resStatus['school_name'].toString().trim().isNotEmpty) {
+              _schoolName = resStatus['school_name'].toString().trim();
+            }
+            if (resStatus['incharge_name'] != null && resStatus['incharge_name'].toString().trim().isNotEmpty) {
+              _inchargeName = resStatus['incharge_name'].toString().trim();
+            }
+          }
+          _isLoadingStatus = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Status load error: $e");
+      if(mounted) setState(() => _isLoadingStatus = false);
+    }
+  }
+
+  void _haptic() => HapticFeedback.selectionClick();
+
+  @override
+  @override
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
+    final bool isAnyLoading = _isLoadingStock || _isLoadingStatus;
+    final bool isActivelySyncing = isAnyLoading || _isStaleData;
 
     return Container(
       width: double.infinity,
@@ -67,21 +151,17 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 110.0),
           child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: math.max(400.0, screenHeight - 160.0),
-            ),
+            constraints: BoxConstraints(minHeight: math.max(400.0, screenHeight - 160.0)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 1. Header with Raj-SIMS Logo (46x46)
+                // 1. Header
                 Row(
                   children: [
                     Image.asset(
                       'assets/icons/rajsims.png',
-                      width: 46,
-                      height: 46,
-                      fit: BoxFit.contain,
+                      width: 46, height: 46, fit: BoxFit.contain,
                       errorBuilder: (c, e, s) => const Icon(Icons.business_rounded, size: 46, color: Color(0xFF0F172A)),
                     ),
                     const SizedBox(width: 12),
@@ -89,59 +169,60 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: const [
-                          Text(
-                            "Raj-SIMS Portal",
-                            style: TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 17.5,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF0F172A),
-                              letterSpacing: -0.3,
-                            ),
-                          ),
+                          Text("Raj-SIMS Portal", style: TextStyle(fontFamily: kAppFont, fontSize: 17.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A), letterSpacing: -0.3)),
                           SizedBox(height: 2),
-                          Text(
-                            "Mid Day Meal Program (MDM)",
-                            style: TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 11.0,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
+                          Text("Mid Day Meal Program (MDM)", style: TextStyle(fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.92),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(CupertinoIcons.circle_fill, size: 6, color: Color(0xFF10B981)),
-                          SizedBox(width: 5),
-                          Text(
-                            "Active",
-                            style: TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF0F172A),
+                    GestureDetector(
+                      onTap: () {
+                        _haptic();
+                        _loadDataProgressive();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.92),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isActivelySyncing)
+                              const SizedBox(
+                                width: 10,
+                                height: 10,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.6,
+                                  color: Color(0xFFF59E0B),
+                                ),
+                              )
+                            else
+                              Icon(
+                                CupertinoIcons.circle_fill,
+                                size: 6,
+                                color: _isOnline ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                              ),
+                            const SizedBox(width: 5),
+                            Text(
+                              isActivelySyncing
+                                  ? "Syncing..."
+                                  : (_isOnline ? "Live" : "Offline"),
+                              style: const TextStyle(fontFamily: kAppFont, fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 5),
+                            const Icon(CupertinoIcons.refresh, size: 11, color: Color(0xFF64748B)),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 14),
 
-                // 2. School Name & MDM Incharge Card
+                // 2. School Info (Ab 100% Dynamic)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -149,65 +230,38 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                     color: Colors.white.withOpacity(0.95),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: const Color(0xFFE2E8F0)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF0F172A).withOpacity(0.02),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 2))],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        "GOVT. PRIMARY SCHOOL JETHIYAKHEDI (480481)",
-                        style: TextStyle(
-                          fontFamily: kAppFont,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0F172A),
-                          letterSpacing: -0.2,
-                        ),
+                        _isLoadingStatus && _schoolName == "GOVT. SCHOOL" ? "Syncing school info..." : _schoolName,
+                        style: const TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A), letterSpacing: -0.2),
                       ),
-                      SizedBox(height: 3),
+                      const SizedBox(height: 3),
                       Text(
-                        "MDM Incharge : Rekha Meena (Teacher L-1)",
-                        style: TextStyle(
-                          fontFamily: kAppFont,
-                          fontSize: 11.0,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF475569),
-                        ),
+                        "MDM Incharge : $_inchargeName",
+                        style: const TextStyle(fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
                       ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 16),
 
-                // 3. Food Grain Stock Status
-                const Text(
-                  "Food Grain Stock Status",
-                  style: TextStyle(
-                    fontFamily: kAppFont,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
+                // 3. Stock Status (Instantly Loaded)
+                const Text("Food Grain Stock Status", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(child: _buildStockCard("Wheat (गेहूं)", "142.50", "Kg", 'assets/icons/wheat.png')),
+                    Expanded(child: _buildStockCard("Wheat (गेहूं)", _isLoadingStock && _wheatStock == 0.0 ? "..." : _wheatStock.toStringAsFixed(2), "Kg", 'assets/icons/wheat.png')),
                     const SizedBox(width: 10),
-                    Expanded(child: _buildStockCard("Rice (चावल)", "98.20", "Kg", 'assets/icons/rice.png')),
+                    Expanded(child: _buildStockCard("Rice (चावल)", _isLoadingStock && _riceStock == 0.0 ? "..." : _riceStock.toStringAsFixed(2), "Kg", 'assets/icons/rice.png')),
                   ],
                 ),
-
                 const SizedBox(height: 14),
 
-                // 4. Today's Distribution Status Indicator
+                // 4. Today's Distribution Status
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
@@ -220,24 +274,16 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
+                          const Text("Today's Distribution Status", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                          const SizedBox(height: 2),
                           Text(
-                            "Today's Distribution Status",
+                            _isLoadingStatus 
+                                ? "Status: Syncing from portal..." 
+                                : (_todayEntryExists ? "Status: Completed • $_beneficiaryCount Students served" : "Status: Pending Entry for Today"),
                             style: TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF0F172A),
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            "Status: Completed • 32 Students served",
-                            style: TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 11.0,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF10B981),
+                              fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w600, 
+                              color: _isLoadingStatus ? const Color(0xFF64748B) : (_todayEntryExists ? const Color(0xFF10B981) : const Color(0xFFF59E0B))
                             ),
                           ),
                         ],
@@ -245,86 +291,60 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                       Container(
                         padding: const EdgeInsets.all(7),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFDCFCE7),
-                          borderRadius: BorderRadius.circular(9),
+                          color: _isLoadingStatus ? const Color(0xFFF1F5F9) : (_todayEntryExists ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7)), 
+                          borderRadius: BorderRadius.circular(9)
                         ),
-                        child: const Icon(CupertinoIcons.checkmark_alt, size: 16, color: Color(0xFF16A34A)),
+                        child: _isLoadingStatus 
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF64748B)))
+                            : Icon(_todayEntryExists ? CupertinoIcons.checkmark_alt : CupertinoIcons.clock, size: 16, color: _todayEntryExists ? const Color(0xFF16A34A) : const Color(0xFFD97706)),
                       ),
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 16),
 
-                // 5. Action CTAs: Left: Legacy Entry | Right: Add Distribution
+                // 5. Action CTAs
                 Row(
                   children: [
-                    // Left: Legacy Entry
                     Expanded(
                       child: _ScaleTouch(
                         onTap: () {
                           _haptic();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const AddLegacyDistributionScreen()),
-                          );
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const AddLegacyDistributionScreen())).then((_) => _loadDataProgressive());
                         },
                         child: Container(
                           height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.95),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFCBD5E1)),
-                          ),
+                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFCBD5E1))),
                           alignment: Alignment.center,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: const [
-                              Icon(CupertinoIcons.arrow_counterclockwise, color: Color(0xFF0F172A), size: 13),
-                              SizedBox(width: 5),
-                              Text(
-                                "Legacy Entry",
-                                style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                              ),
+                              Icon(CupertinoIcons.arrow_counterclockwise, color: Color(0xFF0F172A), size: 13), SizedBox(width: 5),
+                              Text("Legacy Entry", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
                             ],
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Right: Add Distribution
                     Expanded(
                       child: _ScaleTouch(
                         onTap: () {
                           _haptic();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const AddDistributionScreen()),
-                          );
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const AddDistributionScreen())).then((_) => _loadDataProgressive());
                         },
                         child: Container(
                           height: 36,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0F172A),
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0F172A).withOpacity(0.12),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                            color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(8),
+                            boxShadow: [BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 2))],
                           ),
                           alignment: Alignment.center,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: const [
-                              Icon(CupertinoIcons.add, color: Colors.white, size: 13),
-                              SizedBox(width: 5),
-                              Text(
-                                "Add Distribution",
-                                style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: Colors.white),
-                              ),
+                              Icon(CupertinoIcons.add, color: Colors.white, size: 13), SizedBox(width: 5),
+                              Text("Add Distribution", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: Colors.white)),
                             ],
                           ),
                         ),
@@ -332,57 +352,24 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 18),
 
                 // 6. Registered Log Lists
-                const Text(
-                  "Distribution Records & Logs",
-                  style: TextStyle(
-                    fontFamily: kAppFont,
-                    fontSize: 12.0,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
+                const Text("Distribution Records & Logs", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
                 const SizedBox(height: 8),
 
                 Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0))),
                   child: Column(
                     children: [
                       _buildListRow(
-                        title: "View Distribution List",
-                        subtitle: "Consolidated daily consumption records",
-                        icon: CupertinoIcons.list_bullet_below_rectangle,
-                        onTap: () {
-                          _haptic();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const DistributionListScreen(isLegacy: false),
-                            ),
-                          );
-                        },
+                        title: "View Distribution List", subtitle: "Consolidated daily consumption records", icon: CupertinoIcons.list_bullet_below_rectangle,
+                        onTap: () { _haptic(); Navigator.push(context, MaterialPageRoute(builder: (context) => const DistributionListScreen(isLegacy: false))); },
                       ),
                       const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 46, endIndent: 12),
                       _buildListRow(
-                        title: "Distribution Legacy List",
-                        subtitle: "Audit view for unsettled/settled legacy drafts",
-                        icon: CupertinoIcons.clock_fill,
-                        onTap: () {
-                          _haptic();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const DistributionListScreen(isLegacy: true),
-                            ),
-                          );
-                        },
+                        title: "Distribution Legacy List", subtitle: "Audit view for unsettled/settled legacy drafts", icon: CupertinoIcons.clock_fill,
+                        onTap: () { _haptic(); Navigator.push(context, MaterialPageRoute(builder: (context) => const DistributionListScreen(isLegacy: true))); },
                       ),
                     ],
                   ),
@@ -399,61 +386,22 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.015),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Image.asset(
-            iconPath,
-            width: 24,
-            height: 24,
-            errorBuilder: (c, e, s) => const Icon(CupertinoIcons.cube_box_fill, size: 24, color: Color(0xFF0F172A)),
-          ),
+          Image.asset(iconPath, width: 24, height: 24, errorBuilder: (c, e, s) => const Icon(CupertinoIcons.cube_box_fill, size: 24, color: Color(0xFF0F172A))),
           const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: kAppFont,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF64748B),
-            ),
-          ),
+          Text(title, style: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
           const SizedBox(height: 2),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+            crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(
-                amount,
-                style: const TextStyle(
-                  fontFamily: kAppFont,
-                  fontSize: 24.0,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0F172A),
-                  letterSpacing: -0.5,
-                ),
-              ),
+              Text(amount, style: const TextStyle(fontFamily: kAppFont, fontSize: 24.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A), letterSpacing: -0.5)),
               const SizedBox(width: 4),
-              Text(
-                unit,
-                style: const TextStyle(
-                  fontFamily: kAppFont,
-                  fontSize: 12.0,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF64748B),
-                ),
-              ),
+              Text(unit, style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
             ],
           ),
         ],
@@ -461,15 +409,9 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
     );
   }
 
-  Widget _buildListRow({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildListRow({required String title, required String subtitle, required IconData icon, required VoidCallback onTap}) {
     return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      onTap: onTap, borderRadius: BorderRadius.circular(14),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
@@ -480,14 +422,8 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontFamily: kAppFont, fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                  ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(fontFamily: kAppFont, fontSize: 11, color: Color(0xFF64748B)),
-                  ),
+                  Text(title, style: const TextStyle(fontFamily: kAppFont, fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+                  Text(subtitle, style: const TextStyle(fontFamily: kAppFont, fontSize: 11, color: Color(0xFF64748B))),
                 ],
               ),
             ),
@@ -516,13 +452,8 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   bool _isZeroConsumption = false;
   String? _selectedZeroReason = 'Holiday in School';
   final List<String> _zeroReasons = [
-    'Holiday in School',
-    'Non availability of Food grains',
-    'Non availability of funds/cooking cost/Ingredients',
-    'Absence of cook-cum-helpers',
-    'Food Not Arrived from NGO/SHG',
-    'Others',
-    'Shri Krishna Bhog/Atithi Bhog',
+    'Holiday in School', 'Non availability of Food grains', 'Non availability of funds/cooking cost/Ingredients',
+    'Absence of cook-cum-helpers', 'Food Not Arrived from NGO/SHG', 'Others', 'Shri Krishna Bhog/Atithi Bhog'
   ];
 
   final int _maxEnrolment = 32;
@@ -531,7 +462,8 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   final TextEditingController _atithiMataCountController = TextEditingController(text: '1');
   double _issuedQty = 0.00;
 
-  String _atithiMataChoice = '0'; // '1': Yes (हाँ), '0': No (नहीं)
+  bool _isSubmitting = false;
+  String _atithiMataChoice = '0';
 
   @override
   void initState() {
@@ -541,13 +473,12 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
 
   void _calculateIssuedQty() {
     final int count = int.tryParse(_beneficiaryController.text.trim()) ?? 0;
-    setState(() {
-      _issuedQty = (count * 0.100);
-    });
+    setState(() => _issuedQty = (count * 0.100));
   }
 
   @override
   void dispose() {
+    _beneficiaryController.removeListener(_calculateIssuedQty);
     _beneficiaryController.dispose();
     _atithiMataCountController.dispose();
     super.dispose();
@@ -556,42 +487,24 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   void _haptic() => HapticFeedback.selectionClick();
 
   void _showNotice(String message, {bool isSuccess = true}) {
+    if (!mounted) return;
     _haptic();
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.transparent,
-        margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
+        elevation: 0, behavior: SnackBarBehavior.floating, backgroundColor: Colors.transparent, margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
         content: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.16),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(14),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.16), blurRadius: 20, offset: const Offset(0, 8))],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                isSuccess ? CupertinoIcons.checkmark_alt_circle_fill : CupertinoIcons.info_circle_fill,
-                color: isSuccess ? const Color(0xFF34C759) : const Color(0xFFEF4444),
-                size: 16,
-              ),
+              Icon(isSuccess ? CupertinoIcons.checkmark_alt_circle_fill : CupertinoIcons.info_circle_fill, color: isSuccess ? const Color(0xFF34C759) : const Color(0xFFEF4444), size: 16),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: Colors.white),
-                ),
-              ),
+              Expanded(child: Text(message, style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: Colors.white))),
             ],
           ),
         ),
@@ -602,16 +515,12 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   void _openProductSelectorDialog() {
     _haptic();
     showDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.4),
+      context: context, barrierDismissible: false, barrierColor: Colors.black.withOpacity(0.4),
       builder: (context) {
         return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          backgroundColor: Colors.transparent, insetPadding: const EdgeInsets.symmetric(horizontal: 24),
           child: Container(
-            width: 360,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+            width: 360, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -627,25 +536,15 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                 ),
                 const Divider(height: 1, color: Color(0xFFF1F5F9)),
                 ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  itemCount: _productOptions.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF8FAFC)),
+                  shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), itemCount: _productOptions.length, separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF8FAFC)),
                   itemBuilder: (context, index) {
                     final item = _productOptions[index];
-                    final isSelected = (_selectedProductName == 'Wheat' && item.startsWith('Wheat')) ||
-                        (_selectedProductName == 'Rice' && item.startsWith('Rice'));
+                    final isSelected = (_selectedProductName == 'Wheat' && item.startsWith('Wheat')) || (_selectedProductName == 'Rice' && item.startsWith('Rice'));
                     return InkWell(
-                      onTap: () {
-                        _haptic();
-                        setState(() => _selectedProductName = item.startsWith('Wheat') ? 'Wheat' : 'Rice');
-                        Navigator.pop(context);
-                      },
+                      onTap: () { _haptic(); setState(() => _selectedProductName = item.startsWith('Wheat') ? 'Wheat' : 'Rice'); Navigator.pop(context); },
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(color: isSelected ? const Color(0xFFF8FAFC) : Colors.transparent, borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), decoration: BoxDecoration(color: isSelected ? const Color(0xFFF8FAFC) : Colors.transparent, borderRadius: BorderRadius.circular(8)),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -668,16 +567,12 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
   void _openZeroReasonSelectorDialog() {
     _haptic();
     showDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.4),
+      context: context, barrierDismissible: false, barrierColor: Colors.black.withOpacity(0.4),
       builder: (context) {
         return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          backgroundColor: Colors.transparent, insetPadding: const EdgeInsets.symmetric(horizontal: 24),
           child: Container(
-            width: 390,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+            width: 390, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -694,24 +589,15 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                 const Divider(height: 1, color: Color(0xFFF1F5F9)),
                 Flexible(
                   child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    itemCount: _zeroReasons.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF8FAFC)),
+                    shrinkWrap: true, physics: const BouncingScrollPhysics(), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), itemCount: _zeroReasons.length, separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF8FAFC)),
                     itemBuilder: (context, index) {
                       final reason = _zeroReasons[index];
                       final isSelected = _selectedZeroReason == reason;
                       return InkWell(
-                        onTap: () {
-                          _haptic();
-                          setState(() => _selectedZeroReason = reason);
-                          Navigator.pop(context);
-                        },
+                        onTap: () { _haptic(); setState(() => _selectedZeroReason = reason); Navigator.pop(context); },
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(color: isSelected ? const Color(0xFFF8FAFC) : Colors.transparent, borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), decoration: BoxDecoration(color: isSelected ? const Color(0xFFF8FAFC) : Colors.transparent, borderRadius: BorderRadius.circular(8)),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -732,6 +618,71 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     );
   }
 
+  // 🚀 Call Backend Submit API
+  Future<void> _submitDistribution() async {
+    if (_isSubmitting) return;
+
+    final bool isShriKrishnaBhog = _isZeroConsumption && _selectedZeroReason == 'Shri Krishna Bhog/Atithi Bhog';
+
+    if (_isZeroConsumption && !isShriKrishnaBhog) {
+      if (_selectedZeroReason == null) {
+        _showNotice("Please select reason for zero consumption", isSuccess: false);
+        return;
+      }
+    } else {
+      if (!isShriKrishnaBhog && _selectedProductName == null) {
+        _showNotice("Please select food grain product", isSuccess: false);
+        return;
+      }
+      final int beneficiaryCount = int.tryParse(_beneficiaryController.text.trim()) ?? 0;
+      if (beneficiaryCount <= 0) {
+        _showNotice("Please enter number of beneficiaries", isSuccess: false);
+        return;
+      }
+      if (beneficiaryCount > _maxEnrolment) {
+        _showNotice("Beneficiary count cannot exceed enrolment ($_maxEnrolment)", isSuccess: false);
+        return;
+      }
+    }
+
+    if (!_isZeroConsumption && _atithiMataChoice == '1') {
+      final int atithiCount = int.tryParse(_atithiMataCountController.text.trim()) ?? 0;
+      if (atithiCount <= 0) {
+        _showNotice("Please enter अतिथि माता की संख्या", isSuccess: false);
+        return;
+      }
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final payload = {
+        "product_name": _selectedProductName ?? "Wheat",
+        "beneficiary_count": _isZeroConsumption && !isShriKrishnaBhog ? 0 : (int.tryParse(_beneficiaryController.text.trim()) ?? 0),
+        "is_zero_consumption": _isZeroConsumption,
+        "zero_reason": _selectedZeroReason,
+        "atithi_mata_choice": _atithiMataChoice,
+        "atithi_mata_count": int.tryParse(_atithiMataCountController.text.trim()) ?? 1,
+      };
+
+      final resJson = await RajsimsService.submitDistribution(payload);
+
+      if (!mounted) return;
+
+      if (resJson['success'] == true) {
+        _showNotice("Daily distribution entry saved on portal successfully!");
+        Navigator.pop(context);
+      } else {
+        _showNotice(resJson['message'] ?? "Failed to save on portal", isSuccess: false);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showNotice("Network error: $e", isSuccess: false);
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isShriKrishnaBhog = _isZeroConsumption && _selectedZeroReason == 'Shri Krishna Bhog/Atithi Bhog';
@@ -739,38 +690,22 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     return ScrollConfiguration(
       behavior: const _NoGlowScrollBehavior(),
       child: Scaffold(
-        extendBodyBehindAppBar: true,
-        backgroundColor: Colors.white,
+        extendBodyBehindAppBar: true, backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: Colors.white.withOpacity(0.85),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(CupertinoIcons.back, color: Color(0xFF0F172A), size: 20),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: const Text(
-            "Add Distribution",
-            style: TextStyle(fontFamily: kAppFont, fontSize: 15.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-          ),
-          centerTitle: false,
+          backgroundColor: Colors.white.withOpacity(0.85), elevation: 0,
+          leading: IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF0F172A), size: 20), onPressed: () => Navigator.pop(context)),
+          title: const Text("Add Distribution", style: TextStyle(fontFamily: kAppFont, fontSize: 15.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))), centerTitle: false,
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 12.0, top: 10, bottom: 10),
               child: Container(
-                height: 32,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                height: 32, decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(8)),
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () {
                       _haptic();
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AddLegacyDistributionScreen()),
-                      );
+                      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const AddLegacyDistributionScreen()));
                     },
                     borderRadius: BorderRadius.circular(8),
                     child: Padding(
@@ -778,12 +713,8 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: const [
-                          Icon(CupertinoIcons.arrow_counterclockwise, size: 12, color: Colors.white),
-                          SizedBox(width: 5),
-                          Text(
-                            "Legacy Distribution",
-                            style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w700, color: Colors.white),
-                          ),
+                          Icon(CupertinoIcons.arrow_counterclockwise, size: 12, color: Colors.white), SizedBox(width: 5),
+                          Text("Legacy Distribution", style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w700, color: Colors.white)),
                         ],
                       ),
                     ),
@@ -795,139 +726,54 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
         ),
         body: Stack(
           children: [
-            // Atmospheric Ambient Mesh Background
-            Positioned.fill(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0.0, 0.45, 1.0],
-                    colors: [
-                      Color(0xFFF8FAFC),
-                      Color(0xFFF1F5F9),
-                      Color(0xFFFEF3C7),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: -50,
-              top: -40,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 85, sigmaY: 85),
-                child: Container(
-                  width: 260,
-                  height: 260,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFFBAE6FD).withOpacity(0.42),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              right: -50,
-              top: 40,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-                child: Container(
-                  width: 240,
-                  height: 240,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFFFDE68A).withOpacity(0.35),
-                  ),
-                ),
-              ),
-            ),
+            Positioned.fill(child: Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: [0.0, 0.45, 1.0], colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)])))),
+            Positioned(left: -50, top: -40, child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 85, sigmaY: 85), child: Container(width: 260, height: 260, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFBAE6FD).withOpacity(0.42))))),
+            Positioned(right: -50, top: 40, child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 90, sigmaY: 90), child: Container(width: 240, height: 240, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFFDE68A).withOpacity(0.35))))),
 
             SafeArea(
               bottom: false,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                    padding: const EdgeInsets.fromLTRB(14.0, 6.0, 14.0, 30.0),
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()), padding: const EdgeInsets.fromLTRB(14.0, 6.0, 14.0, 30.0),
                     child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: math.max(0.0, constraints.maxHeight - 36.0),
-                      ),
+                      constraints: BoxConstraints(minHeight: math.max(0.0, constraints.maxHeight - 36.0)),
                       child: IntrinsicHeight(
                         child: Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.95),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                            boxShadow: [
-                              BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 2)),
-                            ],
+                            color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE2E8F0)),
+                            boxShadow: [BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 2))],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildLabel("Transaction Type"),
-                              _buildReadOnlyField("Distribution"),
-
-                              const SizedBox(height: 10),
-                              _buildLabel("Customer Type"),
-                              _buildReadOnlyField("Beneficiary Dept."),
-
-                              const SizedBox(height: 10),
-                              _buildLabel("Distribution No."),
-                              _buildReadOnlyField("Auto Generated"),
-
-                              const SizedBox(height: 10),
-                              _buildLabel("Distribution Date *", isRequired: true),
-                              _buildReadOnlyField("14-Sep-2026"),
-
-                              const SizedBox(height: 14),
-                              const Text("Zero Consumption (If Any)", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                              const SizedBox(height: 6),
-
+                              _buildLabel("Transaction Type"), _buildReadOnlyField("Distribution"),
+                              const SizedBox(height: 10), _buildLabel("Customer Type"), _buildReadOnlyField("Beneficiary Dept."),
+                              const SizedBox(height: 10), _buildLabel("Distribution No."), _buildReadOnlyField("Auto Generated"),
+                              const SizedBox(height: 10), _buildLabel("Distribution Date *", isRequired: true), _buildReadOnlyField(formatDisplayDate(DateTime.now())),
+                              const SizedBox(height: 14), const Text("Zero Consumption (If Any)", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))), const SizedBox(height: 6),
+                              
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6), decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
                                 child: Row(
                                   children: [
-                                    Checkbox(
-                                      value: _isZeroConsumption,
-                                      onChanged: (val) {
-                                        _haptic();
-                                        setState(() => _isZeroConsumption = val ?? false);
-                                      },
-                                      activeColor: const Color(0xFF0F172A),
-                                    ),
-                                    const Expanded(
-                                      child: Text("Zero consumption for this day", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
-                                    ),
+                                    Checkbox(value: _isZeroConsumption, onChanged: (val) { _haptic(); setState(() => _isZeroConsumption = val ?? false); }, activeColor: const Color(0xFF0F172A)),
+                                    const Expanded(child: Text("Zero consumption for this day", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
                                   ],
                                 ),
                               ),
 
                               if (_isZeroConsumption) ...[
-                                const SizedBox(height: 12),
-                                _buildLabel("Reason *", isRequired: true),
+                                const SizedBox(height: 12), _buildLabel("Reason *", isRequired: true),
                                 GestureDetector(
-                                  onTap: _openZeroReasonSelectorDialog,
-                                  behavior: HitTestBehavior.opaque,
+                                  onTap: _openZeroReasonSelectorDialog, behavior: HitTestBehavior.opaque,
                                   child: Container(
-                                    height: 38,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFCBD5E1))),
+                                    height: 38, padding: const EdgeInsets.symmetric(horizontal: 12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFCBD5E1))),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Expanded(
-                                          child: Text(
-                                            _selectedZeroReason ?? "--Select Reason--",
-                                            style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: _selectedZeroReason == null ? const Color(0xFF94A3B8) : const Color(0xFF0F172A)),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
+                                        Expanded(child: Text(_selectedZeroReason ?? "--Select Reason--", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: _selectedZeroReason == null ? const Color(0xFF94A3B8) : const Color(0xFF0F172A)), maxLines: 1, overflow: TextOverflow.ellipsis)),
                                         const Icon(CupertinoIcons.chevron_down, size: 13, color: Color(0xFF64748B)),
                                       ],
                                     ),
@@ -936,80 +782,57 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                               ],
 
                               if (!_isZeroConsumption || isShriKrishnaBhog) ...[
-                                const SizedBox(height: 14),
-                                const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                                const SizedBox(height: 12),
-
+                                const SizedBox(height: 14), const Divider(height: 1, color: Color(0xFFF1F5F9)), const SizedBox(height: 12),
                                 const Text("Daily Consumption Entry", style: TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-
                                 if (!isShriKrishnaBhog) ...[
-                                  const SizedBox(height: 8),
-                                  _buildLabel("Product Name *", isRequired: true),
+                                  const SizedBox(height: 8), _buildLabel("Product Name *", isRequired: true),
                                   GestureDetector(
-                                    onTap: _openProductSelectorDialog,
-                                    behavior: HitTestBehavior.opaque,
+                                    onTap: _openProductSelectorDialog, behavior: HitTestBehavior.opaque,
                                     child: Container(
-                                      height: 38,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFCBD5E1))),
+                                      height: 38, padding: const EdgeInsets.symmetric(horizontal: 12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFCBD5E1))),
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            _selectedProductName == 'Wheat' ? "Wheat (गेहूं)" : _selectedProductName == 'Rice' ? "Rice (चावल)" : "--Select Product--",
-                                            style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: _selectedProductName == null ? const Color(0xFF94A3B8) : const Color(0xFF0F172A)),
-                                          ),
+                                          Text(_selectedProductName == 'Wheat' ? "Wheat (गेहूं)" : _selectedProductName == 'Rice' ? "Rice (चावल)" : "--Select Product--", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: _selectedProductName == null ? const Color(0xFF94A3B8) : const Color(0xFF0F172A))),
                                           const Icon(CupertinoIcons.chevron_down, size: 13, color: Color(0xFF64748B)),
                                         ],
                                       ),
                                     ),
                                   ),
                                 ],
-
                                 const SizedBox(height: 12),
-
                                 Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0))),
+                                  padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0))),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           Checkbox(value: _isRowSelected, onChanged: (v) => setState(() => _isRowSelected = v ?? true), activeColor: const Color(0xFF0F172A)),
-                                          const Expanded(
-                                            child: Text("Primary School (Pre-Primary to 5)", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                                          ),
+                                          const Expanded(child: Text("Primary School (Pre-Primary to 5)", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFFCBD5E1))),
+                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFFCBD5E1))),
                                             child: Text("Enrolment: $_maxEnrolment", style: const TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 8),
-                                      const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                                      const SizedBox(height: 10),
-
+                                      const SizedBox(height: 8), const Divider(height: 1, color: Color(0xFFE2E8F0)), const SizedBox(height: 10),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(isShriKrishnaBhog ? "Beneficiaries (Atithi Bhog)" : "No. Of Beneficiary *", style: const TextStyle(fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
                                           GestureDetector(
                                             onTap: () {
-                                              _haptic();
-                                              _beneficiaryController.text = _maxEnrolment.toString();
+                                              _haptic(); _beneficiaryController.text = _maxEnrolment.toString(); _calculateIssuedQty();
                                             },
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                                              decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(5)),
+                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5), decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(5)),
                                               child: Text("Fill All ($_maxEnrolment)", style: const TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
                                             ),
                                           ),
                                         ],
                                       ),
                                       const SizedBox(height: 6),
-
                                       Row(
                                         children: [
                                           Expanded(
@@ -1017,15 +840,11 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                             child: SizedBox(
                                               height: 36,
                                               child: TextField(
-                                                controller: _beneficiaryController,
-                                                keyboardType: TextInputType.number,
+                                                controller: _beneficiaryController, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                                 style: const TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                                                 decoration: InputDecoration(
-                                                  hintText: "Enter count...",
-                                                  hintStyle: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, color: Color(0xFF94A3B8)),
-                                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                                  filled: true,
-                                                  fillColor: Colors.white,
+                                                  hintText: "Enter count...", hintStyle: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, color: Color(0xFF94A3B8)),
+                                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), filled: true, fillColor: Colors.white,
                                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                                                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                                                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF0F172A))),
@@ -1037,14 +856,8 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                           Expanded(
                                             flex: 2,
                                             child: Container(
-                                              height: 36,
-                                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                                              decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
-                                              alignment: Alignment.center,
-                                              child: Text(
-                                                isShriKrishnaBhog ? "0.00 Kg (Free)" : "${_issuedQty.toStringAsFixed(2)} Kg",
-                                                style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w800, color: isShriKrishnaBhog ? const Color(0xFF16A34A) : const Color(0xFF0F172A)),
-                                              ),
+                                              height: 36, padding: const EdgeInsets.symmetric(horizontal: 8), decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))), alignment: Alignment.center,
+                                              child: Text(isShriKrishnaBhog ? "0.00 Kg (Free)" : "${_issuedQty.toStringAsFixed(2)} Kg", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w800, color: isShriKrishnaBhog ? const Color(0xFF16A34A) : const Color(0xFF0F172A))),
                                             ),
                                           ),
                                         ],
@@ -1054,31 +867,20 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                 ),
                               ],
 
-                              // 6. Atithi Mata Tasting
                               if (!_isZeroConsumption) ...[
-                                const SizedBox(height: 16),
-                                const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                                const SizedBox(height: 14),
-
+                                const SizedBox(height: 16), const Divider(height: 1, color: Color(0xFFF1F5F9)), const SizedBox(height: 14),
                                 const Text("अतिथि माता (If Any)", style: TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                                const SizedBox(height: 4),
-                                const Text("क्या विद्यार्थियों को भोजन परोसने जाने से पूर्व उनकी माताओं / महिला अभिभावकों द्वारा भोजन को चखा गया है", style: TextStyle(fontFamily: kAppFont, fontSize: 11.0, color: Color(0xFF475569), height: 1.3)),
+                                const SizedBox(height: 4), const Text("क्या विद्यार्थियों को भोजन परोसने जाने से पूर्व उनकी माताओं / महिला अभिभावकों द्वारा भोजन को चखा गया है", style: TextStyle(fontFamily: kAppFont, fontSize: 11.0, color: Color(0xFF475569), height: 1.3)),
                                 const SizedBox(height: 8),
-
                                 Container(
                                   decoration: BoxDecoration(border: Border.all(color: const Color(0xFFCBD5E1)), borderRadius: BorderRadius.circular(8)),
                                   child: Row(
                                     children: [
                                       Expanded(
                                         child: GestureDetector(
-                                          onTap: () {
-                                            _haptic();
-                                            setState(() => _atithiMataChoice = '1');
-                                          },
+                                          onTap: () { _haptic(); setState(() => _atithiMataChoice = '1'); },
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(vertical: 8),
-                                            decoration: BoxDecoration(color: _atithiMataChoice == '1' ? const Color(0xFF0F172A) : Colors.transparent, borderRadius: const BorderRadius.horizontal(left: Radius.circular(7))),
-                                            alignment: Alignment.center,
+                                            padding: const EdgeInsets.symmetric(vertical: 8), decoration: BoxDecoration(color: _atithiMataChoice == '1' ? const Color(0xFF0F172A) : Colors.transparent, borderRadius: const BorderRadius.horizontal(left: Radius.circular(7))), alignment: Alignment.center,
                                             child: Text("हाँ", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: _atithiMataChoice == '1' ? Colors.white : const Color(0xFF0F172A))),
                                           ),
                                         ),
@@ -1086,14 +888,9 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                       Container(width: 1, height: 34, color: const Color(0xFFCBD5E1)),
                                       Expanded(
                                         child: GestureDetector(
-                                          onTap: () {
-                                            _haptic();
-                                            setState(() => _atithiMataChoice = '0');
-                                          },
+                                          onTap: () { _haptic(); setState(() => _atithiMataChoice = '0'); },
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(vertical: 8),
-                                            decoration: BoxDecoration(color: _atithiMataChoice == '0' ? const Color(0xFF0F172A) : Colors.transparent, borderRadius: const BorderRadius.horizontal(right: Radius.circular(7))),
-                                            alignment: Alignment.center,
+                                            padding: const EdgeInsets.symmetric(vertical: 8), decoration: BoxDecoration(color: _atithiMataChoice == '0' ? const Color(0xFF0F172A) : Colors.transparent, borderRadius: const BorderRadius.horizontal(right: Radius.circular(7))), alignment: Alignment.center,
                                             child: Text("नहीं", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: _atithiMataChoice == '0' ? Colors.white : const Color(0xFF0F172A))),
                                           ),
                                         ),
@@ -1105,25 +902,17 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                 if (_atithiMataChoice == '1') ...[
                                   const SizedBox(height: 10),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                    decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
                                     child: Row(
                                       children: [
-                                        const Expanded(
-                                          child: Text("अतिथि माता की संख्या *", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                                        ),
+                                        const Expanded(child: Text("अतिथि माता की संख्या *", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))),
                                         SizedBox(
-                                          width: 60,
-                                          height: 32,
+                                          width: 60, height: 32,
                                           child: TextField(
-                                            controller: _atithiMataCountController,
-                                            keyboardType: TextInputType.number,
-                                            textAlign: TextAlign.center,
+                                            controller: _atithiMataCountController, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly], textAlign: TextAlign.center,
                                             style: const TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                                             decoration: InputDecoration(
-                                              contentPadding: EdgeInsets.zero,
-                                              filled: true,
-                                              fillColor: Colors.white,
+                                              contentPadding: EdgeInsets.zero, filled: true, fillColor: Colors.white,
                                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                                               enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                                               focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF0F172A))),
@@ -1136,10 +925,9 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                 ],
                               ],
 
-                              const Spacer(),
-                              const SizedBox(height: 20),
+                              const Spacer(), const SizedBox(height: 20),
 
-                              // Cancel on Left | Save on Right (Color: #00E676 - Non-deforming solid style)
+                              // Cancel / Save CTA
                               Row(
                                 children: [
                                   Expanded(
@@ -1148,17 +936,8 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                       child: OutlinedButton(
                                         onPressed: () => Navigator.pop(context),
                                         style: ButtonStyle(
-                                          backgroundColor: MaterialStateProperty.all(Colors.white.withOpacity(0.9)),
-                                          foregroundColor: MaterialStateProperty.all(const Color(0xFF0F172A)),
-                                          elevation: MaterialStateProperty.all(0),
-                                          shadowColor: MaterialStateProperty.all(Colors.transparent),
-                                          side: MaterialStateProperty.all(const BorderSide(color: Color(0xFFCBD5E1))),
-                                          overlayColor: MaterialStateProperty.all(Colors.black.withOpacity(0.04)),
-                                          splashFactory: NoSplash.splashFactory,
-                                          shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                                          padding: MaterialStateProperty.all(EdgeInsets.zero),
-                                          minimumSize: MaterialStateProperty.all(const Size(0, 36)),
-                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          backgroundColor: MaterialStateProperty.all(Colors.white.withOpacity(0.9)), foregroundColor: MaterialStateProperty.all(const Color(0xFF0F172A)), elevation: MaterialStateProperty.all(0),
+                                          side: MaterialStateProperty.all(const BorderSide(color: Color(0xFFCBD5E1))), shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                                         ),
                                         child: const Text("Cancel", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
                                       ),
@@ -1169,36 +948,14 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                     child: SizedBox(
                                       height: 36,
                                       child: ElevatedButton(
-                                        onPressed: () {
-                                          if (_isZeroConsumption && !isShriKrishnaBhog) {
-                                            if (_selectedZeroReason == null) {
-                                              _showNotice("Please select reason for zero consumption", isSuccess: false);
-                                              return;
-                                            }
-                                            _showNotice("Zero consumption entry reported successfully");
-                                            Navigator.pop(context);
-                                          } else {
-                                            if (!isShriKrishnaBhog && _selectedProductName == null) {
-                                              _showNotice("Please select food grain product", isSuccess: false);
-                                              return;
-                                            }
-                                            _showNotice("Daily distribution entry saved successfully");
-                                            Navigator.pop(context);
-                                          }
-                                        },
+                                        onPressed: _isSubmitting ? null : _submitDistribution,
                                         style: ButtonStyle(
-                                          backgroundColor: MaterialStateProperty.all(const Color(0xFF00E676)), // Clean Bright Green #00E676
-                                          foregroundColor: MaterialStateProperty.all(const Color(0xFF0F172A)),
-                                          elevation: MaterialStateProperty.all(0),
-                                          shadowColor: MaterialStateProperty.all(Colors.transparent),
-                                          overlayColor: MaterialStateProperty.all(Colors.black.withOpacity(0.06)),
-                                          splashFactory: NoSplash.splashFactory,
+                                          backgroundColor: MaterialStateProperty.all(const Color(0xFF00E676)), foregroundColor: MaterialStateProperty.all(const Color(0xFF0F172A)), elevation: MaterialStateProperty.all(0),
                                           shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                                          padding: MaterialStateProperty.all(EdgeInsets.zero),
-                                          minimumSize: MaterialStateProperty.all(const Size(0, 36)),
-                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                         ),
-                                        child: const Text("Save", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                                        child: _isSubmitting
+                                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0F172A)))
+                                            : const Text("Save", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
                                       ),
                                     ),
                                   ),
@@ -1233,17 +990,14 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
 
   Widget _buildReadOnlyField(String val) {
     return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
-      alignment: Alignment.centerLeft,
+      height: 36, padding: const EdgeInsets.symmetric(horizontal: 10), decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))), alignment: Alignment.centerLeft,
       child: Text(val, style: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
     );
   }
 }
 
 // =========================================================================
-// 3. FULL WINDOW: ADD LEGACY DISTRIBUTION SCREEN (Clean Seamless Stretch)
+// 3. FULL WINDOW: ADD LEGACY DISTRIBUTION SCREEN
 // =========================================================================
 class AddLegacyDistributionScreen extends StatefulWidget {
   const AddLegacyDistributionScreen({super.key});
@@ -1260,19 +1014,18 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
   bool _isZeroConsumption = false;
   String? _selectedZeroReason = 'Holiday in School';
   final List<String> _zeroReasons = [
-    'Holiday in School',
-    'Non availability of Food grains',
-    'Non availability of funds/cooking cost/Ingredients',
-    'Absence of cook-cum-helpers',
-    'Food Not Arrived from NGO/SHG',
-    'Others',
-    'Shri Krishna Bhog/Atithi Bhog',
+    'Holiday in School', 'Non availability of Food grains', 'Non availability of funds/cooking cost/Ingredients',
+    'Absence of cook-cum-helpers', 'Food Not Arrived from NGO/SHG', 'Others', 'Shri Krishna Bhog/Atithi Bhog',
   ];
 
   final int _maxEnrolment = 32;
   bool _isRowSelected = true;
   final TextEditingController _beneficiaryController = TextEditingController();
+  final TextEditingController _atithiMataCountController = TextEditingController(text: '1');
   double _issuedQty = 0.00;
+
+  bool _isSubmitting = false;
+  String _atithiMataChoice = '0';
 
   @override
   void initState() {
@@ -1282,56 +1035,34 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
 
   void _calculateIssuedQty() {
     final int count = int.tryParse(_beneficiaryController.text.trim()) ?? 0;
-    setState(() {
-      _issuedQty = (count * 0.100);
-    });
+    setState(() { _issuedQty = (count * 0.100); });
   }
 
   @override
   void dispose() {
+    _beneficiaryController.removeListener(_calculateIssuedQty);
     _beneficiaryController.dispose();
+    _atithiMataCountController.dispose();
     super.dispose();
   }
 
   void _haptic() => HapticFeedback.selectionClick();
 
   void _showNotice(String message, {bool isSuccess = true}) {
+    if (!mounted) return;
     _haptic();
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.transparent,
-        margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
+        elevation: 0, behavior: SnackBarBehavior.floating, backgroundColor: Colors.transparent, margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
         content: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F172A),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.16),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(14), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.16), blurRadius: 20, offset: const Offset(0, 8))]),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                isSuccess ? CupertinoIcons.checkmark_alt_circle_fill : CupertinoIcons.info_circle_fill,
-                color: isSuccess ? const Color(0xFF34C759) : const Color(0xFFEF4444),
-                size: 16,
-              ),
+              Icon(isSuccess ? CupertinoIcons.checkmark_alt_circle_fill : CupertinoIcons.info_circle_fill, color: isSuccess ? const Color(0xFF34C759) : const Color(0xFFEF4444), size: 16),
               const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  message,
-                  style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: Colors.white),
-                ),
-              ),
+              Expanded(child: Text(message, style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: Colors.white))),
             ],
           ),
         ),
@@ -1344,33 +1075,21 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
     DateTime tempDate = _legacyDate;
 
     showDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.4),
+      context: context, barrierDismissible: false, barrierColor: Colors.black.withOpacity(0.4),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final int year = tempDate.year;
-            final int month = tempDate.month;
+            final int year = tempDate.year; final int month = tempDate.month;
             final int daysInMonth = DateUtils.getDaysInMonth(year, month);
             final int firstWeekday = DateTime(year, month, 1).weekday;
-            const List<String> monthNames = [
-              "", "January", "February", "March", "April", "May", "June",
-              "July", "August", "September", "October", "November", "December"
-            ];
-            final List<int> yearsList = List.generate(15, (i) => 2018 + i);
+            const List<String> monthNames = ["", "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            final int currentYear = DateTime.now().year;
+            final List<int> yearsList = List.generate(currentYear - 2018 + 1, (i) => 2018 + i);
 
             return Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              backgroundColor: Colors.transparent, insetPadding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
-                width: 285,
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 20, offset: const Offset(0, 6))],
-                ),
+                width: 285, padding: const EdgeInsets.fromLTRB(14, 14, 14, 10), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 20, offset: const Offset(0, 6))]),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1378,72 +1097,16 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         PopupMenuButton<int>(
-                          initialValue: month,
-                          color: Colors.white,
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          itemBuilder: (context) => [
-                            for (int i = 1; i <= 12; i++)
-                              PopupMenuItem<int>(
-                                value: i,
-                                height: 35,
-                                child: Text(
-                                  monthNames[i],
-                                  style: TextStyle(
-                                    fontFamily: kAppFont,
-                                    fontSize: 12.0,
-                                    fontWeight: i == month ? FontWeight.w700 : FontWeight.w500,
-                                    color: i == month ? const Color(0xFFEF4444) : const Color(0xFF0F172A),
-                                  ),
-                                ),
-                              ),
-                          ],
-                          onSelected: (val) {
-                            setDialogState(() {
-                              tempDate = DateTime(year, val, math.min(tempDate.day, DateUtils.getDaysInMonth(year, val)));
-                            });
-                          },
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(monthNames[month], style: const TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                              const Icon(Icons.arrow_drop_down_rounded, size: 20, color: Color(0xFFEF4444)),
-                            ],
-                          ),
+                          initialValue: month, color: Colors.white, elevation: 3, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          itemBuilder: (context) => [for (int i = 1; i <= 12; i++) PopupMenuItem<int>(value: i, height: 35, child: Text(monthNames[i], style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: i == month ? FontWeight.w700 : FontWeight.w500, color: i == month ? const Color(0xFFEF4444) : const Color(0xFF0F172A))))],
+                          onSelected: (val) { setDialogState(() { tempDate = DateTime(year, val, math.min(tempDate.day, DateUtils.getDaysInMonth(year, val))); }); },
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [Text(monthNames[month], style: const TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))), const Icon(Icons.arrow_drop_down_rounded, size: 20, color: Color(0xFFEF4444))]),
                         ),
                         PopupMenuButton<int>(
-                          initialValue: year,
-                          color: Colors.white,
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          itemBuilder: (context) => [
-                            for (final y in yearsList)
-                              PopupMenuItem<int>(
-                                value: y,
-                                height: 35,
-                                child: Text(
-                                  "$y",
-                                  style: TextStyle(
-                                    fontFamily: kAppFont,
-                                    fontSize: 12.0,
-                                    fontWeight: y == year ? FontWeight.w700 : FontWeight.w500,
-                                    color: y == year ? const Color(0xFFEF4444) : const Color(0xFF0F172A),
-                                  ),
-                                ),
-                              ),
-                          ],
-                          onSelected: (val) {
-                            setDialogState(() {
-                              tempDate = DateTime(val, month, math.min(tempDate.day, DateUtils.getDaysInMonth(val, month)));
-                            });
-                          },
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text("$year", style: const TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                              const Icon(Icons.arrow_drop_down_rounded, size: 20, color: Color(0xFFEF4444)),
-                            ],
-                          ),
+                          initialValue: year, color: Colors.white, elevation: 3, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          itemBuilder: (context) => [for (final y in yearsList) PopupMenuItem<int>(value: y, height: 35, child: Text("$y", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: y == year ? FontWeight.w700 : FontWeight.w500, color: y == year ? const Color(0xFFEF4444) : const Color(0xFF0F172A))))],
+                          onSelected: (val) { setDialogState(() { tempDate = DateTime(val, month, math.min(tempDate.day, DateUtils.getDaysInMonth(val, month))); }); },
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [Text("$year", style: const TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))), const Icon(Icons.arrow_drop_down_rounded, size: 20, color: Color(0xFFEF4444))]),
                         ),
                       ],
                     ),
@@ -1451,54 +1114,24 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: const [
-                        Text("Mo", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
-                        Text("Tu", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
-                        Text("We", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
-                        Text("Th", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
-                        Text("Fr", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
-                        Text("Sa", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
-                        Text("Su", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
+                        Text("Mo", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))), Text("Tu", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))), Text("We", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))), Text("Th", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))), Text("Fr", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))), Text("Sa", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))), Text("Su", style: TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
                       ],
                     ),
                     const SizedBox(height: 4),
                     GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 7,
-                        mainAxisSpacing: 2,
-                        crossAxisSpacing: 2,
-                      ),
-                      itemCount: daysInMonth + (firstWeekday - 1),
+                      shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7, mainAxisSpacing: 2, crossAxisSpacing: 2), itemCount: daysInMonth + (firstWeekday - 1),
                       itemBuilder: (context, index) {
                         if (index < firstWeekday - 1) return const SizedBox.shrink();
                         final int day = index - (firstWeekday - 2);
                         final DateTime currentCellDate = DateTime(year, month, day);
-
                         final bool isDisabled = currentCellDate.isAfter(DateTime.now());
-                        final bool isSelected = currentCellDate.year == tempDate.year &&
-                            currentCellDate.month == tempDate.month &&
-                            currentCellDate.day == tempDate.day;
+                        final bool isSelected = currentCellDate.year == tempDate.year && currentCellDate.month == tempDate.month && currentCellDate.day == tempDate.day;
 
                         return GestureDetector(
-                          onTap: isDisabled ? null : () {
-                            setDialogState(() => tempDate = currentCellDate);
-                          },
+                          onTap: isDisabled ? null : () { setDialogState(() => tempDate = currentCellDate); },
                           child: Container(
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFFEF4444) : Colors.transparent,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              "$day",
-                              style: TextStyle(
-                                fontFamily: kAppFont,
-                                fontSize: 10.5,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                color: isDisabled ? const Color(0xFFCBD5E1) : isSelected ? Colors.white : const Color(0xFF1E293B),
-                              ),
-                            ),
+                            alignment: Alignment.center, decoration: BoxDecoration(color: isSelected ? const Color(0xFFEF4444) : Colors.transparent, shape: BoxShape.circle),
+                            child: Text("$day", style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500, color: isDisabled ? const Color(0xFFCBD5E1) : isSelected ? Colors.white : const Color(0xFF1E293B))),
                           ),
                         );
                       },
@@ -1509,28 +1142,13 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                       children: [
                         OutlinedButton(
                           onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFFCBD5E1)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            minimumSize: const Size(48, 28),
-                          ),
+                          style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFCBD5E1)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), minimumSize: const Size(48, 28)),
                           child: const Text("Cancel", style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, color: Color(0xFF64748B))),
                         ),
                         const SizedBox(width: 6),
                         ElevatedButton(
-                          onPressed: () {
-                            setState(() => _legacyDate = tempDate);
-                            Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0F172A),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            minimumSize: const Size(38, 28),
-                            elevation: 0,
-                          ),
+                          onPressed: () { setState(() => _legacyDate = tempDate); Navigator.pop(context); },
+                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), minimumSize: const Size(38, 28), elevation: 0),
                           child: const Text("OK", style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w700)),
                         ),
                       ],
@@ -1548,16 +1166,12 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
   void _openProductSelectorDialog() {
     _haptic();
     showDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.4),
+      context: context, barrierDismissible: false, barrierColor: Colors.black.withOpacity(0.4),
       builder: (context) {
         return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          backgroundColor: Colors.transparent, insetPadding: const EdgeInsets.symmetric(horizontal: 24),
           child: Container(
-            width: 360,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+            width: 360, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1573,25 +1187,15 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                 ),
                 const Divider(height: 1, color: Color(0xFFF1F5F9)),
                 ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  itemCount: _productOptions.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF8FAFC)),
+                  shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), itemCount: _productOptions.length, separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF8FAFC)),
                   itemBuilder: (context, index) {
                     final item = _productOptions[index];
-                    final isSelected = (_selectedProductName == 'Wheat' && item.startsWith('Wheat')) ||
-                        (_selectedProductName == 'Rice' && item.startsWith('Rice'));
+                    final isSelected = (_selectedProductName == 'Wheat' && item.startsWith('Wheat')) || (_selectedProductName == 'Rice' && item.startsWith('Rice'));
                     return InkWell(
-                      onTap: () {
-                        _haptic();
-                        setState(() => _selectedProductName = item.startsWith('Wheat') ? 'Wheat' : 'Rice');
-                        Navigator.pop(context);
-                      },
+                      onTap: () { _haptic(); setState(() => _selectedProductName = item.startsWith('Wheat') ? 'Wheat' : 'Rice'); Navigator.pop(context); },
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(color: isSelected ? const Color(0xFFF8FAFC) : Colors.transparent, borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), decoration: BoxDecoration(color: isSelected ? const Color(0xFFF8FAFC) : Colors.transparent, borderRadius: BorderRadius.circular(8)),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -1610,20 +1214,15 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
       },
     );
   }
-
-  void _openZeroReasonSelectorDialog() {
+    void _openZeroReasonSelectorDialog() {
     _haptic();
     showDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.4),
+      context: context, barrierDismissible: false, barrierColor: Colors.black.withOpacity(0.4),
       builder: (context) {
         return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          backgroundColor: Colors.transparent, insetPadding: const EdgeInsets.symmetric(horizontal: 24),
           child: Container(
-            width: 390,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+            width: 390, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1640,24 +1239,15 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                 const Divider(height: 1, color: Color(0xFFF1F5F9)),
                 Flexible(
                   child: ListView.separated(
-                    shrinkWrap: true,
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    itemCount: _zeroReasons.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF8FAFC)),
+                    shrinkWrap: true, physics: const BouncingScrollPhysics(), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), itemCount: _zeroReasons.length, separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF8FAFC)),
                     itemBuilder: (context, index) {
                       final reason = _zeroReasons[index];
                       final isSelected = _selectedZeroReason == reason;
                       return InkWell(
-                        onTap: () {
-                          _haptic();
-                          setState(() => _selectedZeroReason = reason);
-                          Navigator.pop(context);
-                        },
+                        onTap: () { _haptic(); setState(() => _selectedZeroReason = reason); Navigator.pop(context); },
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(color: isSelected ? const Color(0xFFF8FAFC) : Colors.transparent, borderRadius: BorderRadius.circular(8)),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), decoration: BoxDecoration(color: isSelected ? const Color(0xFFF8FAFC) : Colors.transparent, borderRadius: BorderRadius.circular(8)),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -1678,6 +1268,74 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
     );
   }
 
+  // 🚀 Submit Legacy Data to Backend API
+  Future<void> _submitLegacyDistribution() async {
+    if (_isSubmitting) return;
+
+    String formattedLegacyDate = "${_legacyDate.day.toString().padLeft(2, '0')}-${_legacyDate.month.toString().padLeft(2, '0')}-${_legacyDate.year}";
+    final bool isShriKrishnaBhog = _isZeroConsumption && _selectedZeroReason == 'Shri Krishna Bhog/Atithi Bhog';
+
+    if (_isZeroConsumption && !isShriKrishnaBhog) {
+      if (_selectedZeroReason == null) {
+        _showNotice("Please select reason for zero consumption", isSuccess: false);
+        return;
+      }
+    } else {
+      if (!isShriKrishnaBhog && _selectedProductName == null) {
+        _showNotice("Please select food grain product", isSuccess: false);
+        return;
+      }
+
+      final int beneficiaryCount = int.tryParse(_beneficiaryController.text.trim()) ?? 0;
+      if (beneficiaryCount <= 0) {
+        _showNotice("Please enter number of beneficiaries", isSuccess: false);
+        return;
+      }
+      if (beneficiaryCount > _maxEnrolment) {
+        _showNotice("Beneficiary count cannot exceed enrolment ($_maxEnrolment)", isSuccess: false);
+        return;
+      }
+    }
+
+    if (!_isZeroConsumption && _atithiMataChoice == '1') {
+      final int atithiCount = int.tryParse(_atithiMataCountController.text.trim()) ?? 0;
+      if (atithiCount <= 0) {
+        _showNotice("Please enter अतिथि माता की संख्या", isSuccess: false);
+        return;
+      }
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final payload = {
+        "product_name": _selectedProductName ?? "Wheat",
+        "beneficiary_count": _isZeroConsumption && !isShriKrishnaBhog ? 0 : (int.tryParse(_beneficiaryController.text.trim()) ?? 0),
+        "is_zero_consumption": _isZeroConsumption,
+        "zero_reason": _selectedZeroReason,
+        "legacy_date": formattedLegacyDate,
+        "atithi_mata_choice": _atithiMataChoice,
+        "atithi_mata_count": int.tryParse(_atithiMataCountController.text.trim()) ?? 1,
+      };
+
+      final resJson = await RajsimsService.submitDistribution(payload);
+
+      if (!mounted) return;
+
+      if (resJson['success'] == true) {
+        _showNotice("Legacy draft saved as Unsettled successfully!");
+        Navigator.pop(context);
+      } else {
+        _showNotice(resJson['message'] ?? "Failed to save legacy draft", isSuccess: false);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showNotice("Network error: $e", isSuccess: false);
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     String formattedDate = "${_legacyDate.day.toString().padLeft(2, '0')}-${_legacyDate.month.toString().padLeft(2, '0')}-${_legacyDate.year}";
@@ -1686,204 +1344,85 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
     return ScrollConfiguration(
       behavior: const _NoGlowScrollBehavior(),
       child: Scaffold(
-        extendBodyBehindAppBar: true,
-        backgroundColor: Colors.white,
+        extendBodyBehindAppBar: true, backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: Colors.white.withOpacity(0.85),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(CupertinoIcons.back, color: Color(0xFF0F172A), size: 20),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: const Text(
-            "Add Legacy Distribution",
-            style: TextStyle(fontFamily: kAppFont, fontSize: 15.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-          ),
-          centerTitle: false,
+          backgroundColor: Colors.white.withOpacity(0.85), elevation: 0,
+          leading: IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF0F172A), size: 20), onPressed: () => Navigator.pop(context)),
+          title: const Text("Add Legacy Distribution", style: TextStyle(fontFamily: kAppFont, fontSize: 15.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))), centerTitle: false,
         ),
         body: Stack(
           children: [
-            // Atmospheric Ambient Mesh Background
-            Positioned.fill(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0.0, 0.45, 1.0],
-                    colors: [
-                      Color(0xFFF8FAFC),
-                      Color(0xFFF1F5F9),
-                      Color(0xFFFEF3C7),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: -50,
-              top: -40,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 85, sigmaY: 85),
-                child: Container(
-                  width: 260,
-                  height: 260,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFFBAE6FD).withOpacity(0.42),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              right: -50,
-              top: 40,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
-                child: Container(
-                  width: 240,
-                  height: 240,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFFFDE68A).withOpacity(0.35),
-                  ),
-                ),
-              ),
-            ),
+            Positioned.fill(child: Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: [0.0, 0.45, 1.0], colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)])))),
+            Positioned(left: -50, top: -40, child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 85, sigmaY: 85), child: Container(width: 260, height: 260, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFBAE6FD).withOpacity(0.42))))),
+            Positioned(right: -50, top: 40, child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 90, sigmaY: 90), child: Container(width: 240, height: 240, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFFDE68A).withOpacity(0.35))))),
 
             SafeArea(
               bottom: false,
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   return SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                    padding: const EdgeInsets.fromLTRB(14.0, 6.0, 14.0, 30.0),
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()), padding: const EdgeInsets.fromLTRB(14.0, 6.0, 14.0, 30.0),
                     child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: math.max(0.0, constraints.maxHeight - 36.0),
-                      ),
+                      constraints: BoxConstraints(minHeight: math.max(0.0, constraints.maxHeight - 36.0)),
                       child: IntrinsicHeight(
                         child: Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.95),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                            boxShadow: [
-                              BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 2)),
-                            ],
+                            color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE2E8F0)),
+                            boxShadow: [BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 2))],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFEF3C7),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: const Color(0xFFFDE68A)),
-                                ),
+                                padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFFDE68A))),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: const [
-                                    Text(
-                                      "• Legacy डिस्ट्रीब्यूशन में आज से पूर्व की तिथि की एंट्री होगी।",
-                                      style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF92400E)),
-                                    ),
-                                    SizedBox(height: 2),
-                                    Text(
-                                      "• Legacy एंट्री सर्व प्रथम Unsettled / Draft मोड में सेव होगी।",
-                                      style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF92400E)),
-                                    ),
+                                    Text("• Legacy डिस्ट्रीब्यूशन में आज से पूर्व की तिथि की एंट्री होगी।", style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF92400E))), SizedBox(height: 2),
+                                    Text("• Legacy एंट्री सर्व प्रथम Unsettled / Draft मोड में सेव होगी।", style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF92400E))),
                                   ],
                                 ),
                               ),
 
-                              const SizedBox(height: 12),
-                              _buildLabel("Transaction Type"),
-                              _buildReadOnlyField("Distribution"),
-
-                              const SizedBox(height: 10),
-                              _buildLabel("Customer Type"),
-                              _buildReadOnlyField("Beneficiary Dept."),
-
-                              const SizedBox(height: 10),
-                              _buildLabel("Distribution Date (Legacy Date) *", isRequired: true),
+                              const SizedBox(height: 12), _buildLabel("Transaction Type"), _buildReadOnlyField("Distribution"),
+                              const SizedBox(height: 10), _buildLabel("Customer Type"), _buildReadOnlyField("Beneficiary Dept."),
+                              const SizedBox(height: 10), _buildLabel("Distribution Date (Legacy Date) *", isRequired: true),
                               GestureDetector(
-                                onTap: _openLegacyCalendarPicker,
-                                behavior: HitTestBehavior.opaque,
+                                onTap: _openLegacyCalendarPicker, behavior: HitTestBehavior.opaque,
                                 child: Container(
-                                  height: 36,
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: const Color(0xFFCBD5E1)),
-                                  ),
+                                  height: 36, padding: const EdgeInsets.symmetric(horizontal: 12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFCBD5E1))),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(
-                                        formattedDate,
-                                        style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-                                      ),
-                                      Image.asset(
-                                        'assets/icons/leave.png',
-                                        width: 16,
-                                        height: 16,
-                                        color: const Color(0xFF0F172A),
-                                        errorBuilder: (c, e, s) => const Icon(CupertinoIcons.calendar, size: 16, color: Color(0xFF0F172A)),
-                                      ),
+                                      Text(formattedDate, style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                                      Image.asset('assets/icons/leave.png', width: 16, height: 16, color: const Color(0xFF0F172A), errorBuilder: (c, e, s) => const Icon(CupertinoIcons.calendar, size: 16, color: Color(0xFF0F172A))),
                                     ],
                                   ),
                                 ),
                               ),
 
-                              const SizedBox(height: 14),
-                              const Text("Zero Consumption (If Any)", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                              const SizedBox(height: 6),
-
+                              const SizedBox(height: 14), const Text("Zero Consumption (If Any)", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))), const SizedBox(height: 6),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6), decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
                                 child: Row(
                                   children: [
-                                    Checkbox(
-                                      value: _isZeroConsumption,
-                                      onChanged: (val) {
-                                        _haptic();
-                                        setState(() => _isZeroConsumption = val ?? false);
-                                      },
-                                      activeColor: const Color(0xFF0F172A),
-                                    ),
-                                    const Expanded(
-                                      child: Text("Zero consumption for this day", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
-                                    ),
+                                    Checkbox(value: _isZeroConsumption, onChanged: (val) { _haptic(); setState(() => _isZeroConsumption = val ?? false); }, activeColor: const Color(0xFF0F172A)),
+                                    const Expanded(child: Text("Zero consumption for this day", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
                                   ],
                                 ),
                               ),
 
                               if (_isZeroConsumption) ...[
-                                const SizedBox(height: 12),
-                                _buildLabel("Reason *", isRequired: true),
+                                const SizedBox(height: 12), _buildLabel("Reason *", isRequired: true),
                                 GestureDetector(
-                                  onTap: _openZeroReasonSelectorDialog,
-                                  behavior: HitTestBehavior.opaque,
+                                  onTap: _openZeroReasonSelectorDialog, behavior: HitTestBehavior.opaque,
                                   child: Container(
-                                    height: 38,
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFCBD5E1))),
+                                    height: 38, padding: const EdgeInsets.symmetric(horizontal: 12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFCBD5E1))),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Expanded(
-                                          child: Text(
-                                            _selectedZeroReason ?? "--Select Reason--",
-                                            style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: _selectedZeroReason == null ? const Color(0xFF94A3B8) : const Color(0xFF0F172A)),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
+                                        Expanded(child: Text(_selectedZeroReason ?? "--Select Reason--", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: _selectedZeroReason == null ? const Color(0xFF94A3B8) : const Color(0xFF0F172A)), maxLines: 1, overflow: TextOverflow.ellipsis)),
                                         const Icon(CupertinoIcons.chevron_down, size: 13, color: Color(0xFF64748B)),
                                       ],
                                     ),
@@ -1892,80 +1431,57 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                               ],
 
                               if (!_isZeroConsumption || isShriKrishnaBhog) ...[
-                                const SizedBox(height: 14),
-                                const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                                const SizedBox(height: 12),
-
+                                const SizedBox(height: 14), const Divider(height: 1, color: Color(0xFFF1F5F9)), const SizedBox(height: 12),
                                 const Text("Daily Consumption Entry", style: TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-
                                 if (!isShriKrishnaBhog) ...[
-                                  const SizedBox(height: 8),
-                                  _buildLabel("Product Name *", isRequired: true),
+                                  const SizedBox(height: 8), _buildLabel("Product Name *", isRequired: true),
                                   GestureDetector(
-                                    onTap: _openProductSelectorDialog,
-                                    behavior: HitTestBehavior.opaque,
+                                    onTap: _openProductSelectorDialog, behavior: HitTestBehavior.opaque,
                                     child: Container(
-                                      height: 38,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFCBD5E1))),
+                                      height: 38, padding: const EdgeInsets.symmetric(horizontal: 12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFCBD5E1))),
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Text(
-                                            _selectedProductName == 'Wheat' ? "Wheat (गेहूं)" : _selectedProductName == 'Rice' ? "Rice (चावल)" : "--Select Product--",
-                                            style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: _selectedProductName == null ? const Color(0xFF94A3B8) : const Color(0xFF0F172A)),
-                                          ),
+                                          Text(_selectedProductName == 'Wheat' ? "Wheat (गेहूं)" : _selectedProductName == 'Rice' ? "Rice (चावल)" : "--Select Product--", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: _selectedProductName == null ? const Color(0xFF94A3B8) : const Color(0xFF0F172A))),
                                           const Icon(CupertinoIcons.chevron_down, size: 13, color: Color(0xFF64748B)),
                                         ],
                                       ),
                                     ),
                                   ),
                                 ],
-
                                 const SizedBox(height: 12),
-
                                 Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0))),
+                                  padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0))),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           Checkbox(value: _isRowSelected, onChanged: (v) => setState(() => _isRowSelected = v ?? true), activeColor: const Color(0xFF0F172A)),
-                                          const Expanded(
-                                            child: Text("Primary School (Pre-Primary to 5)", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                                          ),
+                                          const Expanded(child: Text("Primary School (Pre-Primary to 5)", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))),
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFFCBD5E1))),
+                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: const Color(0xFFCBD5E1))),
                                             child: Text("Enrolment: $_maxEnrolment", style: const TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 8),
-                                      const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                                      const SizedBox(height: 10),
-
+                                      const SizedBox(height: 8), const Divider(height: 1, color: Color(0xFFE2E8F0)), const SizedBox(height: 10),
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(isShriKrishnaBhog ? "Beneficiaries (Atithi Bhog)" : "No. Of Beneficiary *", style: const TextStyle(fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
                                           GestureDetector(
                                             onTap: () {
-                                              _haptic();
-                                              _beneficiaryController.text = _maxEnrolment.toString();
+                                              _haptic(); _beneficiaryController.text = _maxEnrolment.toString(); _calculateIssuedQty();
                                             },
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                                              decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(5)),
+                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5), decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(5)),
                                               child: Text("Fill All ($_maxEnrolment)", style: const TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
                                             ),
                                           ),
                                         ],
                                       ),
                                       const SizedBox(height: 6),
-
                                       Row(
                                         children: [
                                           Expanded(
@@ -1973,15 +1489,11 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                                             child: SizedBox(
                                               height: 36,
                                               child: TextField(
-                                                controller: _beneficiaryController,
-                                                keyboardType: TextInputType.number,
+                                                controller: _beneficiaryController, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                                                 style: const TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
                                                 decoration: InputDecoration(
-                                                  hintText: "Enter count...",
-                                                  hintStyle: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, color: Color(0xFF94A3B8)),
-                                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                                  filled: true,
-                                                  fillColor: Colors.white,
+                                                  hintText: "Enter count...", hintStyle: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, color: Color(0xFF94A3B8)),
+                                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), filled: true, fillColor: Colors.white,
                                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                                                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
                                                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF0F172A))),
@@ -1993,14 +1505,8 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                                           Expanded(
                                             flex: 2,
                                             child: Container(
-                                              height: 36,
-                                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                                              decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
-                                              alignment: Alignment.center,
-                                              child: Text(
-                                                isShriKrishnaBhog ? "0.00 Kg" : "${_issuedQty.toStringAsFixed(2)} Kg",
-                                                style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w800, color: isShriKrishnaBhog ? const Color(0xFF16A34A) : const Color(0xFF0F172A)),
-                                              ),
+                                              height: 36, padding: const EdgeInsets.symmetric(horizontal: 8), decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))), alignment: Alignment.center,
+                                              child: Text(isShriKrishnaBhog ? "0.00 Kg (Free)" : "${_issuedQty.toStringAsFixed(2)} Kg", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w800, color: isShriKrishnaBhog ? const Color(0xFF16A34A) : const Color(0xFF0F172A))),
                                             ),
                                           ),
                                         ],
@@ -2010,10 +1516,67 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                                 ),
                               ],
 
-                              const Spacer(),
-                              const SizedBox(height: 20),
+                              if (!_isZeroConsumption) ...[
+                                const SizedBox(height: 16), const Divider(height: 1, color: Color(0xFFF1F5F9)), const SizedBox(height: 14),
+                                const Text("अतिथि माता (If Any)", style: TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                                const SizedBox(height: 4), const Text("क्या विद्यार्थियों को भोजन परोसने जाने से पूर्व उनकी माताओं / महिला अभिभावकों द्वारा भोजन को चखा गया है", style: TextStyle(fontFamily: kAppFont, fontSize: 11.0, color: Color(0xFF475569), height: 1.3)),
+                                const SizedBox(height: 8),
+                                Container(
+                                  decoration: BoxDecoration(border: Border.all(color: const Color(0xFFCBD5E1)), borderRadius: BorderRadius.circular(8)),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () { _haptic(); setState(() => _atithiMataChoice = '1'); },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(vertical: 8), decoration: BoxDecoration(color: _atithiMataChoice == '1' ? const Color(0xFF0F172A) : Colors.transparent, borderRadius: const BorderRadius.horizontal(left: Radius.circular(7))), alignment: Alignment.center,
+                                            child: Text("हाँ", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: _atithiMataChoice == '1' ? Colors.white : const Color(0xFF0F172A))),
+                                          ),
+                                        ),
+                                      ),
+                                      Container(width: 1, height: 34, color: const Color(0xFFCBD5E1)),
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () { _haptic(); setState(() => _atithiMataChoice = '0'); },
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(vertical: 8), decoration: BoxDecoration(color: _atithiMataChoice == '0' ? const Color(0xFF0F172A) : Colors.transparent, borderRadius: const BorderRadius.horizontal(right: Radius.circular(7))), alignment: Alignment.center,
+                                            child: Text("नहीं", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: _atithiMataChoice == '0' ? Colors.white : const Color(0xFF0F172A))),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
 
-                              // Cancel on Left | Save (Green #00E676) on Right
+                                if (_atithiMataChoice == '1') ...[
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
+                                    child: Row(
+                                      children: [
+                                        const Expanded(child: Text("अतिथि माता की संख्या *", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))),
+                                        SizedBox(
+                                          width: 60, height: 32,
+                                          child: TextField(
+                                            controller: _atithiMataCountController, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly], textAlign: TextAlign.center,
+                                            style: const TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                                            decoration: InputDecoration(
+                                              contentPadding: EdgeInsets.zero, filled: true, fillColor: Colors.white,
+                                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF0F172A))),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+
+                              const Spacer(), const SizedBox(height: 20),
+
+                              // Cancel / Save CTA
                               Row(
                                 children: [
                                   Expanded(
@@ -2022,17 +1585,8 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                                       child: OutlinedButton(
                                         onPressed: () => Navigator.pop(context),
                                         style: ButtonStyle(
-                                          backgroundColor: MaterialStateProperty.all(Colors.white.withOpacity(0.9)),
-                                          foregroundColor: MaterialStateProperty.all(const Color(0xFF0F172A)),
-                                          elevation: MaterialStateProperty.all(0),
-                                          shadowColor: MaterialStateProperty.all(Colors.transparent),
-                                          side: MaterialStateProperty.all(const BorderSide(color: Color(0xFFCBD5E1))),
-                                          overlayColor: MaterialStateProperty.all(Colors.black.withOpacity(0.04)),
-                                          splashFactory: NoSplash.splashFactory,
-                                          shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                                          padding: MaterialStateProperty.all(EdgeInsets.zero),
-                                          minimumSize: MaterialStateProperty.all(const Size(0, 36)),
-                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          backgroundColor: MaterialStateProperty.all(Colors.white.withOpacity(0.9)), foregroundColor: MaterialStateProperty.all(const Color(0xFF0F172A)), elevation: MaterialStateProperty.all(0),
+                                          side: MaterialStateProperty.all(const BorderSide(color: Color(0xFFCBD5E1))), shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
                                         ),
                                         child: const Text("Cancel", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
                                       ),
@@ -2043,36 +1597,14 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                                     child: SizedBox(
                                       height: 36,
                                       child: ElevatedButton(
-                                        onPressed: () {
-                                          if (_isZeroConsumption && !isShriKrishnaBhog) {
-                                            if (_selectedZeroReason == null) {
-                                              _showNotice("Please select reason for zero consumption", isSuccess: false);
-                                              return;
-                                            }
-                                            _showNotice("Legacy draft saved as Unsettled");
-                                            Navigator.pop(context);
-                                          } else {
-                                            if (!isShriKrishnaBhog && _selectedProductName == null) {
-                                              _showNotice("Please select food grain product", isSuccess: false);
-                                              return;
-                                            }
-                                            _showNotice("Legacy draft saved as Unsettled");
-                                            Navigator.pop(context);
-                                          }
-                                        },
+                                        onPressed: _isSubmitting ? null : _submitLegacyDistribution,
                                         style: ButtonStyle(
-                                          backgroundColor: MaterialStateProperty.all(const Color(0xFF00E676)), // #00E676
-                                          foregroundColor: MaterialStateProperty.all(const Color(0xFF0F172A)),
-                                          elevation: MaterialStateProperty.all(0),
-                                          shadowColor: MaterialStateProperty.all(Colors.transparent),
-                                          overlayColor: MaterialStateProperty.all(Colors.black.withOpacity(0.06)),
-                                          splashFactory: NoSplash.splashFactory,
+                                          backgroundColor: MaterialStateProperty.all(const Color(0xFF00E676)), foregroundColor: MaterialStateProperty.all(const Color(0xFF0F172A)), elevation: MaterialStateProperty.all(0),
                                           shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                                          padding: MaterialStateProperty.all(EdgeInsets.zero),
-                                          minimumSize: MaterialStateProperty.all(const Size(0, 36)),
-                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                         ),
-                                        child: const Text("Save", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                                        child: _isSubmitting
+                                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0F172A)))
+                                            : const Text("Save", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
                                       ),
                                     ),
                                   ),
@@ -2107,10 +1639,7 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
 
   Widget _buildReadOnlyField(String val) {
     return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
-      alignment: Alignment.centerLeft,
+      height: 36, padding: const EdgeInsets.symmetric(horizontal: 10), decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))), alignment: Alignment.centerLeft,
       child: Text(val, style: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
     );
   }
@@ -2129,31 +1658,573 @@ class DistributionListScreen extends StatefulWidget {
 
 class _DistributionListScreenState extends State<DistributionListScreen> {
   String _searchQuery = "";
+  List<Map<String, String>> _records = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  final List<Map<String, String>> _allRecords = [
-    {"sNo": "1", "distNo": "ED/MDM/School09043/DIS/26-27/103", "date": "14-Sep-2026", "type": "Beneficiary Dept.", "status": "Approved"},
-    {"sNo": "2", "distNo": "ED/MDM/School09043/DIS/26-27/102", "date": "12-Sep-2026", "type": "Beneficiary Dept.", "status": "Approved"},
-    {"sNo": "3", "distNo": "ED/MDM/School09043/DIS/26-27/101", "date": "11-Sep-2026", "type": "Beneficiary Dept.", "status": "Approved"},
-    {"sNo": "4", "distNo": "ED/MDM/School09043/DIS/26-27/100", "date": "10-Sep-2026", "type": "Beneficiary Dept.", "status": "Approved"},
-    {"sNo": "5", "distNo": "ED/MDM/School09043/DIS/26-27/99",  "date": "09-Sep-2026", "type": "Beneficiary Dept.", "status": "Approved"},
-    {"sNo": "6", "distNo": "ED/MDM/School09043/DIS/26-27/98",  "date": "08-Sep-2026", "type": "Beneficiary Dept.", "status": "Approved"},
-    {"sNo": "7", "distNo": "ED/MDM/School09043/DIS/26-27/97",  "date": "07-Sep-2026", "type": "Beneficiary Dept.", "status": "Approved"},
-    {"sNo": "8", "distNo": "ED/MDM/School09043/DIS/26-27/96",  "date": "05-Sep-2026", "type": "Beneficiary Dept.", "status": "Approved"},
-    {"sNo": "9", "distNo": "ED/MDM/School09043/DIS/26-27/95",  "date": "03-Sep-2026", "type": "Beneficiary Dept.", "status": "Approved"},
-    {"sNo": "10", "distNo": "ED/MDM/School09043/DIS/26-27/94", "date": "02-Sep-2026", "type": "Beneficiary Dept.", "status": "Approved"},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchDistributionRecords();
+  }
+
+  Future<void> _fetchDistributionRecords({bool force = false}) async {
+    if (mounted) setState(() { _isLoading = true; _errorMessage = null; });
+    try {
+      final jsonRes = await RajsimsService.fetchMdmList(isLegacy: widget.isLegacy, force: force);
+
+      if (jsonRes['success'] != true) {
+        throw Exception(jsonRes['message']?.toString() ?? 'Failed to load records');
+      }
+
+      final dynamic rawList = jsonRes['records'] ?? jsonRes['data'] ?? jsonRes['list'] ?? [];
+      if (rawList is! List) throw Exception('Unexpected response format for records');
+
+      final List<Map<String, String>> parsed = [];
+      for (int i = 0; i < rawList.length; i++) {
+        final item = rawList[i];
+        if (item is! Map) continue;
+        final Map<String, dynamic> m = Map<String, dynamic>.from(item);
+        parsed.add({
+          "sNo": _firstNonEmpty(m, ['sNo', 's_no', 'sno', 'serial']) ?? "${i + 1}",
+          "distNo": _firstNonEmpty(m, ['distNo', 'dist_no', 'distribution_no', 'distributionNo']) ?? "-",
+          "date": _firstNonEmpty(m, ['date', 'dist_date', 'distribution_date', 'legacy_date']) ?? "-",
+          "type": _firstNonEmpty(m, ['type', 'customer_type', 'category']) ?? "Beneficiary Dept.",
+          "status": _firstNonEmpty(m, ['status']) ?? "Pending",
+        });
+      }
+
+      if (mounted) setState(() { _records = parsed; _isLoading = false; });
+    } catch (e) {
+      debugPrint("Failed to fetch distribution records: $e");
+      if (mounted) setState(() { _errorMessage = "Could not load records. Pull down to retry."; _isLoading = false; });
+    }
+  }
+
+  String? _firstNonEmpty(Map<String, dynamic> m, List<String> keys) {
+    for (final k in keys) {
+      final v = m[k];
+      if (v != null && v.toString().trim().isNotEmpty) return v.toString();
+    }
+    return null;
+  }
 
   List<Map<String, String>> get _filteredRecords {
-    if (_searchQuery.isEmpty) return _allRecords;
+    if (_searchQuery.isEmpty) return _records;
     final q = _searchQuery.toLowerCase();
-    return _allRecords.where((r) =>
-      r["distNo"]!.toLowerCase().contains(q) ||
-      r["date"]!.toLowerCase().contains(q) ||
-      r["status"]!.toLowerCase().contains(q)
-    ).toList();
+    return _records.where((r) => r["distNo"]!.toLowerCase().contains(q) || r["date"]!.toLowerCase().contains(q) || r["status"]!.toLowerCase().contains(q)).toList();
   }
 
   void _haptic() => HapticFeedback.selectionClick();
+
+  Future<void> _openEditSheet(Map<String, String> item) async {
+    _haptic();
+    final distNo = item["distNo"]!;
+    final entryDate = item["date"] ?? "-";
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2.4, color: Color(0xFF0F172A)),
+        ),
+      ),
+    );
+
+    final detail = await RajsimsService.fetchEntryDetails(distNo, isLegacy: widget.isLegacy);
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    final items = detail['items'];
+    if (detail['success'] != true || items is! List || items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(detail['message']?.toString() ?? "Entry details load nahi hui.")),
+      );
+      return;
+    }
+
+    final firstItem = Map<String, dynamic>.from(items.first as Map);
+    final masterObj = detail['master'] is Map ? Map<String, dynamic>.from(detail['master'] as Map) : <String, dynamic>{};
+    
+    final int validTransactionId = int.tryParse(
+      (firstItem['transactionId'] ?? firstItem['TransactionId'] ?? masterObj['TransactionId'] ?? masterObj['RefId'] ?? '0').toString()
+    ) ?? 0;
+
+    final String currentProduct = firstItem['product']?.toString() ?? "Wheat";
+    final int currentBeneficiary = int.tryParse(firstItem['beneficiary']?.toString() ?? '0') ?? 0;
+    final double currentQty = double.tryParse(firstItem['quantity']?.toString() ?? '0') ?? (currentBeneficiary * 0.100);
+    final enrolment = firstItem['enrolment'] ?? 32;
+
+    final double ratePerStudent = (currentBeneficiary > 0 && currentQty > 0) 
+        ? (currentQty / currentBeneficiary) 
+        : 0.100;
+
+    String selectedProduct = (currentProduct.toLowerCase().contains('rice')) ? 'Rice' : 'Wheat';
+    final TextEditingController benController = TextEditingController(text: currentBeneficiary.toString());
+    
+    // Inline banner message state inside the sheet
+    String? localErrorMessage;
+
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final int count = int.tryParse(benController.text.trim()) ?? 0;
+            final double issuedQty = count * ratePerStudent;
+
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+              ),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+                left: 18,
+                right: 18,
+                top: 14,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 38,
+                        height: 4,
+                        decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("Distribution Update Request", style: TextStyle(fontFamily: kAppFont, fontSize: 15.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A), letterSpacing: -0.3)),
+                              const SizedBox(height: 3),
+                              Text("Ref No: $distNo", style: const TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                            ],
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(ctx),
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(20)),
+                            child: const Icon(CupertinoIcons.xmark, size: 14, color: Color(0xFF64748B)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Date Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset(
+                            'assets/icons/leave.png',
+                            width: 14,
+                            height: 14,
+                            color: const Color(0xFF0F172A),
+                            errorBuilder: (c, e, s) => const Icon(CupertinoIcons.calendar, size: 14, color: Color(0xFF0F172A)),
+                          ),
+                          const SizedBox(width: 6),
+                          const Text("Distribution Date: ", style: TextStyle(fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
+                          Text(entryDate, style: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 🔥 MODERN SLATE INLINE ALERT BANNER (If Validation Fails)
+                    if (localErrorMessage != null) ...[
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 3)),
+                          ],
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(CupertinoIcons.exclamationmark_triangle_fill, size: 15, color: Color(0xFFF59E0B)),
+                            const SizedBox(width: 9),
+                            Expanded(
+                              child: Text(
+                                localErrorMessage!,
+                                style: const TextStyle(
+                                  fontFamily: kAppFont,
+                                  fontSize: 11.0,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            GestureDetector(
+                              onTap: () => setModalState(() => localErrorMessage = null),
+                              child: const Icon(CupertinoIcons.xmark, size: 12, color: Color(0xFF94A3B8)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
+                    // Modern Instruction Note
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Icon(CupertinoIcons.info_circle_fill, size: 14, color: Color(0xFF64748B)),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "आवश्यक सही जानकारी भरने के बाद 'Send Request' दबाएँ। यह अनुरोध ब्लॉक/उच्च कार्यालय को सत्यापन के लिए भेजा जाएगा।",
+                              style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF475569), height: 1.35),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Current Record Summary Card
+                    const Text("Current Locked Record", style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("Food Grain", style: TextStyle(fontFamily: kAppFont, fontSize: 10.0, color: Color(0xFF94A3B8))),
+                              const SizedBox(height: 2),
+                              Text(currentProduct, style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("Beneficiaries", style: TextStyle(fontFamily: kAppFont, fontSize: 10.0, color: Color(0xFF94A3B8))),
+                              const SizedBox(height: 2),
+                              Text("$currentBeneficiary Students", style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text("Issued Qty", style: TextStyle(fontFamily: kAppFont, fontSize: 10.0, color: Color(0xFF94A3B8))),
+                              const SizedBox(height: 2),
+                              Text("${currentQty.toStringAsFixed(2)} Kg", style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Modified Section Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Details to be Modified", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
+                          child: Text("Enrolment: $enrolment", style: const TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Food Grain Dropdown (Native Popup)
+                    _buildLabel("Select Food Grain *", isRequired: true),
+                    Container(
+                      height: 42,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFCBD5E1)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedProduct,
+                          isExpanded: true,
+                          borderRadius: BorderRadius.circular(12),
+                          dropdownColor: Colors.white,
+                          elevation: 4,
+                          icon: const Icon(CupertinoIcons.chevron_down, size: 14, color: Color(0xFF64748B)),
+                          items: [
+                            DropdownMenuItem<String>(
+                              value: 'Wheat',
+                              child: Row(
+                                children: [
+                                  Image.asset('assets/icons/wheat.png', width: 18, height: 18, errorBuilder: (c, e, s) => const Icon(Icons.circle, size: 12, color: Color(0xFF0F172A))),
+                                  const SizedBox(width: 8),
+                                  const Text("Wheat (गेहूं)", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+                                ],
+                              ),
+                            ),
+                            DropdownMenuItem<String>(
+                              value: 'Rice',
+                              child: Row(
+                                children: [
+                                  Image.asset('assets/icons/rice.png', width: 18, height: 18, errorBuilder: (c, e, s) => const Icon(Icons.circle, size: 12, color: Color(0xFF0F172A))),
+                                  const SizedBox(width: 8),
+                                  const Text("Rice (चावल)", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+                                ],
+                              ),
+                            ),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              _haptic();
+                              setModalState(() {
+                                selectedProduct = val;
+                                localErrorMessage = null; // Clear error on edit
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Beneficiaries Input & Live Quantity Card
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildLabel("Modified Beneficiaries *", isRequired: true),
+                        GestureDetector(
+                          onTap: () {
+                            _haptic();
+                            benController.text = enrolment.toString();
+                            setModalState(() => localErrorMessage = null);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(5)),
+                            child: Text("Fill All ($enrolment)", style: const TextStyle(fontFamily: kAppFont, fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: SizedBox(
+                            height: 40,
+                            child: TextField(
+                              controller: benController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              onChanged: (_) => setModalState(() => localErrorMessage = null),
+                              style: const TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+                              decoration: InputDecoration(
+                                hintText: "Enter count...",
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF0F172A))),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            height: 40,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              "${issuedQty.toStringAsFixed(2)} Kg",
+                              style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Action Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 38,
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFFCBD5E1)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              child: const Text("Cancel", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: SizedBox(
+                            height: 38,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                final parsedCount = int.tryParse(benController.text.trim()) ?? 0;
+                                if (parsedCount <= 0) {
+                                  _haptic();
+                                  setModalState(() {
+                                    localErrorMessage = "Please enter valid beneficiary count";
+                                  });
+                                  return;
+                                }
+
+                                // 🔥 Portal Rule: In-modal banner alert immediately displayed
+                                if (selectedProduct.toLowerCase() == currentProduct.toLowerCase() &&
+                                    parsedCount == currentBeneficiary) {
+                                  _haptic();
+                                  setModalState(() {
+                                    localErrorMessage = "Please note that Request cannot be sent without making any changes ! Make sure all required information is Updated";
+                                  });
+                                  return;
+                                }
+
+                                Navigator.pop(ctx, {
+                                  "product": selectedProduct,
+                                  "count": parsedCount,
+                                });
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0F172A),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              child: const Text("Send Request", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null || !mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2.4, color: Color(0xFF0F172A)),
+        ),
+      ),
+    );
+
+    final res = await RajsimsService.updateDistribution({
+      "dist_no": distNo,
+      "transaction_id": validTransactionId,
+      "product_name": result["product"],
+      "beneficiary_count": result["count"],
+      "legacy": widget.isLegacy,
+    });
+
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(res['message']?.toString() ?? (res['success'] == true ? "Request sent successfully." : "Update failed."))),
+    );
+
+    if (res['success'] == true) {
+      _fetchDistributionRecords(force: true);
+    }
+  }
+
+Widget _buildLabel(String label, {bool isRequired = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontFamily: kAppFont,
+              fontSize: 11.0,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF334155),
+            ),
+          ),
+          if (isRequired)
+            const Text(
+              " *",
+              style: TextStyle(
+                color: Color(0xFFDC2626),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2163,242 +2234,141 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
     return ScrollConfiguration(
       behavior: const _NoGlowScrollBehavior(),
       child: Scaffold(
-        extendBodyBehindAppBar: true,
-        backgroundColor: Colors.white,
+        extendBodyBehindAppBar: true, backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: Colors.white.withOpacity(0.85),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(CupertinoIcons.back, color: Color(0xFF0F172A), size: 20),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(
-            title,
-            style: const TextStyle(fontFamily: kAppFont, fontSize: 15.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-          ),
-          centerTitle: false,
+          backgroundColor: Colors.white.withOpacity(0.85), elevation: 0,
+          leading: IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF0F172A), size: 20), onPressed: () => Navigator.pop(context)),
+          title: Text(title, style: const TextStyle(fontFamily: kAppFont, fontSize: 15.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))), centerTitle: false,
           actions: [
             Padding(
               padding: const EdgeInsets.only(right: 12.0, top: 10, bottom: 10),
               child: ElevatedButton.icon(
                 onPressed: () {
                   _haptic();
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => widget.isLegacy ? const AddLegacyDistributionScreen() : const AddDistributionScreen(),
-                    ),
-                  );
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => widget.isLegacy ? const AddLegacyDistributionScreen() : const AddDistributionScreen())).then((_) => _fetchDistributionRecords(force: true));
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0F172A),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                icon: const Icon(CupertinoIcons.add, size: 12, color: Colors.white),
-                label: const Text(
-                  "Add Record",
-                  style: TextStyle(fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w700),
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white, elevation: 0, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                icon: const Icon(CupertinoIcons.add, size: 12, color: Colors.white), label: const Text("Add Record", style: TextStyle(fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w700)),
               ),
             ),
           ],
         ),
         body: Stack(
           children: [
-            // Ambient Atmospheric Background
             Positioned.fill(
               child: Container(
                 decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0.0, 0.45, 1.0],
-                    colors: [
-                      Color(0xFFF8FAFC),
-                      Color(0xFFF1F5F9),
-                      Color(0xFFFEF3C7),
-                    ],
-                  ),
+                  gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: [0.0, 0.45, 1.0], colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)]),
                 ),
               ),
             ),
             Positioned(
-              left: -50,
-              top: -40,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 85, sigmaY: 85),
-                child: Container(
-                  width: 260,
-                  height: 260,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFFBAE6FD).withOpacity(0.42),
-                  ),
-                ),
-              ),
+              left: -50, top: -40,
+              child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 85, sigmaY: 85), child: Container(width: 260, height: 260, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFBAE6FD).withOpacity(0.42)))),
             ),
 
             SafeArea(
               child: Column(
                 children: [
-                  // Search Bar
                   Padding(
                     padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
                     child: Container(
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.95),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
+                      height: 38, decoration: BoxDecoration(color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFE2E8F0))),
                       child: TextField(
-                        onChanged: (v) => setState(() => _searchQuery = v.trim()),
-                        style: const TextStyle(fontFamily: kAppFont, fontSize: 12.5, color: Color(0xFF0F172A)),
-                        decoration: const InputDecoration(
-                          hintText: "Search Distribution No. or Date...",
-                          hintStyle: TextStyle(fontFamily: kAppFont, fontSize: 11.5, color: Color(0xFF94A3B8)),
-                          prefixIcon: Icon(CupertinoIcons.search, size: 15, color: Color(0xFF64748B)),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(vertical: 9.0),
-                        ),
+                        onChanged: (v) => setState(() => _searchQuery = v.trim()), style: const TextStyle(fontFamily: kAppFont, fontSize: 12.5, color: Color(0xFF0F172A)),
+                        decoration: const InputDecoration(hintText: "Search Distribution No. or Date...", hintStyle: TextStyle(fontFamily: kAppFont, fontSize: 11.5, color: Color(0xFF94A3B8)), prefixIcon: Icon(CupertinoIcons.search, size: 15, color: Color(0xFF64748B)), border: InputBorder.none, contentPadding: EdgeInsets.symmetric(vertical: 9.0)),
                       ),
                     ),
                   ),
-
-                  // Results count banner
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          "Showing ${displayedList.length} of ${_allRecords.length} records",
-                          style: const TextStyle(fontFamily: kAppFont, fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-                        ),
-                        const Text(
-                          "Page 1 Of 1",
-                          style: TextStyle(fontFamily: kAppFont, fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-                        ),
+                        Text("Showing ${displayedList.length} of ${_records.length} records", style: const TextStyle(fontFamily: kAppFont, fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                        const Text("Page 1 Of 1", style: TextStyle(fontFamily: kAppFont, fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
-                  // Record Cards List
                   Expanded(
-                    child: displayedList.isEmpty
-                        ? Center(
-                            child: Text(
-                              "No records found matching '$_searchQuery'",
-                              style: const TextStyle(fontFamily: kAppFont, fontSize: 12, color: Color(0xFF94A3B8)),
-                            ),
-                          )
-                        : ListView.separated(
-                            physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(14, 4, 14, 20),
-                            itemCount: displayedList.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
-                            itemBuilder: (context, index) {
-                              final item = displayedList[index];
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.95),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                                  boxShadow: [
-                                    BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 6, offset: const Offset(0, 1)),
+                    child: _isLoading
+                        ? const Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Color(0xFF0F172A))))
+                        : _errorMessage != null
+                            ? RefreshIndicator(
+                                onRefresh: () => _fetchDistributionRecords(force: true),
+                                child: ListView(
+                                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                                  children: [
+                                    SizedBox(
+                                      height: 260,
+                                      child: Center(
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(CupertinoIcons.exclamationmark_triangle, size: 22, color: Color(0xFFF59E0B)), const SizedBox(height: 8),
+                                            Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(fontFamily: kAppFont, fontSize: 12, color: Color(0xFF64748B))), const SizedBox(height: 10),
+                                            OutlinedButton(onPressed: () => _fetchDistributionRecords(force: true), child: const Text("Retry", style: TextStyle(fontFamily: kAppFont, fontSize: 12, fontWeight: FontWeight.w700))),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 24,
-                                      height: 24,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        item["sNo"]!,
-                                        style: const TextStyle(fontFamily: kAppFont, fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569)),
-                                      ),
+                              )
+                            : displayedList.isEmpty
+                                ? RefreshIndicator(
+                                    onRefresh: () => _fetchDistributionRecords(force: true),
+                                    child: ListView(
+                                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                                      children: [
+                                        SizedBox(height: 260, child: Center(child: Text(_searchQuery.isEmpty ? "No records found yet." : "No records found matching '$_searchQuery'", style: const TextStyle(fontFamily: kAppFont, fontSize: 12, color: Color(0xFF94A3B8))))),
+                                      ],
                                     ),
-                                    const SizedBox(width: 10),
-
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            item["distNo"]!,
-                                            style: const TextStyle(
-                                              fontFamily: kAppFont,
-                                              fontSize: 12.0,
-                                              fontWeight: FontWeight.w700,
-                                              color: Color(0xFF0F172A),
-                                              letterSpacing: -0.2,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Row(
+                                  )
+                                : RefreshIndicator(
+                                    onRefresh: () => _fetchDistributionRecords(force: true),
+                                    child: ListView.separated(
+                                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()), padding: const EdgeInsets.fromLTRB(14, 4, 14, 20), itemCount: displayedList.length, separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                      itemBuilder: (context, index) {
+                                        final item = displayedList[index];
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), decoration: BoxDecoration(color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE2E8F0)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 6, offset: const Offset(0, 1))]),
+                                          child: Row(
                                             children: [
-                                              Text(
-                                                item["date"]!,
-                                                style: const TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+                                              Container(width: 24, height: 24, decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)), alignment: Alignment.center, child: Text(item["sNo"]!, style: const TextStyle(fontFamily: kAppFont, fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF475569)))),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(item["distNo"]!, style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A), letterSpacing: -0.2), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                                    const SizedBox(height: 2),
+                                                    Row(
+                                                      children: [
+                                                        Text(item["date"]!, style: const TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B))), const SizedBox(width: 6),
+                                                        const Text("•", style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 10)), const SizedBox(width: 6),
+                                                        Text(item["type"]!, style: const TextStyle(fontFamily: kAppFont, fontSize: 10.5, color: Color(0xFF64748B))),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
-                                              const SizedBox(width: 6),
-                                              const Text("•", style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 10)),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                item["type"]!,
-                                                style: const TextStyle(fontFamily: kAppFont, fontSize: 10.5, color: Color(0xFF64748B)),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3), decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(6)),
+                                                child: Text(item["status"]!, style: const TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              IconButton(
+                                                icon: const Icon(CupertinoIcons.pencil_circle_fill, size: 18, color: Color(0xFF0F172A)), padding: EdgeInsets.zero, constraints: const BoxConstraints(minWidth: 28),
+                                                onPressed: () => _openEditSheet(item),
                                               ),
                                             ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFDCFCE7),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        item["status"]!,
-                                        style: const TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-
-                                    IconButton(
-                                      icon: const Icon(CupertinoIcons.pencil_circle_fill, size: 18, color: Color(0xFF0F172A)),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(minWidth: 28),
-                                      onPressed: () {
-                                        _haptic();
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text("Editing ${item["distNo"]}"),
-                                            duration: const Duration(seconds: 1),
                                           ),
                                         );
                                       },
                                     ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
+                                  ),
                   ),
                 ],
               ),
@@ -2430,10 +2400,7 @@ class _ScaleTouchState extends State<_ScaleTouch> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _down = true),
-      onTapUp: (_) {
-        setState(() => _down = false);
-        widget.onTap();
-      },
+      onTapUp: (_) { setState(() => _down = false); widget.onTap(); },
       onTapCancel: () => setState(() => _down = false),
       child: AnimatedScale(
         scale: _down ? 0.97 : 1.0,

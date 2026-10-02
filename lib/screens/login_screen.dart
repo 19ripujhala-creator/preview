@@ -1,0 +1,912 @@
+// C:\shaladarpan_app\lib\screens\login_screen.dart
+import 'dart:async';
+import 'dart:ui';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:lottie/lottie.dart';
+import 'package:video_player/video_player.dart';
+import 'package:shaladarpan/services/core/secure_storage_service.dart';
+import 'package:shaladarpan/services/core/ecosystem_service.dart';
+import 'package:shaladarpan/services/portals/shaladarpan/dashboard_bootstrap.dart';
+import 'package:shaladarpan/services/portals/shaladarpan/leave_approval_service.dart';
+
+class LoginDesignScreen extends StatefulWidget {
+  final ValueChanged<String> onLoginSuccess;
+  const LoginDesignScreen({super.key, required this.onLoginSuccess});
+
+  @override
+  LoginDesignScreenState createState() => LoginDesignScreenState();
+}
+
+class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerProviderStateMixin {
+  final PageController _wizardController = PageController();
+  int _currentStep = 0;
+
+  final TextEditingController _shalaIdController = TextEditingController();
+  final TextEditingController _shalaPassController = TextEditingController();
+
+  final TextEditingController _staffIdController = TextEditingController();
+  final TextEditingController _staffPassController = TextEditingController();
+
+  final TextEditingController _rajsimsIdController = TextEditingController();
+  final TextEditingController _rajsimsPassController = TextEditingController();
+
+  bool _isLoggedOutState = false;
+  bool _isLoading = false;
+  bool _progressKnown = false;
+  double _loginProgressTarget = 0.0;
+
+  void _advanceLoginProgress(double next) {
+    if (!mounted || next <= _loginProgressTarget) return;
+    _loginProgressTarget = next.clamp(0.0, 0.95).toDouble();
+    _progressController.animateTo(_loginProgressTarget, duration: const Duration(milliseconds: 600), curve: Curves.easeOutCubic);
+  }
+  bool _isApiCallInProgress = false; // 🛡️ Double-Hit Guard Flag
+
+  String _liveStatusMessage = "Connecting to Ecosystem...";
+
+  late AnimationController _progressController;
+  late VideoPlayerController _videoController;
+
+  bool _isVideoReady = false;
+  bool _showVideo = false;
+
+  late final PageController _factsPageController;
+  Timer? _carouselTimer;
+  late final Future<void> _credentialsLoaded;
+  int _currentFactIndex = 0;
+
+  final List<Map<String, String>> _schoolFacts = [
+    {"title": "Triple-Portal Ecosystem", "subtitle": "Connect Shala Darpan, Staff Corner, and RajSIMS from one place."},
+    {
+      "title": "MDM Entry Optimization",
+      "subtitle": "Daily automated reconciliation reduces manual grain calculation errors by over 90%.",
+    },
+    {
+      "title": "Smart Portal Automation",
+      "subtitle": "One-click batch sync saves up to 45 minutes of daily manual entry per school.",
+    },
+  ];
+
+  void resetToDefaultState() {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _isApiCallInProgress = false;
+      _isLoggedOutState = true;
+      _currentStep = 3;
+      _liveStatusMessage = "Connecting to Ecosystem...";
+    });
+    _progressController.value = 0.0;
+    if (_wizardController.hasClients) {
+      _wizardController.jumpToPage(3);
+    }
+    if (_isVideoReady && !_videoController.value.isPlaying) {
+      _videoController.play();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _credentialsLoaded = _loadSavedCredentials();
+
+    _videoController =
+        VideoPlayerController.asset(
+            'assets/images/fpo@1x.mp4',
+            videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+          )
+          ..initialize().then((_) {
+            if (mounted) {
+              _videoController.setLooping(true);
+              _videoController.setVolume(0.0);
+              _videoController.play();
+              setState(() => _isVideoReady = true);
+              Future.delayed(const Duration(milliseconds: 60), () {
+                if (mounted) setState(() => _showVideo = true);
+              });
+            }
+          });
+
+    _progressController = AnimationController(vsync: this, duration: const Duration(milliseconds: 100));
+
+    _factsPageController = PageController();
+    _startFactsAutoPlay();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final credentials = await SecureStorageService.getAllPortalCreds();
+      if (!mounted) return;
+      void restore(TextEditingController id, TextEditingController pass, String idKey, String passKey) {
+        if (id.text.isEmpty && pass.text.isEmpty) {
+          id.text = credentials[idKey] ?? '';
+          pass.text = credentials[passKey] ?? '';
+        }
+      }
+
+      restore(_shalaIdController, _shalaPassController, 'school_id', 'school_password');
+      restore(_staffIdController, _staffPassController, 'staff_id', 'staff_password');
+      restore(_rajsimsIdController, _rajsimsPassController, 'sso_id', 'sso_password');
+      setState(() {});
+    } catch (_) {
+      // Manual entry remains available when storage is unavailable.
+    }
+  }
+
+  void _startFactsAutoPlay() {
+    _carouselTimer = Timer.periodic(const Duration(milliseconds: 3500), (_) {
+      if (_factsPageController.hasClients) {
+        int nextPage = _currentFactIndex + 1;
+        if (nextPage >= _schoolFacts.length) {
+          nextPage = 0;
+        }
+        _factsPageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _carouselTimer?.cancel();
+    _factsPageController.dispose();
+    _wizardController.dispose();
+    _videoController.dispose();
+    _progressController.dispose();
+    _shalaIdController.dispose();
+    _shalaPassController.dispose();
+    _staffIdController.dispose();
+    _staffPassController.dispose();
+    _rajsimsIdController.dispose();
+    _rajsimsPassController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _performActualLogin() async {
+    if (_isLoading || _isApiCallInProgress) return;
+    _isApiCallInProgress = true;
+    bool completed = false;
+    try {
+      await _credentialsLoaded;
+      if (!mounted) return;
+      FocusManager.instance.primaryFocus?.unfocus();
+      final schoolId = _shalaIdController.text.trim();
+      final schoolPass = _shalaPassController.text;
+      final staffId = _staffIdController.text.trim();
+      final staffPass = _staffPassController.text;
+      final ssoId = _rajsimsIdController.text.trim();
+      final ssoPass = _rajsimsPassController.text;
+      if ([schoolId, schoolPass, staffId, staffPass, ssoId, ssoPass].any((v) => v.isEmpty)) {
+        _showErrorSnackBar('Teeno portals ki ID aur password bharna zaroori hai.');
+        return;
+      }
+      if (schoolId == staffId) {
+        _showErrorSnackBar('Staff ID aur School ID alag honi chahiye.');
+        return;
+      }
+      setState(() {
+        _isLoading = true;
+        _liveStatusMessage = 'Logging in to all three portals...';
+      });
+      setState(() => _progressKnown = true);
+      _progressController.value = 0.0;
+      _loginProgressTarget = 0.0;
+      _advanceLoginProgress(0.05);
+      await SecureStorageService.saveAllPortals(
+        shalaId: schoolId,
+        shalaPass: schoolPass,
+        staffId: staffId,
+        staffPass: staffPass,
+        rajsimsId: ssoId,
+        rajsimsPass: ssoPass,
+      );
+      final result = await EcosystemService.initialize({
+        'school_id': schoolId,
+        'school_password': schoolPass,
+        'staff_id': staffId,
+        'staff_password': staffPass,
+        'sso_id': ssoId,
+        'sso_password': ssoPass,
+      }, onProgress: (progress, message) {
+        if (!mounted || completed) return;
+        final next = 0.05 + progress.clamp(0.0, 1.0) * 0.45;
+        _advanceLoginProgress(next);
+        setState(() => _liveStatusMessage = message);
+      });
+      if (!mounted) return;
+      setState(() => _liveStatusMessage = result['message']?.toString() ?? 'Login finished.');
+      if (result['success'] != true) {
+        _showErrorSnackBar(result['message']?.toString() ?? 'School login failed.');
+        return;
+      }
+      setState(() { _progressKnown = true; _liveStatusMessage = 'Checking leave approvals, attendance and MDM data…'; });
+      _advanceLoginProgress(0.5);
+      final preload = DashboardBootstrap.load(schoolId, fresh: true, onProgress: (progress, message) {
+        if (!mounted || !_isLoading || completed) return;
+        final next = (0.5 + progress.clamp(0.0, 1.0) * 0.45).toDouble();
+        _advanceLoginProgress(next);
+        setState(() => _liveStatusMessage = message);
+      });
+      final leavePreload = LeaveApprovalService.fetchLeaveApprovals();
+      final mdmPreload = DashboardBootstrap.loadMdm(schoolId, fresh: true);
+      final results = await Future.wait([preload, mdmPreload, leavePreload]).timeout(
+        const Duration(seconds: 20), onTimeout: () => [{'success': false}, {'success': false}, {'success': false}]);
+      final metrics = results[0];
+      final mdmReady = results[1]['success'] == true;
+      if (!mounted) return;
+      final data = metrics['data'];
+      final ready = results[2]['success'] == true && mdmReady && metrics['success'] == true && data is Map && data['kpi'] is Map &&
+          (data['kpi'] as Map)['success'] != false && data['staff_attendance'] is Map &&
+          (data['staff_attendance'] as Map)['success'] != false;
+      if (ready) {
+        setState(() => _liveStatusMessage = 'Dashboard ready');
+        await _progressController.animateTo(1.0);
+      } else {
+        setState(() => _liveStatusMessage = 'Opening dashboard — data will continue loading');
+      }
+      HapticFeedback.mediumImpact();
+      if (_isVideoReady) await _videoController.pause();
+      if (!mounted) return;
+      completed = true;
+      widget.onLoginSuccess(schoolId);
+    } catch (_) {
+      if (mounted) _showErrorSnackBar('Login could not finish. Check saved credentials and backend connection.');
+    } finally {
+      if (mounted && !completed) {
+        setState(() {
+          _isLoading = false;
+          _isApiCallInProgress = false;
+        });
+        _progressController.value = 0.0;
+      }
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message), backgroundColor: const Color(0xFFDC2626)));
+  }
+
+  void _onNextPressed() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    // Step 0 aur 1 par aage badhein, Step 2 (RajSIMS) ya Step 3 (Logged-out Continue) par direct login initiate karein
+    if (_isLoggedOutState && _currentStep == 3) {
+      _performActualLogin();
+    } else if (_currentStep < 2) {
+      HapticFeedback.selectionClick();
+      _wizardController.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOutCubic);
+    } else {
+      _performActualLogin();
+    }
+  }
+
+  void _onSkipPressed() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (_currentStep < 2) {
+      HapticFeedback.lightImpact();
+      _wizardController.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOutCubic);
+    } else {
+      _performActualLogin();
+    }
+  }
+
+  void _onSetupDifferentAccount() {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _isLoggedOutState = false;
+      _currentStep = 0;
+    });
+    _wizardController.jumpToPage(0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        backgroundColor: Colors.white,
+        resizeToAvoidBottomInset: true,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0.0, 0.35, 0.75, 1.0],
+                    colors: [Colors.white, Colors.white, Color(0xFFE8EEF2), Color(0xFFF9E7BA)],
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: SingleChildScrollView(
+                  physics: const ClampingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          height: 195,
+                          alignment: Alignment.center,
+                          child: AnimatedOpacity(
+                            opacity: _showVideo ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 600),
+                            curve: Curves.easeOut,
+                            child: _isVideoReady
+                                ? AspectRatio(
+                                    aspectRatio: _videoController.value.aspectRatio,
+                                    child: VideoPlayer(_videoController),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _isLoggedOutState ? "Welcome back !" : "Account setup",
+                                style: const TextStyle(
+                                  fontSize: 18.5,
+                                  height: 1.15,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0F172A),
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                "Triple-Portal Ecosystem Active",
+                                style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.w500, color: Color(0xFF475569)),
+                              ),
+                            ],
+                          ),
+                          Image.asset(
+                            'assets/icons/app_icon_v1.ico',
+                            width: 36,
+                            height: 36,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Image.asset('assets/icons/icon.png', width: 36, height: 36, fit: BoxFit.contain),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.96),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white, width: 1.2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF0F172A).withOpacity(0.04),
+                              blurRadius: 18,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              height: 135,
+                              child: PageView(
+                                controller: _wizardController,
+                                physics: const NeverScrollableScrollPhysics(),
+                                onPageChanged: (idx) => setState(() => _currentStep = idx),
+                                children: [
+                                  _buildPortalForm(
+                                    title: "1. Shala Darpan School",
+                                    userController: _shalaIdController,
+                                    passController: _shalaPassController,
+                                    userHint: "School UDISE ID",
+                                  ),
+                                  _buildPortalForm(
+                                    title: "2. Staff Corner Login",
+                                    userController: _staffIdController,
+                                    passController: _staffPassController,
+                                    userHint: "Staff NIC-SD ID",
+                                  ),
+                                  _buildPortalForm(
+                                    title: "3. RajSSO / RajSIMS",
+                                    userController: _rajsimsIdController,
+                                    passController: _rajsimsPassController,
+                                    userHint: "RajSSO ID (e.g. RJPG...)",
+                                  ),
+                                  _buildContinueAsScreen(),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        child: _isLoading
+                            ? Container(
+                                key: const ValueKey('progress_state'),
+                                height: 44,
+                                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 4.0),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(22),
+                                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Row(
+                                            children: [
+                                              SizedBox(
+                                                width: 22,
+                                                height: 22,
+                                                child: Lottie.asset(
+                                                  'assets/icons/Loading (Buffering).json',
+                                                  fit: BoxFit.contain,
+                                                  errorBuilder: (_, __, ___) =>
+                                                      const CupertinoActivityIndicator(radius: 7.5),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  _liveStatusMessage,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: const TextStyle(
+                                                    fontSize: 12.0,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Color(0xFF0F172A),
+                                                    letterSpacing: -0.1,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        AnimatedBuilder(
+                                          animation: _progressController,
+                                          builder: (context, child) {
+                                            final pct = (_progressController.value * 100).clamp(0, 100).toInt();
+                                            return Text(
+                                              _progressKnown ? "$pct%" : "",
+                                              style: const TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: Color(0xFF0F172A),
+                                                fontFeatures: [FontFeature.tabularFigures()],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 3),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(100),
+                                      child: SizedBox(
+                                        height: 3.5,
+                                        width: double.infinity,
+                                        child: AnimatedBuilder(
+                                          animation: _progressController,
+                                          builder: (context, child) {
+                                            return LinearProgressIndicator(
+                                              value: _progressKnown ? _progressController.value : null,
+                                              backgroundColor: const Color(0xFFE2E8F0),
+                                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0F172A)),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Row(
+                                children: [
+                                  if (_currentStep < 3 || _isLoggedOutState) ...[
+                                    Container(
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(22),
+                                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF0F172A).withOpacity(0.04),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(22),
+                                          onTap: _isLoggedOutState ? _onSetupDifferentAccount : _onSkipPressed,
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                                            child: Center(
+                                              child: Text(
+                                                _isLoggedOutState ? "Setup different account" : "Skip",
+                                                style: const TextStyle(
+                                                  fontSize: 12.0,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF475569),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Expanded(
+                                    child: Container(
+                                      key: const ValueKey('button_state'),
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(22),
+                                        gradient: const LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [Color(0xFF27272A), Color(0xFF18181B), Color(0xFF000000)],
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.28),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(22),
+                                          splashColor: Colors.transparent,
+                                          highlightColor: Colors.white.withOpacity(0.06),
+                                          onTap: _onNextPressed,
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Padding(
+                                                  padding: const EdgeInsets.only(left: 6.0),
+                                                  child: Text(
+                                                    _isLoggedOutState
+                                                        ? "Continue as"
+                                                        : (_currentStep == 2 ? "Finish & Launch All" : "Next Portal"),
+                                                    style: const TextStyle(
+                                                      fontSize: 14.0,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Container(
+                                                  width: 26,
+                                                  height: 26,
+                                                  decoration: const BoxDecoration(
+                                                    color: Colors.white,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.arrow_forward_rounded,
+                                                    color: Colors.black,
+                                                    size: 15,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        height: 72,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.95),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF0F172A).withOpacity(0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: PageView.builder(
+                                controller: _factsPageController,
+                                onPageChanged: (index) {
+                                  setState(() => _currentFactIndex = index);
+                                },
+                                itemCount: _schoolFacts.length,
+                                itemBuilder: (context, index) {
+                                  final fact = _schoolFacts[index];
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        fact["title"]!,
+                                        style: const TextStyle(
+                                          fontSize: 12.0,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF1E293B),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 1),
+                                      Text(
+                                        fact["subtitle"]!,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 10.8, height: 1.25, color: Color(0xFF475569)),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(
+                                _schoolFacts.length,
+                                (dotIndex) => AnimatedContainer(
+                                  duration: const Duration(milliseconds: 250),
+                                  margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                                  width: _currentFactIndex == dotIndex ? 14 : 4,
+                                  height: 3.5,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(2),
+                                    color: _currentFactIndex == dotIndex
+                                        ? const Color(0xFF0F172A)
+                                        : const Color(0xFF94A3B8).withOpacity(0.4),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Center(
+                        child: Text.rich(
+                          TextSpan(
+                            text: "Creator & Developer\n",
+                            style: TextStyle(
+                              fontSize: 11.0,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1E293B),
+                              height: 1.35,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: "Ripudaman Singh Jhala",
+                                style: TextStyle(fontWeight: FontWeight.normal, color: Color(0xFF475569)),
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildContactIcon('assets/icons/support.png', () {}),
+                          const SizedBox(width: 16),
+                          _buildContactIcon('assets/icons/telephone.png', () {}),
+                          const SizedBox(width: 16),
+                          _buildContactIcon('assets/icons/email.png', () {}),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPortalForm({
+    required String title,
+    required TextEditingController userController,
+    required TextEditingController passController,
+    required String userHint,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.lock_outline_rounded, size: 17, color: Color(0xFF1E293B)),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: userController,
+          style: const TextStyle(fontSize: 13.0, color: Color(0xFF0F172A)),
+          decoration: InputDecoration(
+            hintText: userHint,
+            hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12.5, fontWeight: FontWeight.w500),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Image.asset(
+                'assets/icons/username.png',
+                width: 16,
+                height: 16,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.person_outline, size: 18, color: Color(0xFF64748B)),
+              ),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.0),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.0),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: passController,
+          obscureText: true,
+          style: const TextStyle(fontSize: 13.0, color: Color(0xFF0F172A)),
+          decoration: InputDecoration(
+            hintText: "Password",
+            hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12.5, fontWeight: FontWeight.w500),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Image.asset(
+                'assets/icons/password.png',
+                width: 16,
+                height: 16,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.lock_outline, size: 18, color: Color(0xFF64748B)),
+              ),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.0),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.0),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContinueAsScreen() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F172A),
+            shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 2))],
+          ),
+          child: Center(
+            child: Text(
+              _shalaIdController.text.isNotEmpty ? _shalaIdController.text[0].toUpperCase() : "S",
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          "Continue as ID: ${_shalaIdController.text}",
+          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+        ),
+        const SizedBox(height: 3),
+        const Text("Saved securely on this device", style: TextStyle(fontSize: 11.0, color: Color(0xFF64748B))),
+      ],
+    );
+  }
+
+  Widget _buildContactIcon(String assetPath, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: 36,
+        height: 36,
+        padding: const EdgeInsets.all(8.5),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+          boxShadow: [
+            BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: Image.asset(
+          assetPath,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.help_outline_rounded, size: 16, color: Color(0xFF475569)),
+        ),
+      ),
+    );
+  }
+}

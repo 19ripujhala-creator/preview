@@ -1,0 +1,76 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'shaladarpan_service.dart';
+import 'package:http/http.dart' as http;
+import 'package:shaladarpan/services/core/backend_config.dart';
+import 'package:shaladarpan/services/core/ecosystem_service.dart';
+import 'package:shaladarpan/services/core/secure_storage_service.dart';
+
+class DashboardBootstrap {
+  static final ValueNotifier<Map<String, dynamic>?> mdmStatus = ValueNotifier(null);
+  static void invalidateMdm() {
+    _mdmPending = null;
+    _mdmStarted = null;
+  }
+  static bool _mdmRunning = false;
+  static String? _mdmKey;
+  static DateTime? _mdmStarted;
+  static Future<Map<String, dynamic>>? _mdmPending;
+  static Future<Map<String, dynamic>> loadMdm(String schoolId, {bool fresh = false}) {
+    final now = DateTime.now();
+    final key = '$schoolId/${now.year}-${now.month}-${now.day}';
+    if (key == _mdmKey && _mdmRunning && _mdmPending != null) return _mdmPending!;
+    if (!fresh && key == _mdmKey && _mdmPending != null && _mdmStarted != null &&
+        now.difference(_mdmStarted!) < const Duration(seconds: 30)) return _mdmPending!;
+    _mdmKey = key; _mdmStarted = now;
+    late Future<Map<String, dynamic>> task;
+    task = _readMdm(schoolId, fresh).then((result) {
+      if (identical(_mdmPending, task)) {
+        mdmStatus.value = {'school_id': schoolId, 'day_key': key, 'result': result};
+      }
+      return result;
+    });
+    _mdmPending = task; _mdmRunning = true;
+    unawaited(task.whenComplete(() {
+      if (identical(_mdmPending, task)) {
+        _mdmRunning = false;
+        if (mdmStatus.value?['result'] is Map && mdmStatus.value!['result']['success'] == true) {
+          _mdmStarted = DateTime.now();
+        } else {
+          _mdmPending = null;
+          _mdmStarted = null;
+        }
+      }
+    }));
+    return task;
+  }
+  static Future<Map<String, dynamic>> _readMdm(String school, bool fresh) async {
+    try {
+      final before = await SecureStorageService.getShaladarpanCreds();
+      if (before['id']?.trim() != school) return {'success': false, 'code': 'ACCOUNT_CHANGED'};
+      final uri = BackendConfig.uri('/api/rajsims/mdm/fetch').replace(queryParameters: {if (fresh) 'force': 'true'});
+      final response = await http.get(uri).timeout(const Duration(seconds: 60));
+      final after = await SecureStorageService.getShaladarpanCreds();
+      if (after['id']?.trim() != school) return {'success': false, 'code': 'ACCOUNT_CHANGED'};
+      final decoded = EcosystemService.decode(response);
+      if (response.statusCode != 200) return decoded;
+      if (decoded['data'] is Map) {
+        final payload = Map<String, dynamic>.from(decoded['data']);
+        return {...payload, 'success': decoded['success'] == true && payload['success'] != false};
+      }
+      return decoded;
+    } catch (_) { return {'success': false, 'message': 'MDM data could not be loaded.'}; }
+  }
+  static String? _key;
+  static Future<Map<String, dynamic>>? _pending;
+  static DateTime? _started;
+  static Future<Map<String, dynamic>> load(String schoolId, {bool fresh = false, void Function(double, String)? onProgress}) {
+    final now = DateTime.now();
+    final key = '$schoolId/${now.year}-${now.month}-${now.day}';
+    if (!fresh && _key == key && _pending != null && _started != null && now.difference(_started!) < const Duration(minutes: 2)) return _pending!;
+    _key = key;
+    _started = now;
+    _pending = ShaladarpanService.loginAndSyncDashboard(onProgress: onProgress);
+    return _pending!;
+  }
+}

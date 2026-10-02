@@ -11,8 +11,27 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+
+  # Networking & APIs
+  http: ^1.2.0
+
+  # PDF Generation & Native Share / View (Android & iOS)
+  pdf: ^3.11.1
+  printing: ^5.13.2
+
+  # Media & Animation
   lottie: ^3.1.2
   video_player: ^2.9.2
+
+  # Storage & Offline Cache
+  flutter_secure_storage: ^9.2.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  shared_preferences: ^2.5.5
+
+  # Network Monitoring & Background Sync
+  connectivity_plus: ^6.1.1 # Internet aate hi instant event catch karega
+  workmanager: ^0.5.2       # App killed/band hone par bhi OS-level sync
 
 dev_dependencies:
   flutter_test:
