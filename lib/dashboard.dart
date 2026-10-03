@@ -1,3 +1,4 @@
+import 'package:shaladarpan/tabs/teacher/modules/shaladarpan/monthly_tasks_screen.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -43,6 +44,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   bool _isVerifyingLiveStatus = true;
   OverlayEntry? _activeToast;
   Timer? _toastTimer;
+  bool? _rankingTaskDone;
+  bool _monthlyScreenOpen = false;
   bool? _staffTaskDone;
   bool? _studentTaskDone;
   bool _studentStatusLoading = false;
@@ -59,10 +62,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       () => _onNavTabTapped(2)),
     _DashboardTask('Mid Day Meal (MDM)', 'assets/icons/mdm.png', _mdmLoaded ? _mdmStatusDone : null,
       () => _onNavTabTapped(3)),
-    _DashboardTask('District Ranking', 'assets/icons/ranking.png', null,
-      () => _showUnavailableTask('District Ranking'), unavailable: true),
+    _DashboardTask('District Ranking', 'assets/icons/ranking.png', _rankingTaskDone,
+      () => _openMonthlyTasks('ranking')),
     _DashboardTask('VIFFS Entry', 'assets/icons/viffs.png', null,
-      () => _showUnavailableTask('VIFFS Entry'), unavailable: true),
+      () => _openMonthlyTasks('viffs')),
   ];
   int get _completedTasks => _dashboardTasks.where((task) => task.done == true).length;
   String _taskLabel(bool? done) => done == null ? 'Not synced' : (done ? 'Completed' : 'Pending');
@@ -1097,7 +1100,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                           child: _buildMdmCard(),
                                         );
                                       else
-                                        cardChild = _buildMonthlyCard();
+                                        cardChild = GestureDetector(behavior: HitTestBehavior.opaque,
+                                          onTap: () => _openMonthlyTasks('ranking'), child: _buildMonthlyCard());
 
                                       return Transform.scale(
                                         scale: scale,
@@ -1761,6 +1765,19 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         ],
       ),
     );
+  }
+
+  Future<void> _openMonthlyTasks(String task) async {
+    if (_monthlyScreenOpen) return;
+    _monthlyScreenOpen = true;
+    try {
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => MonthlyTasksScreen(
+        schoolId: widget.schoolId, initialTask: task,
+        onStatus: (name, completed) {
+          if (mounted && name == 'ranking') setState(() => _rankingTaskDone = completed);
+        },
+      )));
+    } finally { _monthlyScreenOpen = false; }
   }
 
   void _showUnavailableTask(String title) {

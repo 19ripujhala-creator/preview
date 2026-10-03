@@ -8,23 +8,31 @@ import 'package:shaladarpan/services/core/secure_storage_service.dart';
 
 class DashboardBootstrap {
   static final ValueNotifier<Map<String, dynamic>?> mdmStatus = ValueNotifier(null);
+  static final ValueNotifier<int> mdmRevision = ValueNotifier(0);
   static void invalidateMdm() {
     _mdmPending = null;
     _mdmStarted = null;
+    _mdmRunning = false;
+    mdmRevision.value++;
   }
   static bool _mdmRunning = false;
+  static bool _mdmFresh = false;
   static String? _mdmKey;
   static DateTime? _mdmStarted;
   static Future<Map<String, dynamic>>? _mdmPending;
   static Future<Map<String, dynamic>> loadMdm(String schoolId, {bool fresh = false}) {
     final now = DateTime.now();
     final key = '$schoolId/${now.year}-${now.month}-${now.day}';
-    if (key == _mdmKey && _mdmRunning && _mdmPending != null) return _mdmPending!;
+    if (key == _mdmKey && _mdmRunning && _mdmPending != null && (!fresh || _mdmFresh)) return _mdmPending!;
     if (!fresh && key == _mdmKey && _mdmPending != null && _mdmStarted != null &&
         now.difference(_mdmStarted!) < const Duration(seconds: 30)) return _mdmPending!;
-    _mdmKey = key; _mdmStarted = now;
+    _mdmKey = key; _mdmStarted = now; _mdmFresh = fresh;
+    final revision = mdmRevision.value;
     late Future<Map<String, dynamic>> task;
     task = _readMdm(schoolId, fresh).then((result) {
+      if (revision != mdmRevision.value || !identical(_mdmPending, task)) {
+        return {'success': false, 'code': 'STALE_MDM_READ'};
+      }
       if (identical(_mdmPending, task)) {
         mdmStatus.value = {'school_id': schoolId, 'day_key': key, 'result': result};
       }

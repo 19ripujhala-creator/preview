@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 // Service File Import
 import 'package:shaladarpan/services/portals/rajsims/rajsims_service.dart';
+import 'package:shaladarpan/services/portals/shaladarpan/dashboard_bootstrap.dart';
 
 const String kAppFont = 'PlusJakartaSans';
 
@@ -54,10 +55,16 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
   String _inchargeName = "MDM Incharge";
 
   Timer? _refreshTimer;
+  Future<void>? _loadFuture;
+  bool _loadIsForced = false;
+  bool _queuedForcedRefresh = false;
+  int _loadRevision = 0;
+  bool _hasStock = false;
 
   @override
   void initState() {
     super.initState();
+    DashboardBootstrap.mdmRevision.addListener(_onMdmChanged);
     _loadDataProgressive(); // 🚀 Changed to Progressive
     // Auto-poll to keep UI synced without freezing
     _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
@@ -68,74 +75,101 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    DashboardBootstrap.mdmRevision.removeListener(_onMdmChanged);
     super.dispose();
   }
 
-  // 🚀 THE MAGIC: Progressive API Fetching with Live Sync Indicator
-  Future<void> _loadDataProgressive({bool isSilent = false}) async {
-    if (!isSilent && mounted) {
+  void _onMdmChanged() {
+    if (!mounted) return;
+    setState(() => _isStaleData = true);
+    unawaited(_loadDataProgressive(isSilent: true, force: true));
+  }
+
+  Future<void> _loadDataProgressive({bool isSilent = false, bool force = false}) {
+    if (!mounted) return Future<void>.value();
+    final fresh = force || !isSilent;
+    final current = _loadFuture;
+    if (current != null) {
+      if (fresh && (!_loadIsForced || _loadRevision != DashboardBootstrap.mdmRevision.value)) {
+        _queuedForcedRefresh = true;
+      }
+      return current;
+    }
+    _loadIsForced = fresh;
+    _loadRevision = DashboardBootstrap.mdmRevision.value;
+    late Future<void> task;
+    task = _readDataProgressive(isSilent: isSilent, force: fresh, revision: _loadRevision)
+        .whenComplete(() {
+      if (identical(_loadFuture, task)) {
+        _loadFuture = null;
+        if (_queuedForcedRefresh && mounted) {
+          _queuedForcedRefresh = false;
+          unawaited(_loadDataProgressive(isSilent: true, force: true));
+        }
+      }
+    });
+    _loadFuture = task;
+    return task;
+  }
+
+  Future<void> _readDataProgressive({required bool isSilent, required bool force, required int revision}) async {
+    if (mounted && (!isSilent || force)) {
       setState(() {
         _isLoadingStock = true;
         _isLoadingStatus = true;
       });
     }
-
-    // Step 1: Stock API
     try {
-      final resStock = await RajsimsService.fetchStockData();
-      if (mounted) {
-        setState(() {
-          if (resStock['success'] == true && resStock['stock'] != null) {
-            _isOnline = true;
-            // Agar backend stale flag bhej raha hai to sync flag true rahega
-            _isStaleData = resStock['stale'] == true;
-            final stock = resStock['stock'];
-            _wheatStock = double.tryParse(stock['wheat']?.toString() ?? '0') ?? 0.0;
-            _riceStock = double.tryParse(stock['rice']?.toString() ?? '0') ?? 0.0;
-          } else {
-             _isOnline = false;
-             _isStaleData = false;
-          }
-          _isLoadingStock = false;
-        });
-      }
+      final result = await RajsimsService.fetchStockData(force: force);
+      if (!mounted || revision != DashboardBootstrap.mdmRevision.value) return;
+      setState(() {
+        final stock = result['stock'];
+        final wheat = stock is Map ? double.tryParse('${stock['wheat']}') : null;
+        final rice = stock is Map ? double.tryParse('${stock['rice']}') : null;
+        if (result['success'] == true && wheat != null && rice != null && wheat.isFinite && rice.isFinite) {
+          _wheatStock = wheat;
+          _riceStock = rice;
+          _hasStock = true;
+          _isOnline = true;
+          _isStaleData = result['stale'] == true;
+        } else {
+          _isOnline = false;
+          _isStaleData = _hasStock;
+        }
+        _isLoadingStock = false;
+      });
     } catch (e) {
-      debugPrint("Stock load error: $e");
-      if(mounted) setState(() { _isLoadingStock = false; _isOnline = false; _isStaleData = false; });
+      debugPrint('Stock load error: $e');
+      if (mounted && revision == DashboardBootstrap.mdmRevision.value) {
+        setState(() { _isLoadingStock = false; _isOnline = false; _isStaleData = _hasStock; });
+      }
     }
-
-    // Step 2: Status API
+    if (!mounted || revision != DashboardBootstrap.mdmRevision.value) return;
     try {
-      final resStatus = await RajsimsService.fetchMdmData(force: !isSilent);
-      if (mounted) {
-        setState(() {
-          if (resStatus['success'] == true) {
-            // Agar status call fresh ho gayi to stale hata dein
-            if (resStatus['stale'] != true) {
-              _isStaleData = false;
-            }
-            _beneficiaryCount = int.tryParse(resStatus['beneficiary_count']?.toString() ?? '0') ?? 0;
-            _todayEntryExists = resStatus['today_entry_exists'] ?? false;
-            
-            if (resStatus['school_name'] != null && resStatus['school_name'].toString().trim().isNotEmpty) {
-              _schoolName = resStatus['school_name'].toString().trim();
-            }
-            if (resStatus['incharge_name'] != null && resStatus['incharge_name'].toString().trim().isNotEmpty) {
-              _inchargeName = resStatus['incharge_name'].toString().trim();
-            }
-          }
-          _isLoadingStatus = false;
-        });
-      }
+      final result = await RajsimsService.fetchMdmData(force: force);
+      if (!mounted || revision != DashboardBootstrap.mdmRevision.value) return;
+      setState(() {
+        if (result['success'] == true) {
+          // Status freshness cannot certify stock freshness.
+          _beneficiaryCount = int.tryParse('${result['beneficiary_count'] ?? 0}') ?? 0;
+          _todayEntryExists = result['today_entry_exists'] == true;
+          final school = result['school_name']?.toString().trim() ?? '';
+          final incharge = result['incharge_name']?.toString().trim() ?? '';
+          if (school.isNotEmpty) _schoolName = school;
+          if (incharge.isNotEmpty) _inchargeName = incharge;
+        }
+        _isLoadingStatus = false;
+      });
     } catch (e) {
-      debugPrint("Status load error: $e");
-      if(mounted) setState(() => _isLoadingStatus = false);
+      debugPrint('Status load error: $e');
+      if (mounted && revision == DashboardBootstrap.mdmRevision.value) {
+        setState(() => _isLoadingStatus = false);
+      }
     }
   }
 
   void _haptic() => HapticFeedback.selectionClick();
 
-  @override
   @override
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
@@ -254,9 +288,9 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(child: _buildStockCard("Wheat (गेहूं)", _isLoadingStock && _wheatStock == 0.0 ? "..." : _wheatStock.toStringAsFixed(2), "Kg", 'assets/icons/wheat.png')),
+                    Expanded(child: _buildStockCard("Wheat (गेहूं)", !_hasStock ? (_isLoadingStock ? "..." : "—") : _wheatStock.toStringAsFixed(2), "Kg", 'assets/icons/wheat.png')),
                     const SizedBox(width: 10),
-                    Expanded(child: _buildStockCard("Rice (चावल)", _isLoadingStock && _riceStock == 0.0 ? "..." : _riceStock.toStringAsFixed(2), "Kg", 'assets/icons/rice.png')),
+                    Expanded(child: _buildStockCard("Rice (चावल)", !_hasStock ? (_isLoadingStock ? "..." : "—") : _riceStock.toStringAsFixed(2), "Kg", 'assets/icons/rice.png')),
                   ],
                 ),
                 const SizedBox(height: 14),

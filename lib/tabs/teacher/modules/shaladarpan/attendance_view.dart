@@ -127,6 +127,8 @@ class _AttendanceViewState extends State<AttendanceView> {
           await prefs.setBool('attendance_already_marked', true);
         }
 
+        if (!mounted) return;
+        _requiresVerification = prefs.getBool('attendance_submission_hold_${savedSchoolId}_$_todayStr') == true;
         _loadError = null;
         _applyStaffPayload(res['data'], enforceMarked: isMarked);
         await prefs.setString('cached_staff_attendance', jsonEncode(res['data']));

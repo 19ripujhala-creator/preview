@@ -28,7 +28,7 @@ class RajsimsService {
   // TIMEOUTS
   // ============================================================
 
-  static const Duration _stockTimeout = Duration(seconds: 15);
+  static const Duration _stockTimeout = Duration(seconds: 45);
   static const Duration _fetchTimeout = Duration(seconds: 45);
   static const Duration _listTimeout = Duration(seconds: 60);
   static const Duration _submitTimeout = Duration(seconds: 45);
@@ -199,9 +199,10 @@ class RajsimsService {
   // ============================================================
 
   /// FAST API: Sirf Dashboard ka stock instantly lane ke liye.
-  static Future<Map<String, dynamic>> fetchStockData() async {
+  static Future<Map<String, dynamic>> fetchStockData({bool force = false}) async {
     try {
-      final uri = Uri.parse('$baseUrl/mdm/stock');
+      final uri = Uri.parse('$baseUrl/mdm/stock')
+          .replace(queryParameters: {if (force) 'force': 'true'});
 
       final response = await http.get(uri, headers: _acceptHeaders).timeout(_stockTimeout);
 
@@ -261,7 +262,10 @@ class RajsimsService {
 
   /// Nayi distribution entry submit karne ke liye (Normal & Legacy).
   static Future<Map<String, dynamic>> submitDistribution(Map<String, dynamic> payload) async {
+    var saved = false;
+    var school = '';
     try {
+      school = (await SecureStorageService.getShaladarpanCreds())['id']?.trim() ?? '';
       final finalPayload = Map<String, dynamic>.from(payload);
 
       // Agar legacy_date maujood hai aur khali nahi hai, to automatically 'legacy: true' set karein
@@ -275,11 +279,25 @@ class RajsimsService {
           .post(Uri.parse('$baseUrl/mdm/submit'), headers: _jsonHeaders, body: jsonEncode(finalPayload))
           .timeout(_submitTimeout);
 
-      return _parseResponse(response);
+      final result = _parseResponse(response);
+      saved = result['success'] == true;
+      return result;
     } catch (e) {
       return _handleException(e, 'Distribution Submit');
     } finally {
       DashboardBootstrap.invalidateMdm();
+      if (saved) unawaited(_refreshMdmAfterWrite(school));
+    }
+  }
+
+  static Future<void> _refreshMdmAfterWrite(String school) async {
+    try {
+      if (school.isEmpty) return;
+      final current = (await SecureStorageService.getShaladarpanCreds())['id']?.trim() ?? '';
+      if (current != school) return;
+      await DashboardBootstrap.loadMdm(school, fresh: true);
+    } catch (e) {
+      debugPrint('MDM status refresh after save: $e');
     }
   }
 
@@ -320,16 +338,22 @@ class RajsimsService {
 
   /// Existing distribution entry update karta hai.
   static Future<Map<String, dynamic>> updateDistribution(Map<String, dynamic> payload) async {
+    var saved = false;
+    var school = '';
     try {
+      school = (await SecureStorageService.getShaladarpanCreds())['id']?.trim() ?? '';
       final response = await http
           .post(Uri.parse('$baseUrl/mdm/update'), headers: _jsonHeaders, body: jsonEncode(payload))
           .timeout(_updateTimeout);
 
-      return _parseResponse(response);
+      final result = _parseResponse(response);
+      saved = result['success'] == true;
+      return result;
     } catch (e) {
       return _handleException(e, 'Distribution Update');
     } finally {
       DashboardBootstrap.invalidateMdm();
+      if (saved) unawaited(_refreshMdmAfterWrite(school));
     }
   }
 }

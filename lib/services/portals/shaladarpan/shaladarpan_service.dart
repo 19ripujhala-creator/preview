@@ -12,14 +12,30 @@ class ShaladarpanService {
   static String get _baseUrl => BackendConfig.baseUrl;
   static Future<Map<String, dynamic>>? _dashboardSync;
   static bool _staffMutationInFlight = false;
+  static int _staffEpoch = 0;
   static final Map<String, Map<String, dynamic>> _staffSnapshots = {};
   static final Map<String, DateTime> _staffSnapshotAt = {};
   static final Map<String, Future<Map<String, dynamic>>> _staffReads = {};
-  static void invalidateStaffSnapshot() { _staffSnapshots.clear(); _staffSnapshotAt.clear(); }
+  static void invalidateStaffSnapshot() { _staffEpoch++; _staffSnapshots.clear(); _staffSnapshotAt.clear(); }
   static void _rememberStaff(String school, Map data) {
     final key = '$school/$_todayStr';
     _staffSnapshots[key] = Map<String, dynamic>.from(data);
     _staffSnapshotAt[key] = DateTime.now();
+  }
+
+  static bool _isCurrentStaffDocument(Map data, String school, String date) {
+    if (data['success'] != true || data['school_id']?.toString() != school ||
+        data['date']?.toString() != date || data['staff'] is! List ||
+        data['is_already_marked'] is! bool || data['attendance_verified'] is! bool) return false;
+    final rows = data['staff'] as List;
+    if (rows.isEmpty) return false;
+    final ids = <String>{};
+    for (final row in rows) {
+      if (row is! Map) return false;
+      final id = (row['staffId'] ?? '').toString().trim();
+      if (!RegExp(r'^\d+$').hasMatch(id) || !ids.add(id)) return false;
+    }
+    return true;
   }
 
   static bool isAttendanceConfirmed(Map data) {
@@ -172,10 +188,11 @@ class ShaladarpanService {
     final prefs = await SharedPreferences.getInstance();
     final held = prefs.getBool('attendance_submission_hold_${school}_$_todayStr') == true;
     final at = _staffSnapshotAt[key];
-    if (!forceRefresh && !held && !_staffMutationInFlight && at != null && DateTime.now().difference(at) < const Duration(seconds: 30)) {
+    if (!forceRefresh && !held && !_staffMutationInFlight && at != null && DateTime.now().difference(at) < const Duration(seconds: 30) &&
+        _isCurrentStaffDocument(_staffSnapshots[key] ?? {}, school, _todayStr)) {
       return {'success': true, 'data': Map<String, dynamic>.from(_staffSnapshots[key]!)};
     }
-    final readKey = '$key/$forceRefresh';
+    final readKey = '$key/$forceRefresh/$_staffEpoch';
     final existing = _staffReads[readKey];
     if (existing != null) return existing;
     final task = _fetchStaffAttendance(schoolId: school, forceRefresh: forceRefresh || held);
@@ -185,6 +202,8 @@ class ShaladarpanService {
   }
 
   static Future<Map<String, dynamic>> _fetchStaffAttendance({String? schoolId, bool forceRefresh = false}) async {
+    final readEpoch = _staffEpoch;
+    final requestedDate = _todayStr;
     try {
       final prefs = await SharedPreferences.getInstance();
       final effectiveSchoolId = await _getEffectiveSchoolId(schoolId);
@@ -207,6 +226,23 @@ class ShaladarpanService {
             return {'success': false, 'code': 'ACCOUNT_CHANGED', 'message': 'School account changed during fetch.'};
           }
           final staffData = Map<String, dynamic>.from(data['data']);
+          if (readEpoch != _staffEpoch || _staffMutationInFlight || requestedDate != _todayStr) {
+            return {'success': false, 'code': 'STALE_ATTENDANCE_READ',
+              'message': 'Attendance changed during refresh. Refresh after submission has finished.'};
+          }
+          if (!_isCurrentStaffDocument(staffData, effectiveSchoolId, requestedDate)) {
+            return {'success': false, 'code': 'INVALID_ATTENDANCE_DOCUMENT',
+              'message': 'Portal school, date or employee identities could not be verified.'};
+          }
+          // force_refresh bypasses both frontend snapshots and the backend cache.
+          // The backend reads under the attendance resource lease, after mutations settle.
+          final verifiedPending = forceRefresh && staffData['is_already_marked'] == false &&
+              staffData['attendance_verified'] == false && staffData['attendance_status'] == 'pending' &&
+              (staffData['marked_at'] == null || staffData['marked_at'].toString().trim().isEmpty) &&
+              (staffData['portal_marking_text'] ?? '').toString().trim().isEmpty;
+          if (verifiedPending) {
+            await prefs.remove('attendance_submission_hold_${effectiveSchoolId}_$requestedDate');
+          }
           _rememberStaff(effectiveSchoolId, staffData);
           await prefs.setString('cached_staff_attendance', jsonEncode(staffData));
           await prefs.setString('dashboard_cache_school_id', effectiveSchoolId);
@@ -236,8 +272,7 @@ class ShaladarpanService {
     if (_staffMutationInFlight) return {'success': false, 'code': 'SUBMISSION_BUSY',
       'message': 'Attendance submission is already in progress.'};
     _staffMutationInFlight = true;
-    _staffSnapshots.clear();
-    _staffSnapshotAt.clear();
+    invalidateStaffSnapshot();
     try {
       final prefs = await SharedPreferences.getInstance();
       final effectiveSchoolId = await _getEffectiveSchoolId(schoolId);
