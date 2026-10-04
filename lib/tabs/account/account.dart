@@ -1,1184 +1,955 @@
-import 'dart:ui';
+import 'package:shaladarpan/widgets/adaptive_layout.dart';
+import 'package:shaladarpan/services/core/account_identity.dart';
+import 'dart:async';
+import 'dart:convert';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shaladarpan/services/core/profile_photo_store.dart';
+import 'report_issue_screen.dart';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shaladarpan/services/core/account_service.dart';
+import 'package:shaladarpan/services/core/secure_storage_service.dart';
+import 'package:shaladarpan/services/portals/shaladarpan/dashboard_bootstrap.dart';
 
 const String kAppFont = 'PlusJakartaSans';
-
-class _NoGlowScrollBehavior extends ScrollBehavior {
-  const _NoGlowScrollBehavior();
-
-  @override
-  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
-    return child;
-  }
-}
+const _ink = Color(0xFF0F172A);
+const _muted = Color(0xFF64748B);
+const _border = Color(0xFFE2E8F0);
 
 class AccountTabView extends StatefulWidget {
   final String schoolId;
   final VoidCallback onLogoutRequested;
-
-  const AccountTabView({
-    super.key,
-    required this.schoolId,
-    required this.onLogoutRequested,
-  });
-
+  const AccountTabView({super.key, required this.schoolId, required this.onLogoutRequested});
   @override
   State<AccountTabView> createState() => _AccountTabViewState();
 }
 
-class _AccountTabViewState extends State<AccountTabView> {
-  // App Preferences
-  bool _autoSyncEnabled = true;
-  String _syncInterval = "Every 30 Mins";
-  bool _attendanceCutoffAlert = true;
-  bool _mdmDailyReminder = true;
-  bool _biometricLock = false;
-  bool _hapticsEnabled = true;
-
-  // Multi-Portal Credentials & Live Status
-  late String _shalaSchoolId;
-  String _shalaPassword = "••••••••";
-  String _shalaStatus = "Healthy (10:15 AM)";
-
-  String _staffWindowId = "1553675";
-  String _staffWindowPassword = "••••••••";
-  String _staffStatus = "Active (09:40 AM)";
-
-  String _rajsimsCode = "480481";
-  String _rajsimsPassword = "••••••••";
-  String _rajsimsStatus = "Synced (10:15 AM)";
+class _AccountTabViewState extends State<AccountTabView> with WidgetsBindingObserver {
+  Timer? _sessionTimer;
+  bool _sessionPolling = false;
+  Map<String, String> _ids = {};
+  Map<String, dynamic> _portals = {};
+  String? _name;
+  String? _designation;
+  String? _schoolName;
+  DateTime? _checkedAt;
+  bool _loading = true;
+  bool _refreshing = false;
+  bool _editing = false;
+  bool _storageFailed = false;
+  bool _statusFailed = false;
+  int _epoch = 0;
+  Uint8List? _photo;
+  bool _photoChanging = false;
+  bool _lostPhotoChecked = false;
+  String get _photoKey => 'account_photo_v1/${widget.schoolId}/${_ids['staff_id'] ?? ""}';
 
   @override
   void initState() {
     super.initState();
-    _shalaSchoolId = widget.schoolId;
+    WidgetsBinding.instance.addObserver(this);
+    _sessionTimer = Timer.periodic(const Duration(seconds: 20), (_) => _refreshSessions());
+    DashboardBootstrap.mdmStatus.addListener(_readSchoolName);
+    _readSchoolName();
+    _load();
   }
 
-  void _haptic() {
-    if (_hapticsEnabled) {
-      HapticFeedback.selectionClick();
+  @override
+  void didUpdateWidget(covariant AccountTabView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.schoolId != widget.schoolId) {
+      _epoch++;
+      _refreshing = false;
+      _ids = {};
+      _portals = {};
+      _name = null;
+      _designation = null;
+      _schoolName = null;
+      _checkedAt = null;
+      _photo = null;
+      _load();
     }
   }
 
-  void _showAppleToast(String message, {IconData icon = CupertinoIcons.checkmark_circle_fill}) {
-    _haptic();
-    final overlay = Overlay.of(context);
-    final topInset = MediaQuery.of(context).padding.top;
+  @override
+  void dispose() {
+    _epoch++;
+    _sessionTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    DashboardBootstrap.mdmStatus.removeListener(_readSchoolName);
+    super.dispose();
+  }
 
-    late OverlayEntry entry;
-    entry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: topInset + 14,
-        left: 20,
-        right: 20,
-        child: Center(
-          child: Material(
-            color: Colors.transparent,
-            child: TweenAnimationBuilder<double>(
-              duration: const Duration(milliseconds: 280),
-              curve: Curves.easeOutBack,
-              tween: Tween(begin: 0.0, end: 1.0),
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value.clamp(0.0, 1.0),
-                  child: Transform.translate(
-                    offset: Offset(0, -15 * (1 - value)),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F172A),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withOpacity(0.14), width: 1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.16),
-                            blurRadius: 16,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(icon, color: const Color(0xFF10B981), size: 16),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              message,
-                              style: const TextStyle(
-                                fontFamily: kAppFont,
-                                fontSize: 12.0,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshSessions();
+  }
+
+  Future<void> _refreshSessions() async {
+    if (!mounted || _refreshing || _editing || _sessionPolling ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.paused) return;
+    _sessionPolling = true;
+    final epoch = _epoch;
+    try {
+      final status = await AccountService.connections();
+      if (!mounted || epoch != _epoch) return;
+      final current = await SecureStorageService.getAllPortalCreds();
+      if (!mounted || epoch != _epoch || !_sameAccount(current, _ids)) return;
+      final portals = status['portals'];
+      setState(() {
+        _statusFailed = status['success'] != true || portals is! Map;
+        _portals = _statusFailed ? {} : Map<String, dynamic>.from(portals);
+        _checkedAt = _statusFailed ? null : DateTime.now();
+      });
+    } catch (_) {
+      if (mounted && epoch == _epoch) setState(() { _statusFailed = true; _portals = {}; _checkedAt = null; });
+    } finally { _sessionPolling = false; }
+  }
+
+  static String _clock(DateTime value) {
+    final local = value.toLocal();
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    return '$hour:${local.minute.toString().padLeft(2, '0')} ${local.hour < 12 ? 'AM' : 'PM'}';
+  }
+
+  static String? _text(dynamic value) {
+    final text = value?.toString().trim() ?? '';
+    return text.isEmpty || ['--', 'unknown', 'staff user'].contains(text.toLowerCase()) ? null : text;
+  }
+
+  void _readSchoolName() {
+    final snapshot = DashboardBootstrap.mdmStatus.value;
+    final result = snapshot?['result'];
+    if (snapshot?['school_id'] != widget.schoolId || result is! Map || result['success'] != true) return;
+    final name = _text(result['school_name']);
+    final reported = result['school_id']?.toString() ?? RegExp(r'\((\d{6})\)').firstMatch(name ?? '')?.group(1);
+    if (reported != widget.schoolId || name == null) return;
+    if (mounted) setState(() => _schoolName = name);
+  }
+
+  Future<void> _load() async {
+    if (_refreshing || _editing || _photoChanging) return;
+    final epoch = ++_epoch;
+    final school = widget.schoolId;
+    setState(() { _refreshing = true; _statusFailed = false; });
+    try {
+      final credentials = await SecureStorageService.getAllPortalCreds();
+      if (!mounted || epoch != _epoch) return;
+      if (credentials['school_id'] != school) {
+        setState(() { _storageFailed = true; _loading = false; _portals = {}; });
+        return;
+      }
+      setState(() {
+        _ids = {'school_id': credentials['school_id'] ?? '', 'staff_id': credentials['staff_id'] ?? '', 'sso_id': credentials['sso_id'] ?? ''};
+        _storageFailed = false;
+        _loading = false;
+        _portals = {};
+        _name = null;
+        _designation = null;
+      });
+      await _loadPhoto();
+      if (!mounted || epoch != _epoch) return;
+      final status = await AccountService.connections();
+      if (!mounted || epoch != _epoch) return;
+      final current = await SecureStorageService.getAllPortalCreds();
+      if (!mounted || epoch != _epoch || !_sameAccount(current, credentials)) return;
+      final raw = status['portals'];
+      setState(() {
+        _statusFailed = status['success'] != true || raw is! Map;
+        _portals = _statusFailed ? {} : Map<String, dynamic>.from(raw);
+        _checkedAt = _statusFailed ? null : DateTime.now();
+        _refreshing = false;
+      });
+      final staff = _portals['staff_login'];
+      if (staff is! Map || !_ready(staff)) return;
+      final response = await AccountService.profile();
+      if (!mounted || epoch != _epoch) return;
+      final after = await SecureStorageService.getAllPortalCreds();
+      if (!mounted || epoch != _epoch || !_sameAccount(after, credentials)) return;
+      final profile = response['profile'];
+      if (response['success'] == true && profile is Map &&
+          profile['staffLoginId']?.toString().trim() == _ids['staff_id']) {
+        await AccountIdentity.remember(school, credentials['staff_id'] ?? '', profile);
+        if (!mounted || epoch != _epoch) return;
+        setState(() {
+          _name = _text(profile['name']);
+          _designation = _text(profile['designation']);
+        });
+      }
+    } catch (_) {
+      if (mounted && epoch == _epoch) setState(() { _storageFailed = _ids.isEmpty; _statusFailed = true; _portals = {}; });
+    } finally {
+      if (mounted && epoch == _epoch) setState(() { _refreshing = false; _loading = false; });
+    }
+  }
+
+  bool _sameAccount(Map<String, String> a, Map<String, String> b) =>
+      ['school_id', 'staff_id', 'sso_id'].every((key) => a[key] == b[key]) && a['school_id'] == widget.schoolId;
+
+  static bool _ready(Map portal) => portal['state'] == 'ready' && portal['live'] == true && portal['stale'] != true && '${portal['coordinator_health'] ?? ''}'.toLowerCase() == 'ready';
+
+  ({String label, Color color}) _status(String key) {
+    final portal = _portals[key];
+    if (portal is! Map) return (label: _refreshing ? 'Checking' : 'Unknown', color: _muted);
+    if (_ready(portal) && _checkedAt != null && DateTime.now().difference(_checkedAt!).inSeconds < 45) return (label: 'Active', color: const Color(0xFF248B60));
+    final health = '${portal['coordinator_health'] ?? ''}'.toLowerCase();
+    if (['authenticating', 'recovering'].contains(health) || portal['state'] == 'loading') {
+      return (label: 'Connecting', color: const Color(0xFFB7791F));
+    }
+    if (health == 'unknown') return (label: 'Not confirmed', color: const Color(0xFFB7791F));
+    if (['expired', 'failed', 'idle'].contains(health)) return (label: 'Inactive', color: _muted);
+    return (label: 'Unknown', color: _muted);
+  }
+
+  void _notice(String text) {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(SnackBar(content: Text(text), behavior: SnackBarBehavior.floating));
+  }
+
+
+  Future<void> _loadPhoto() async {
+    final key = _photoKey;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final encoded = prefs.getString(key);
+      if (mounted && key == _photoKey) {
+        setState(() => _photo = encoded == null ? null : base64Decode(encoded));
+      }
+      if (!_lostPhotoChecked && !kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        _lostPhotoChecked = true;
+        final pending = prefs.getString('account_photo_pending');
+        final lost = await ImagePicker().retrieveLostData();
+        if (pending == key && lost.files?.isNotEmpty == true && mounted && key == _photoKey) {
+          await _savePhoto(lost.files!.first, key);
+        }
+        if (prefs.getString('account_photo_pending') == pending) await prefs.remove('account_photo_pending');
+      }
+    } catch (_) {
+      if (mounted && key == _photoKey) setState(() => _photo = null);
+    }
+  }
+
+  Future<void> _savePhoto(XFile file, String key) async {
+    if (await file.length() > 5 * 1024 * 1024) throw StateError('Choose a photo smaller than 5 MB.');
+    final original = await file.readAsBytes();
+    final codec = await ui.instantiateImageCodec(original, targetWidth: 512, allowUpscaling: false);
+    Uint8List? bytes;
+    try {
+      final frame = await codec.getNextFrame();
+      try {
+        final data = await frame.image.toByteData(format: ui.ImageByteFormat.png);
+        if (data != null) bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+      } finally {
+        frame.image.dispose();
+      }
+    } finally {
+      codec.dispose();
+    }
+    if (bytes == null || bytes.length > 2 * 1024 * 1024) throw StateError('Choose a smaller photo.');
+    final current = await SecureStorageService.getAllPortalCreds();
+    if (!mounted || key != _photoKey || current['school_id'] != widget.schoolId || current['staff_id'] != _ids['staff_id']) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (!await prefs.setString(key, base64Encode(bytes))) throw StateError('Photo could not be saved.');
+    ProfilePhotoStore.changed();
+    if (mounted && key == _photoKey) setState(() => _photo = bytes);
+  }
+
+  Future<void> _changePhoto() async {
+    if (_photoChanging || _editing || _loading || _storageFailed) return;
+    final key = _photoKey;
+    final action = await showModalBottomSheet<String>(
+      context: context, useSafeArea: true, backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => Padding(padding: const EdgeInsets.fromLTRB(16, 20, 16, 20), child: Column(
+        mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(padding: const EdgeInsets.only(left: 16, bottom: 8), child: Text('Profile photo', style: _style(16, FontWeight.w600))),
+          ListTile(leading: const Icon(CupertinoIcons.photo), title: Text('Choose a photo', style: _style(13)), onTap: () => Navigator.pop(context, 'choose')),
+          if (_photo != null) ListTile(leading: const Icon(CupertinoIcons.trash, size: 18, color: Color(0xFFFF214B)), title: Text('Remove photo', style: _style(13, FontWeight.w500, const Color(0xFFFF214B))), onTap: () => Navigator.pop(context, 'remove')),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), child: Text('Saved on this device. Your portal profile is unchanged.', style: _style(11.5, FontWeight.w400, _muted))),
+        ],
+      )),
+    );
+    if (action == null || !mounted || key != _photoKey) return;
+    setState(() => _photoChanging = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (action == 'remove') {
+        if (!await prefs.remove(key)) throw StateError('Photo could not be removed.');
+        ProfilePhotoStore.changed();
+        if (mounted && key == _photoKey) setState(() => _photo = null);
+      } else {
+        await prefs.setString('account_photo_pending', key);
+        final image = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024, imageQuality: 85, requestFullMetadata: false);
+        if (image != null) await _savePhoto(image, key);
+        if (prefs.getString('account_photo_pending') == key) await prefs.remove('account_photo_pending');
+      }
+    } catch (_) {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getString('account_photo_pending') == key) await prefs.remove('account_photo_pending');
+      _notice('Photo could not be saved. Choose a JPG or PNG image smaller than 5 MB.');
+    } finally {
+      if (mounted) setState(() => _photoChanging = false);
+    }
+  }
+
+  Widget _avatar() => Semantics(
+    button: true, label: 'Change profile photo',
+    child: InkWell(
+      onTap: _photoChanging || _editing || _storageFailed ? null : _changePhoto,
+      borderRadius: BorderRadius.circular(40),
+      child: SizedBox(width: 74, height: 74, child: Stack(children: [
+        Positioned.fill(child: Container(
+          decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFF1F5F9), border: Border.all(color: Colors.white, width: 3)),
+          child: ClipOval(child: _photo == null
+              ? const Icon(CupertinoIcons.person, size: 31, color: _ink)
+              : Image.memory(_photo!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.person, size: 31, color: _ink))),
+        )),
+        Positioned(right: 0, bottom: 0, child: Container(
+          width: 25, height: 25,
+          decoration: BoxDecoration(color: _ink, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
+          child: _photoChanging ? const Padding(padding: EdgeInsets.all(5), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 1.5)) : const Icon(CupertinoIcons.camera, color: Colors.white, size: 12),
+        )),
+      ])),
+    ),
+  );
+
+  String _connectionSummary() => [
+    'Shaladarpan — connection summary',
+    'School NIC: ${widget.schoolId}',
+    'Status updated: ${_checkedAt == null ? "Not checked" : _clock(_checkedAt!)}',
+    ...{'shaladarpan': 'Shala Darpan', 'staff_login': 'Staff Login', 'rajsims': 'RajSIMS'}.entries.map((e) => '${e.value}: ${_status(e.key).label}'),
+    'Describe what happened, the screen and the time before sharing this summary.',
+  ].join('\n');
+
+  void _aboutApp() => Navigator.of(context).push(CupertinoPageRoute<void>(
+    builder: (_) => const _AboutAppScreen(),
+  ));
+
+  void _openReport() => Navigator.of(context).push(CupertinoPageRoute<void>(
+    builder: (_) => ReportIssueScreen(connectionSummary: _connectionSummary()),
+  ));
+
+  void _openHelp() => Navigator.of(context).push(CupertinoPageRoute<void>(
+    builder: (_) => _HelpCenterScreen(connectionSummary: _connectionSummary),
+  ));
+
+  Widget _signOutFooter() => _surface([
+    Padding(padding: const EdgeInsets.all(16), child: Row(children: [
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Account settings', style: _style(12.5, FontWeight.w600)),
+        const SizedBox(height: 3),
+        Text('Saved details stay on this device', style: _style(10.5, FontWeight.w400, _muted)),
+      ])),
+      const SizedBox(width: 12),
+      FilledButton.icon(
+        onPressed: _editing || _photoChanging ? null : _signOut,
+        style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF214B), foregroundColor: Colors.white,
+          elevation: 0, padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
+        icon: const Icon(Icons.logout_rounded, size: 15),
+        label: Text('Sign Out', style: _style(11.5, FontWeight.w600, Colors.white)),
+      ),
+    ])),
+  ]);
+
+  Future<void> _editAccount() async {
+    if (_editing || _refreshing || _photoChanging) return;
+    setState(() => _editing = true);
+    final formKey = GlobalKey<FormState>();
+    final controls = <String, TextEditingController>{};
+    try {
+      final saved = await SecureStorageService.getAllPortalCreds();
+      if (!mounted) return;
+      if (saved['school_id'] != widget.schoolId) { _notice('Account changed. Sign in again before editing.'); return; }
+      for (final key in ['school_id', 'staff_id', 'sso_id']) {
+        controls[key] = TextEditingController(text: saved[key]);
+      }
+      for (final key in ['school_password', 'staff_password', 'sso_password']) {
+        controls[key] = TextEditingController(text: saved[key]);
+      }
+      final visiblePasswords = <String, bool>{};
+      bool saving = false;
+      String? error;
+      final savedSuccessfully = await Navigator.of(context).push<bool>(CupertinoPageRoute<bool>(
+        builder: (sheetContext) => StatefulBuilder(builder: (context, update) {
+          Widget pair(String title, String idKey, String passKey) {
+            final label = idKey == 'school_id' ? 'School NIC ID' : idKey == 'sso_id' ? 'SSO ID' : 'Staff NIC-SD ID';
+            Widget labelled(String text, Widget input) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(text, style: _style(10.5, FontWeight.w400, _muted)), const SizedBox(height: 4), input,
+            ]);
+            final idField = labelled(label, TextFormField(
+              controller: controls[idKey], enabled: !saving, cursorColor: _ink,
+              onChanged: (value) {
+                if (value.trim() != saved[idKey] && controls[passKey]!.text == saved[passKey]) controls[passKey]!.clear();
               },
-            ),
-          ),
-        ),
-      ),
-    );
-
-    overlay.insert(entry);
-    Future.delayed(const Duration(milliseconds: 2000), () => entry.remove());
-  }
-
-  void _showSyncIntervalPicker() {
-    _haptic();
-    const intervals = ["Instant (On Open)", "Every 15 Mins", "Every 30 Mins", "Every 1 Hour", "Manual Only"];
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFCBD5E1),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              "Background Sync Interval",
-              style: TextStyle(
-                fontFamily: kAppFont,
-                fontSize: 15.5,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            const SizedBox(height: 10),
-            ...intervals.map((intvl) {
-              final isSelected = _syncInterval == intvl;
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                title: Text(
-                  intvl,
-                  style: TextStyle(
-                    fontFamily: kAppFont,
-                    fontSize: 13.0,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? const Color(0xFF0F172A) : const Color(0xFF64748B),
-                  ),
-                ),
-                trailing: isSelected
-                    ? const Icon(CupertinoIcons.checkmark_circle_fill, size: 18, color: Color(0xFF10B981))
-                    : null,
-                onTap: () {
-                  setState(() => _syncInterval = intvl);
-                  Navigator.pop(context);
-                  _showAppleToast("Sync interval: $intvl");
-                },
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showCredentialEditor({
-    required String portalName,
-    required String idLabel,
-    required String currentId,
-    required String currentPassword,
-    required Function(String newId, String newPass) onSave,
-  }) {
-    _haptic();
-    final idController = TextEditingController(text: currentId);
-    final passController = TextEditingController(text: currentPassword == "••••••••" ? "" : currentPassword);
-    bool obscurePassword = true;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              autocorrect: false, enableSuggestions: false,
+              style: _style(12), decoration: _input(label).copyWith(isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12)),
+              validator: (v) => v == null || v.trim().isEmpty ? 'Enter login ID' : null,
+            ));
+            final passwordField = labelled('Password', TextFormField(
+              controller: controls[passKey], enabled: !saving, cursorColor: _ink,
+              obscureText: !(visiblePasswords[passKey] ?? false), autocorrect: false, enableSuggestions: false,
+              style: _style(12), decoration: _input('Password').copyWith(
+                isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                suffixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                suffixIcon: IconButton(
+                  tooltip: visiblePasswords[passKey] == true ? 'Hide password' : 'Show password',
+                  onPressed: saving ? null : () => update(() => visiblePasswords[passKey] = !(visiblePasswords[passKey] ?? false)),
+                  icon: Icon(visiblePasswords[passKey] == true ? CupertinoIcons.eye_slash : CupertinoIcons.eye, size: 16, color: _muted))),
+              validator: (v) => (v ?? '').isEmpty ? 'Enter password' : null,
+            ));
+            return Padding(padding: const EdgeInsets.only(bottom: 10),
+              child: Container(padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: _border)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Container(width: 26, height: 26, padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(color: const Color(0xFFF3F5F7), borderRadius: BorderRadius.circular(8)),
+                      child: Image.asset(idKey == 'school_id' ? 'assets/icons/shaladarpan.png' : idKey == 'staff_id' ? 'assets/icons/staff.png' : 'assets/icons/rajsims.png',
+                        errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.lock, size: 15))),
+                    const SizedBox(width: 8), Text(title, style: _style(12.5, FontWeight.w600)),
+                  ]),
+                  const SizedBox(height: 8),
+                  Column(children: [idField, const SizedBox(height: 8), passwordField]),
+                ]),
+              ));
+          }
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: Theme.of(context).colorScheme.copyWith(primary: _ink, secondary: _ink, error: _muted),
+              textSelectionTheme: const TextSelectionThemeData(cursorColor: _ink, selectionColor: Color(0xFFCBD5E1), selectionHandleColor: _ink)),
+            child: PopScope(
+            canPop: !saving,
+            child: Scaffold(
+              backgroundColor: const Color(0xFFF8FAFC),
+              appBar: AppBar(backgroundColor: const Color(0xFFF8FAFC), surfaceTintColor: Colors.transparent, elevation: 0,
+                leading: IconButton(onPressed: saving ? null : () => Navigator.pop(sheetContext, false), icon: const Icon(CupertinoIcons.chevron_back, size: 19)),
+                title: Text('Account details', style: _style(18, FontWeight.w600))),
+              body: Container(
+                decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  stops: [0, .45, 1], colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)])),
+                child: SizedBox.expand(child: Align(alignment: Alignment.topCenter,
+                child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 620),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                child: Form(key: formKey, child: Column(
+                  mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Center(
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFCBD5E1),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "$portalName Credentials",
-                          style: const TextStyle(
-                            fontFamily: kAppFont,
-                            fontSize: 16.0,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFDCFCE7),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            "256-Bit Encrypted",
-                            style: TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF16A34A),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      "Automates daily attendance, leave logs, and Mid-Day Meal stock.",
-                      style: TextStyle(
-                        fontFamily: kAppFont,
-                        fontSize: 11.5,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      idLabel.toUpperCase(),
-                      style: const TextStyle(
-                        fontFamily: kAppFont,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF475569),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: TextField(
-                        controller: idController,
-                        style: const TextStyle(fontFamily: kAppFont, fontSize: 13, color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                        ),
-                      ),
-                    ),
+                    Text('Manage your portal logins', style: _style(12, FontWeight.w400, _muted)),
                     const SizedBox(height: 12),
-                    const Text(
-                      "PORTAL PASSWORD / PIN",
-                      style: TextStyle(
-                        fontFamily: kAppFont,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF475569),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: TextField(
-                        controller: passController,
-                        obscureText: obscurePassword,
-                        style: const TextStyle(fontFamily: kAppFont, fontSize: 13, color: Color(0xFF0F172A), fontWeight: FontWeight.w600),
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              obscurePassword ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
-                              size: 17,
-                              color: const Color(0xFF64748B),
-                            ),
-                            onPressed: () => setSheetState(() => obscurePassword = !obscurePassword),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SizedBox(
-                            height: 42,
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFFE2E8F0)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              child: const Text("Cancel", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF475569))),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: SizedBox(
-                            height: 42,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                if (idController.text.trim().isNotEmpty) {
-                                  onSave(idController.text.trim(), passController.text.trim().isEmpty ? "••••••••" : passController.text.trim());
-                                  Navigator.pop(ctx);
-                                  _showAppleToast("$portalName credentials updated");
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0F172A),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              child: const Text("Save & Verify", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                    pair('Shaladarpan', 'school_id', 'school_password'),
+                    pair('Staff Login', 'staff_id', 'staff_password'),
+                    pair('RajSIMS', 'sso_id', 'sso_password'),
+                    if (error != null) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text(error!, style: _style(12, FontWeight.w400, _ink))),
+                    Row(children: [
+                      Expanded(child: OutlinedButton(onPressed: saving ? null : () => Navigator.pop(sheetContext, false),
+                        style: OutlinedButton.styleFrom(foregroundColor: _ink, backgroundColor: Colors.white,
+                          side: const BorderSide(color: _border), padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
+                        child: Text('Cancel', style: _style(12, FontWeight.w500)))),
+                      const SizedBox(width: 10),
+                      Expanded(child: FilledButton(
+                        onPressed: saving ? null : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          if (controls['school_id']!.text.trim() == controls['staff_id']!.text.trim()) {
+                            update(() => error = 'School ID and Staff ID must be different.'); return;
+                          }
+                          update(() { saving = true; error = null; });
+                          try {
+                            final current = await SecureStorageService.getAllPortalCreds();
+                            if (!_sameAccount(current, saved)) throw StateError('Account changed. Reopen login details.');
+                            String password(String key) => controls[key]!.text;
+                            await SecureStorageService.saveAllPortals(
+                              shalaId: controls['school_id']!.text.trim(), shalaPass: password('school_password'),
+                              staffId: controls['staff_id']!.text.trim(), staffPass: password('staff_password'),
+                              rajsimsId: controls['sso_id']!.text.trim(), rajsimsPass: password('sso_password'),
+                            );
+                            if (sheetContext.mounted) Navigator.pop(sheetContext, true);
+                          } catch (_) {
+                            if (sheetContext.mounted) update(() { saving = false; error = 'Could not save login details. Please try again.'; });
+                          }
+                        },
+                        style: FilledButton.styleFrom(backgroundColor: _ink, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
+                        child: saving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text('Save & sign out', style: _style(12, FontWeight.w500, Colors.white)),
+                      )),
+                    ]),
                   ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _showStorageInspector() {
-    _haptic();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2)),
+                )),
+              )))),
               ),
             ),
+          ));
+        }),
+      ));
+      if (savedSuccessfully == true && mounted) {
+        _epoch++;
+        widget.onLogoutRequested();
+      }
+    } catch (_) {
+      _notice('Saved login details could not be loaded.');
+    } finally {
+      for (final controller in controls.values) { controller.dispose(); }
+      if (mounted) setState(() => _editing = false);
+    }
+  }
+
+  Future<void> _signOut() async {
+    if (_editing || _photoChanging) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context, backgroundColor: Colors.white, isScrollControlled: true, useSafeArea: true,
+      constraints: const BoxConstraints(maxWidth: 520),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (sheetContext) => SafeArea(top: false, child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(child: Text('Sign out?', style: _style(18, FontWeight.w600))),
+            IconButton(tooltip: 'Close', onPressed: () => Navigator.pop(sheetContext, false),
+              color: _ink, icon: const Icon(CupertinoIcons.xmark, size: 16)),
+          ]),
+          const SizedBox(height: 8),
+          Text('Your saved login details will stay on this device. Use Continue as to sign in again.',
+            style: _style(12, FontWeight.w400, _muted)),
+          const SizedBox(height: 20),
+          Row(children: [
+            Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(sheetContext, false),
+              style: OutlinedButton.styleFrom(foregroundColor: _ink, side: const BorderSide(color: _border),
+                padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
+              child: Text('Cancel', style: _style(12.5, FontWeight.w500)))),
+            const SizedBox(width: 12),
+            Expanded(child: FilledButton(onPressed: () => Navigator.pop(sheetContext, true),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF214B), foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
+              child: Text('Sign out', style: _style(12.5, FontWeight.w600, Colors.white)))),
+          ]),
+        ]),
+      )),
+    );
+    if (confirmed == true && mounted) { _epoch++; widget.onLogoutRequested(); }
+  }
+
+  static TextStyle _style(double size, [FontWeight weight = FontWeight.w500, Color color = _ink]) =>
+      TextStyle(fontFamily: kAppFont, fontSize: size, fontWeight: weight, color: color, height: 1.35, letterSpacing: size >= 16 ? -0.35 : -0.1);
+
+  static InputDecoration _input(String label) => InputDecoration(
+    hintText: label, hintStyle: _style(12, FontWeight.w400, _muted), filled: true, fillColor: const Color(0xFFF3F5F7),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+    errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF94A3B8))),
+    focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: _ink)),
+    errorStyle: _style(11, FontWeight.w400, _muted),
+  );
+
+  Widget _surface(List<Widget> children) => Container(
+    width: double.infinity,
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: _border.withValues(alpha: 0.65)), boxShadow: [BoxShadow(color: _ink.withValues(alpha: 0.025), blurRadius: 18, offset: const Offset(0, 5))]),
+    child: Column(children: children),
+  );
+
+  Widget _section(String title, Widget child) => Padding(
+    padding: const EdgeInsets.only(top: 24),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(padding: const EdgeInsets.only(left: 4, bottom: 10), child: Text(title, style: _style(12, FontWeight.w600, _muted))),
+      child,
+    ]),
+  );
+
+  Widget _row(IconData icon, String title, String subtitle, {Widget? trailing, VoidCallback? onTap}) =>
+    CupertinoButton(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), onPressed: onTap,
+      child: Row(children: [
+        Container(width: 32, height: 32, decoration: BoxDecoration(color: const Color(0xFFF1F4F7), borderRadius: BorderRadius.circular(10)),
+          child: Icon(icon, size: 18, color: _ink)),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: _style(13, FontWeight.w500)),
+          const SizedBox(height: 2), Text(subtitle, style: _style(11, FontWeight.w400, _muted)),
+        ])),
+        if (trailing != null) ...[const SizedBox(width: 8), trailing],
+      ]));
+
+  Widget _portal(String key, String title, String idKey, IconData icon) {
+    final state = _status(key);
+    final id = _ids[idKey] ?? '';
+    final assets = {'shaladarpan': 'shaladarpan', 'staff_login': 'staff', 'rajsims': 'rajsims'};
+    return CupertinoButton(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      onPressed: () => showModalBottomSheet<void>(
+        context: context, backgroundColor: Colors.white,
+        isScrollControlled: true, useSafeArea: true,
+        constraints: const BoxConstraints(maxWidth: 520),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+        builder: (sheetContext) => SafeArea(top: false, child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(width: 38, height: 38, padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(color: const Color(0xFFF5F7FA), borderRadius: BorderRadius.circular(12)),
+                child: Image.asset('assets/icons/${assets[key]}.png', fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Icon(icon, size: 22, color: _ink))),
+              const SizedBox(width: 12), Expanded(child: Text(title, style: _style(16, FontWeight.w600))),
+              IconButton(tooltip: 'Close', onPressed: () => Navigator.pop(sheetContext),
+                icon: const Icon(CupertinoIcons.xmark, size: 16, color: _muted)),
+            ]),
             const SizedBox(height: 16),
-            const Text(
-              "Local Offline Cache Details",
-              style: TextStyle(fontFamily: kAppFont, fontSize: 16.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
-            ),
-            const SizedBox(height: 14),
-            _buildInspectorRow("Staff Details & Biometrics Cache", "1.2 MB"),
-            const Divider(height: 14, color: Color(0xFFF1F5F9)),
-            _buildInspectorRow("Student Attendance & Roster", "920 KB"),
-            const Divider(height: 14, color: Color(0xFFF1F5F9)),
-            _buildInspectorRow("Raj-SIMS MDM Food Grain Ledgers", "1.7 MB"),
-            const Divider(height: 14, color: Color(0xFFF1F5F9)),
-            _buildInspectorRow("Total Stored Offline Data", "3.82 MB", isBold: true),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 42,
-              child: ElevatedButton.icon(
-                icon: const Icon(CupertinoIcons.trash, size: 15),
-                label: const Text("Purge Cache & Reload", style: TextStyle(fontFamily: kAppFont, fontSize: 13, fontWeight: FontWeight.w700)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFEF4444),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                  _showAppleToast("Cache cleared (3.82 MB freed)", icon: CupertinoIcons.trash_fill);
-                },
-              ),
-            ),
-          ],
-        ),
+            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Login ID', style: _style(10.5, FontWeight.w400, _muted)),
+                const SizedBox(height: 4), SelectableText(id.isEmpty ? 'Not configured' : id, style: _style(12.5, FontWeight.w500)),
+              ])),
+              const SizedBox(width: 12),
+              Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(color: state.label == 'Active' ? const Color(0xFF69F0AE) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(20)),
+                child: Text(state.label, style: _style(10.5, FontWeight.w500,
+                  state.label == 'Active' ? const Color(0xFF064E3B) : state.color))),
+            ]),
+            const Divider(height: 26, color: _border),
+            Row(children: [
+              Expanded(child: Text('Last updated', style: _style(11, FontWeight.w400, _muted))),
+              Text(_checkedAt == null ? 'Not confirmed' : _clock(_checkedAt!), style: _style(11, FontWeight.w500)),
+            ]),
+            const SizedBox(height: 8),
+            Text(state.label == 'Active' ? 'Session available' : state.label == 'Connecting' ? 'Session is connecting' :
+              state.label == 'Inactive' ? 'Sign in to reconnect' : 'Session status could not be confirmed',
+              style: _style(11, FontWeight.w400, _muted)),
+          ]),
+        )),
       ),
-    );
-  }
-
-  Widget _buildInspectorRow(String label, String size, {bool isBold = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: isBold ? FontWeight.w700 : FontWeight.w500, color: const Color(0xFF475569))),
-        Text(size, style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: isBold ? const Color(0xFF0F172A) : const Color(0xFF64748B))),
-      ],
-    );
-  }
-
-  void _confirmSignOut() {
-    _haptic();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(22.0),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFCBD5E1),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              "${widget.schoolId} !",
-              style: const TextStyle(
-                fontFamily: kAppFont,
-                fontSize: 16.5,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              "Are you sure you want to sign out of the Unified Portal Hub?",
-              style: TextStyle(
-                fontFamily: kAppFont,
-                fontSize: 12.0,
-                color: Color(0xFF64748B),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 42,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFCBD5E1)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: const Text(
-                        "Cancel",
-                        style: TextStyle(fontFamily: kAppFont, fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: SizedBox(
-                    height: 42,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        widget.onLogoutRequested();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFEF4444),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: const Text(
-                        "Sign Out",
-                        style: TextStyle(fontFamily: kAppFont, fontSize: 13, fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-          ],
-        ),
-      ),
-    );
+      child: Row(children: [
+        Container(width: 34, height: 34, padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(color: const Color(0xFFF5F7FA), borderRadius: BorderRadius.circular(11)),
+          child: Image.asset('assets/icons/${assets[key]}.png', fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Icon(icon, size: 20, color: _ink))),
+        const SizedBox(width: 11),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: _style(12.5, FontWeight.w600)),
+          const SizedBox(height: 2), Text(id.isEmpty ? 'Not configured' : id, style: _style(10.5, FontWeight.w400, _muted)),
+        ])),
+        const SizedBox(width: 8),
+        if (state.label == 'Active') Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(color: const Color(0xFF69F0AE), borderRadius: BorderRadius.circular(20)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.circle, size: 4, color: Color(0xFF064E3B)),
+            const SizedBox(width: 5), Text('Active', style: _style(10, FontWeight.w600, const Color(0xFF064E3B))),
+          ]),
+        ) else ...[
+          if (state.label == 'Checking' || state.label == 'Connecting') const CupertinoActivityIndicator(radius: 6)
+          else Icon(Icons.circle, size: 5, color: state.color),
+          const SizedBox(width: 5), Text(state.label, style: _style(10.5, FontWeight.w500, state.color)),
+        ],
+      ]));
   }
 
   @override
   Widget build(BuildContext context) {
+    final name = _name ?? (_loading ? 'Loading account…' : 'School account');
+    final school = _ids['school_id'] ?? widget.schoolId;
+    final checked = _checkedAt;
     return Container(
+      // Inherit the dashboard background so it continues behind navigation.
       color: Colors.transparent,
-      child: ScrollConfiguration(
-        behavior: const _NoGlowScrollBehavior(),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-          padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 120.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. School & Identity Island
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.96),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white, width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0F172A).withOpacity(0.04),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white,
-                            border: Border.all(color: const Color(0xFFF1F5F9), width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: ClipOval(
-                            child: Image.asset(
-                              'assets/icons/user.png',
-                              width: 52,
-                              height: 52,
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, e, s) => const Icon(
-                                Icons.person_rounded,
-                                size: 26,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      "${widget.schoolId} !",
-                                      style: const TextStyle(
-                                        fontFamily: kAppFont,
-                                        fontSize: 16.0,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF0F172A),
-                                        letterSpacing: -0.3,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDCFCE7),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text(
-                                      "SSO Linked",
-                                      style: TextStyle(
-                                        fontFamily: kAppFont,
-                                        fontSize: 9.5,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFF16A34A),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              const Text(
-                                "Headmaster / Institutional In-charge",
-                                style: TextStyle(
-                                  fontFamily: kAppFont,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                              const SizedBox(height: 1),
-                              const Text(
-                                "Govt. Primary School Jethiyakhedi",
-                                style: TextStyle(
-                                  fontFamily: kAppFont,
-                                  fontSize: 10.5,
-                                  color: Color(0xFF94A3B8),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // School Info Chips Row
-                    Row(
-                      children: [
-                        _buildMetaTag("U-DISE", "08270104801"),
-                        const SizedBox(width: 6),
-                        _buildMetaTag("Block", "Pratapgarh"),
-                        const SizedBox(width: 6),
-                        _buildMetaTag("Category", "Pri (1-5)"),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // 2. Multi-Portal Credential Manager with Live Health Indicator
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Text(
-                    "Credential & Portal Manager",
-                    style: TextStyle(
-                      fontFamily: kAppFont,
-                      fontSize: 13.0,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                  Text(
-                    "3/3 Connected",
-                    style: TextStyle(
-                      fontFamily: kAppFont,
-                      fontSize: 11.0,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF16A34A),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.96),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  children: [
-                    _buildPortalHealthRow(
-                      title: "Shaladarpan School Portal",
-                      loginId: "ID: $_shalaSchoolId",
-                      status: _shalaStatus,
-                      badgeColor: const Color(0xFF10B981),
-                      icon: CupertinoIcons.building_2_fill,
-                      onTap: () => _showCredentialEditor(
-                        portalName: "Shaladarpan",
-                        idLabel: "School Login ID",
-                        currentId: _shalaSchoolId,
-                        currentPassword: _shalaPassword,
-                        onSave: (id, pass) {
-                          setState(() {
-                            _shalaSchoolId = id;
-                            _shalaPassword = pass;
-                            _shalaStatus = "Updated Just now";
-                          });
-                        },
-                      ),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 46),
-                    _buildPortalHealthRow(
-                      title: "Staff Window Portal",
-                      loginId: "NIC-SD: $_staffWindowId",
-                      status: _staffStatus,
-                      badgeColor: const Color(0xFF0284C7),
-                      icon: CupertinoIcons.person_badge_plus_fill,
-                      onTap: () => _showCredentialEditor(
-                        portalName: "Staff Window",
-                        idLabel: "Staff Login ID",
-                        currentId: _staffWindowId,
-                        currentPassword: _staffWindowPassword,
-                        onSave: (id, pass) {
-                          setState(() {
-                            _staffWindowId = id;
-                            _staffWindowPassword = pass;
-                            _staffStatus = "Updated Just now";
-                          });
-                        },
-                      ),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 46),
-                    _buildPortalHealthRow(
-                      title: "Raj-SIMS MDM Portal",
-                      loginId: "Code: $_rajsimsCode",
-                      status: _rajsimsStatus,
-                      badgeColor: const Color(0xFFF97316),
-                      icon: CupertinoIcons.bag_fill,
-                      onTap: () => _showCredentialEditor(
-                        portalName: "Raj-SIMS",
-                        idLabel: "School MDM Code",
-                        currentId: _rajsimsCode,
-                        currentPassword: _rajsimsPassword,
-                        onSave: (id, pass) {
-                          setState(() {
-                            _rajsimsCode = id;
-                            _rajsimsPassword = pass;
-                            _rajsimsStatus = "Updated Just now";
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              // 3. Automation & Portal Sync Settings
-              const Text(
-                "Automation & Cutoff Reminders",
-                style: TextStyle(
-                  fontFamily: kAppFont,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.96),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  children: [
-                    _buildSwitchTile(
-                      title: "1-Click Multi-Portal Auto-Sync",
-                      subtitle: "Automates staff attendance and student records",
-                      value: _autoSyncEnabled,
-                      icon: CupertinoIcons.arrow_2_circlepath,
-                      onChanged: (v) => setState(() => _autoSyncEnabled = v),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 46),
-                    _buildNavTile(
-                      title: "Sync Schedule",
-                      subtitle: _syncInterval,
-                      icon: CupertinoIcons.timer,
-                      onTap: _showSyncIntervalPicker,
-                    ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 46),
-                    _buildSwitchTile(
-                      title: "Staff Attendance Cutoff Alert",
-                      subtitle: "Daily warning before 09:30 AM portal cutoff",
-                      value: _attendanceCutoffAlert,
-                      icon: CupertinoIcons.alarm,
-                      onChanged: (v) => setState(() => _attendanceCutoffAlert = v),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 46),
-                    _buildSwitchTile(
-                      title: "Daily MDM Distribution Alert",
-                      subtitle: "Daily reminder at 01:30 PM for meal entry",
-                      value: _mdmDailyReminder,
-                      icon: CupertinoIcons.bell,
-                      onChanged: (v) => setState(() => _mdmDailyReminder = v),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              // 4. Security & Local Offline Cache
-              const Text(
-                "Security & Local Storage",
-                style: TextStyle(
-                  fontFamily: kAppFont,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.96),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  children: [
-                    _buildSwitchTile(
-                      title: "Biometric / App PIN Lock",
-                      subtitle: "Protect credentials with Fingerprint/FaceID",
-                      value: _biometricLock,
-                      icon: CupertinoIcons.lock_shield_fill,
-                      onChanged: (v) {
-                        setState(() => _biometricLock = v);
-                        _showAppleToast(v ? "Biometric lock enabled" : "Biometric lock disabled");
-                      },
-                    ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 46),
-                    _buildSwitchTile(
-                      title: "Haptic Feedback",
-                      subtitle: "Tactile clicks on status changes & sync actions",
-                      value: _hapticsEnabled,
-                      icon: CupertinoIcons.waveform,
-                      onChanged: (v) => setState(() => _hapticsEnabled = v),
-                    ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 46),
-                    _buildNavTile(
-                      title: "Offline Storage Inspector",
-                      subtitle: "3.82 MB cached • 1-Click Purge available",
-                      icon: CupertinoIcons.tray_fill, // Replaced with valid CupertinoIcon
-                      onTap: _showStorageInspector,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              // 5. App Specs & Support
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.96),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  children: [
-                    _buildInfoRowTile(
-                      title: "Integrated Portal Engine",
-                      value: "Shaladarpan + Staff + Raj-SIMS",
-                      icon: CupertinoIcons.layers_alt_fill,
-                    ),
-                    const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 46),
-                    _buildInfoRowTile(
-                      title: "Build Version",
-                      value: "v2.6.0 (Enterprise 2026)",
-                      icon: CupertinoIcons.info_circle_fill,
-                    ),
-                  ],
-                ),
-              ),
-
+      child: LayoutBuilder(builder: (context, constraints) {
+        final wide = constraints.maxWidth >= AppAdaptive.twoPane * (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.5);
+        final profile = _surface([
+          Padding(padding: const EdgeInsets.all(18), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              _avatar(), const SizedBox(width: 16),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name, style: _style(15, FontWeight.w600)),
+                if (_designation != null) ...[const SizedBox(height: 4), Text(_designation!, style: _style(11.5, FontWeight.w400, _muted))],
+                const SizedBox(height: 5),
+                CupertinoButton(padding: const EdgeInsets.symmetric(vertical: 7),
+                  onPressed: _photoChanging || _editing || _storageFailed ? null : _changePhoto,
+                  child: Text('Change photo', style: _style(11, FontWeight.w500, _muted))),
+              ])),
+            ]),
+            const SizedBox(height: 14),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(color: const Color(0xFFF7F9FB), borderRadius: BorderRadius.circular(14)),
+              child: Row(children: [
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('School NIC ID', style: _style(10.5, FontWeight.w400, _muted)), const SizedBox(height: 4), Text(school, style: _style(12.5, FontWeight.w600)),
+              ])),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('Staff ID', style: _style(10.5, FontWeight.w400, _muted)), const SizedBox(height: 4), Text(_ids['staff_id']?.isNotEmpty == true ? _ids['staff_id']! : '—', style: _style(12.5, FontWeight.w600)),
+              ])),
+            ])),
+            if (_schoolName != null) ...[const SizedBox(height: 12), Text(_schoolName!, style: _style(11.5, FontWeight.w400, _muted))],
+          ])),
+        ]);
+        final connections = Padding(padding: EdgeInsets.only(top: wide ? 0 : 16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Padding(padding: const EdgeInsets.fromLTRB(4, 0, 0, 10), child: Row(children: [
+            Expanded(child: Text('Connections', style: _style(12, FontWeight.w600, _muted))),
+            CupertinoButton(padding: const EdgeInsets.all(8), onPressed: _refreshing || _editing ? null : _load,
+              child: _refreshing ? const CupertinoActivityIndicator(radius: 7) : const Icon(CupertinoIcons.arrow_clockwise, size: 16, color: _muted)),
+          ])),
+          _surface([
+            _portal('shaladarpan', 'Shaladarpan', 'school_id', CupertinoIcons.house),
+            const Divider(height: 1, indent: 71, endIndent: 18, color: _border),
+            _portal('staff_login', 'Staff Login', 'staff_id', CupertinoIcons.person),
+            const Divider(height: 1, indent: 71, endIndent: 18, color: _border),
+            _portal('rajsims', 'RajSIMS', 'sso_id', CupertinoIcons.cube_box),
+          ]),
+          Padding(padding: const EdgeInsets.fromLTRB(6, 10, 6, 0), child: Text(_statusFailed ? 'Could not confirm the latest status' : checked == null ? 'Status has not been checked' :
+            'Status updated : ${_clock(checked)}', style: _style(10, FontWeight.w400, _muted))),
+        ]));
+        final settings = Column(children: [
+          _section('Preferences & support', _surface([
+            _row(CupertinoIcons.lock, 'Account details', 'School, staff and SSO login',
+              trailing: _editing ? const CupertinoActivityIndicator(radius: 8) : const Icon(CupertinoIcons.chevron_forward, size: 13, color: _muted),
+              onTap: _editing || _refreshing || _storageFailed ? null : _editAccount),
+            const Divider(height: 1, indent: 68, color: _border),
+            _row(CupertinoIcons.question_circle, 'Help Center', 'Answers and guidance',
+              trailing: const Icon(CupertinoIcons.chevron_forward, size: 13, color: _muted), onTap: _openHelp),
+            const Divider(height: 1, indent: 68, color: _border),
+            _row(CupertinoIcons.envelope, 'Report app issue', 'Share a problem with the developer',
+              trailing: const Icon(CupertinoIcons.chevron_forward, size: 13, color: _muted), onTap: _openReport),
+            const Divider(height: 1, indent: 68, color: _border),
+            _row(CupertinoIcons.info_circle, 'About app', 'Version, developer and terms',
+              trailing: const Icon(CupertinoIcons.chevron_forward, size: 13, color: _muted), onTap: _aboutApp),
+          ])),
+        ]);
+        return ProgressIndicatorTheme(
+          data: const ProgressIndicatorThemeData(color: _ink, circularTrackColor: Color(0xFFE2E8F0)),
+          child: RefreshIndicator(
+          onRefresh: _load, color: _ink, backgroundColor: Colors.white,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            child: Align(alignment: Alignment.topCenter,
+              child: ConstrainedBox(constraints: BoxConstraints(maxWidth: AppAdaptive.contentWidth(constraints.maxWidth) - 32),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('My account', style: _style(20, FontWeight.w600)),
+              const SizedBox(height: 3),
+              Text('Your school workspace, personalised', style: _style(12, FontWeight.w400, _muted)),
               const SizedBox(height: 20),
-
-              // 6. Sign Out Button
-              GestureDetector(
-                onTap: _confirmSignOut,
-                behavior: HitTestBehavior.opaque,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF2F2),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFFECACA)),
-                  ),
-                  alignment: Alignment.center,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 16),
-                      SizedBox(width: 8),
-                      Text(
-                        "Sign Out of All Portals",
-                        style: TextStyle(
-                          fontFamily: kAppFont,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFEF4444),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+              if (_storageFailed) Padding(padding: const EdgeInsets.only(bottom: 12), child: Text('Saved account could not be loaded. Refresh or sign in again.', style: _style(12, FontWeight.w400, _muted))),
+              if (wide) Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [profile, const SizedBox(height: 20), connections])),
+                const SizedBox(width: 24),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [settings, const SizedBox(height: 20), _signOutFooter()])),
+              ]) else ...[profile, connections, settings, const SizedBox(height: 20), _signOutFooter()],
+            ]))),
           ),
-        ),
-      ),
+        ));
+      }),
     );
   }
+}
 
-  Widget _buildMetaTag(String label, String value) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontFamily: kAppFont, fontSize: 8.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500)),
-            Text(value, style: const TextStyle(fontFamily: kAppFont, fontSize: 10.0, color: Color(0xFF0F172A), fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
-          ],
-        ),
-      ),
-    );
+class _HelpCenterScreen extends StatefulWidget {
+  final String Function() connectionSummary;
+  const _HelpCenterScreen({required this.connectionSummary});
+  @override
+  State<_HelpCenterScreen> createState() => _HelpCenterScreenState();
+}
+
+class _HelpCenterScreenState extends State<_HelpCenterScreen> {
+  String _search = '';
+  static const _guides = <({String category, String question, String answer})>[
+    (category: 'Getting started', question: 'How do I sign in after signing out?',
+      answer: 'Choose Continue as on the Welcome back screen. Your saved login details stay on this device. Use Edit account if an ID or password has changed. During first-time setup, Back takes you to a skipped portal step.'),
+    (category: 'Account', question: 'How do I update my login details?',
+      answer: 'Open My account → Account details. Saved passwords appear masked; use the eye button to check them. Enter the correct password whenever you change a login ID. Save & sign out stores your changes and returns to login.'),
+    (category: 'Account', question: 'Where is my profile photo saved?',
+      answer: 'The photo stays on this device, separately for each saved school and staff account. It does not change your Shala Darpan or RajSIMS profile. Tap the photo or Change photo to choose or remove an image. Use a JPG or PNG smaller than 5 MB.'),
+    (category: 'Connections', question: 'A portal is unavailable. What should I do?',
+      answer: 'Use the refresh icon beside Connections to check the current status. Not confirmed means the backend could not verify the session; it does not prove that you are logged out. If the issue continues, check your saved login details and sign in again. A portal outage can also prevent access.'),
+    (category: 'Attendance', question: 'Why is an employee’s attendance locked?',
+      answer: 'The app preserves the portal’s locked status. A locked employee may have no editable dropdown. Review the employee ID and existing status before submitting the other rows. Staff attendance cannot be changed after the portal locks it.'),
+    (category: 'Attendance', question: 'Submission needs verification. Should I retry?',
+      answer: 'Refresh the attendance screen and independently check the portal first. A delayed or lost response can occur after the portal has saved the attendance. Do not repeatedly submit an unconfirmed request. Review every employee or student ID and status before a new submission.'),
+    (category: 'Attendance', question: 'What does Pending mean in a student report?',
+      answer: 'Pending means the portal has not confirmed attendance as marked for that class and date. A fetched student list or generated PDF alone does not prove submission. Verified should reflect confirmed portal attendance status.'),
+    (category: 'Leave', question: 'Why do leave approvals matter before attendance?',
+      answer: 'Review the current pending leave applications before staff attendance. Check the employee, dates and leave duration, then approve or reject the intended application. Refresh attendance afterwards to read the portal’s updated leave and lock status.'),
+    (category: 'MDM', question: 'My stock has not changed after distribution.',
+      answer: 'Refresh the RajSIMS stock tiles and check the distribution entry on the portal. If saving was unconfirmed, verify the existing entry before submitting again. A stale stock tile alone does not mean the distribution failed.'),
+    (category: 'Monthly tasks', question: 'A monthly task shows no records.',
+      answer: 'Check the selected task, reporting period and school applicability on the portal. Some forms are not offered for every school category. No records is not confirmation that a task is complete or locked.'),
+  ];
+
+  Future<void> _copySummary() async {
+    try {
+      await Clipboard.setData(ClipboardData(text: widget.connectionSummary()));
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.clearSnackBars();
+      messenger.showSnackBar(const SnackBar(content: Text('Connection summary copied. Add the issue details before sharing it.'), behavior: SnackBarBehavior.floating));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not copy the summary. Please try again.')));
+    }
   }
 
-  Widget _buildPortalHealthRow({
-    required String title,
-    required String loginId,
-    required String status,
-    required Color badgeColor,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Icon(icon, size: 16, color: const Color(0xFF0F172A)),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontFamily: kAppFont,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: badgeColor,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 1.5),
-                  Text(
-                    "$loginId • $status",
-                    style: const TextStyle(
-                      fontFamily: kAppFont,
-                      fontSize: 10.5,
-                      color: Color(0xFF64748B),
+  @override
+  Widget build(BuildContext context) {
+    final query = _search.trim().toLowerCase();
+    final guides = _guides.where((g) => '${g.category} ${g.question} ${g.answer}'.toLowerCase().contains(query)).toList();
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(backgroundColor: const Color(0xFFF8FAFC), surfaceTintColor: Colors.transparent, elevation: 0,
+        title: Text('Help Center', style: _AccountTabViewState._style(18, FontWeight.w600))),
+      body: Container(
+        decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+          stops: [0, .45, 1], colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)])),
+        child: SizedBox.expand(child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+          child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 640),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              TextField(onChanged: (value) => setState(() => _search = value),
+                style: _AccountTabViewState._style(12.5),
+                decoration: _AccountTabViewState._input('Search help').copyWith(
+                  labelText: null, hintText: 'Search help', fillColor: Colors.white,
+                  prefixIcon: const Icon(CupertinoIcons.search, size: 17, color: _muted))),
+              const SizedBox(height: 16),
+              Padding(padding: const EdgeInsets.only(left: 3, bottom: 8),
+                child: Text(query.isEmpty ? 'Common questions' : 'Search results',
+                  style: _AccountTabViewState._style(12, FontWeight.w600, _muted))),
+              Container(width: double.infinity,
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: _border)),
+                child: ClipRRect(borderRadius: BorderRadius.circular(16), child: Column(children: [
+                  if (guides.isEmpty) Padding(padding: const EdgeInsets.all(18),
+                    child: Text('No matching answers. Try attendance, account or MDM.', style: _AccountTabViewState._style(12, FontWeight.w400, _muted))),
+                  for (var i = 0; i < guides.length; i++) ...[
+                    if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16, color: _border),
+                    ExpansionTile(key: ValueKey(guides[i].question), shape: const Border(), collapsedShape: const Border(),
+                      iconColor: _muted, collapsedIconColor: _muted,
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                      title: Text(guides[i].question, style: _AccountTabViewState._style(12, FontWeight.w500)),
+                      children: [Align(alignment: Alignment.centerLeft,
+                        child: Text(guides[i].answer, style: _AccountTabViewState._style(11.5, FontWeight.w400, _muted)))],
                     ),
-                  ),
-                ],
+                  ],
+                ])),
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                "Edit",
-                style: TextStyle(
-                  fontFamily: kAppFont,
-                  fontSize: 10.0,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF475569),
+              const SizedBox(height: 18),
+              Text('Need more help?', style: _AccountTabViewState._style(12.5, FontWeight.w600)),
+              const SizedBox(height: 8),
+              SizedBox(width: double.infinity, child: FilledButton.icon(
+                onPressed: () => Navigator.of(context).push(CupertinoPageRoute<void>(builder: (_) => ReportIssueScreen(connectionSummary: widget.connectionSummary()))),
+                icon: const Icon(CupertinoIcons.envelope, size: 16),
+                label: Text('Report app issue', style: _AccountTabViewState._style(12, FontWeight.w500, Colors.white)),
+                style: FilledButton.styleFrom(backgroundColor: _ink, padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))))),
+              const SizedBox(height: 8),
+              SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: _copySummary,
+                icon: const Icon(CupertinoIcons.doc_on_doc, size: 15),
+                label: Text('Copy connection summary', style: _AccountTabViewState._style(11.5, FontWeight.w500)),
+                style: OutlinedButton.styleFrom(foregroundColor: _ink, backgroundColor: Colors.white,
+                  side: const BorderSide(color: _border), padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))))),
+            ]),
+          )),
+        )),
+      ),
+    );
+  }
+}
+
+class _AboutAppScreen extends StatefulWidget {
+  const _AboutAppScreen();
+  @override
+  State<_AboutAppScreen> createState() => _AboutAppScreenState();
+}
+
+class _AboutAppScreenState extends State<_AboutAppScreen> {
+  // Release identifier for this patch. Native build/version codes stay numeric.
+  static const _buildId = String.fromEnvironment('APP_BUILD_ID', defaultValue: '2026.10.03.01');
+  late final Future<PackageInfo> _packageInfo = PackageInfo.fromPlatform();
+
+  Widget _detail(String label, String value) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      SizedBox(width: 78, child: Text(label, style: _AccountTabViewState._style(12, FontWeight.w400, _muted))),
+      const SizedBox(width: 12),
+      Expanded(child: SelectableText(value, style: _AccountTabViewState._style(12.5, FontWeight.w500))),
+    ]),
+  );
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFFF8FAFC),
+    appBar: AppBar(backgroundColor: const Color(0xFFF8FAFC), surfaceTintColor: Colors.transparent,
+      elevation: 0, title: Text('About', style: _AccountTabViewState._style(18, FontWeight.w600))),
+    body: Container(
+      decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+        stops: [0, .45, 1], colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)])),
+      child: SizedBox.expand(child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
+        child: Align(alignment: Alignment.topCenter,
+          child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 560),
+            child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: _border.withValues(alpha: .65))),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  ClipRRect(borderRadius: BorderRadius.circular(13),
+                    child: Image.asset('assets/icons/icon.png', width: 34, height: 34, fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const SizedBox(width: 34, height: 34,
+                        child: Icon(CupertinoIcons.app, size: 28, color: _ink)))),
+                  const SizedBox(width: 14),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Shaladarpan', style: _AccountTabViewState._style(16, FontWeight.w600)),
+
+                  ])),
+                ]),
+                const SizedBox(height: 16), const Divider(height: 1, color: _border),
+                _detail('Developer', 'Ripudaman Singh Jhala'),
+                const Divider(height: 1, color: _border),
+                Padding(padding: const EdgeInsets.symmetric(vertical: 12), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Version', style: _AccountTabViewState._style(10.5, FontWeight.w400, _muted)),
+                    const SizedBox(height: 4), FutureBuilder<PackageInfo>(future: _packageInfo, builder: (context, snapshot) =>
+                      Text(snapshot.hasData ? snapshot.data!.version : snapshot.hasError ? 'Unavailable' : 'Loading…', style: _AccountTabViewState._style(12, FontWeight.w500))),
+                  ])),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('Build', style: _AccountTabViewState._style(10.5, FontWeight.w400, _muted)),
+                    const SizedBox(height: 4), SelectableText(_buildId, style: _AccountTabViewState._style(12, FontWeight.w500)),
+                  ])),
+                ])),
+                const Divider(height: 1, color: _border),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  dense: true,
+                  childrenPadding: const EdgeInsets.only(bottom: 14),
+                  shape: const Border(), collapsedShape: const Border(),
+                  iconColor: _muted, collapsedIconColor: _muted,
+                  title: Text('Terms of use', style: _AccountTabViewState._style(12.5, FontWeight.w500)),
+                  children: [Align(alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Use this app only with school and staff accounts you are authorised to access.\n\n'
+                      'Review employee or student IDs, dates and selected values before submitting attendance, leave or other records. Portal rules and locked records remain applicable.\n\n'
+                      'If a submission is unconfirmed, check the portal before submitting again. Portal availability and delayed responses can affect the app.\n\n'
+                      'Shaladarpan is an independently developed app. It is not an official government app. The external portals retain control of their records and services.\n\n'
+                      'When reporting an issue, remove passwords and unnecessary personal information from descriptions and attachments.',
+                      style: _AccountTabViewState._style(11.5, FontWeight.w400, _muted),
+                    ))],
                 ),
-              ),
+                const Divider(height: 1, color: _border),
+                Padding(padding: const EdgeInsets.only(top: 12),
+                  child: Text('© 2026 Ripudaman Singh Jhala',
+                    style: _AccountTabViewState._style(10.5, FontWeight.w400, _muted))),
+              ]),
             ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSwitchTile({
-    required String title,
-    required String subtitle,
-    required bool value,
-    required IconData icon,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: const Color(0xFF0F172A)),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontFamily: kAppFont, fontSize: 10.5, color: Color(0xFF64748B)),
-                ),
-              ],
-            ),
-          ),
-          CupertinoSwitch(
-            value: value,
-            activeColor: const Color(0xFF10B981),
-            onChanged: (v) {
-              _haptic();
-              onChanged(v);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavTile({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: const Color(0xFF0F172A)),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-                  ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(fontFamily: kAppFont, fontSize: 10.5, color: Color(0xFF64748B)),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(CupertinoIcons.chevron_forward, size: 13, color: Color(0xFFCBD5E1)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRowTile({
-    required String title,
-    required String value,
-    required IconData icon,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: const Color(0xFF0F172A)),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
-          ),
-        ],
-      ),
-    );
-  }
+      )),
+    ),
+  );
 }

@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/adaptive_layout.dart';
 // lib/tabs/teacher/teacher.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -89,7 +90,9 @@ class _TeacherTabScreenState extends State<TeacherTabScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Container(
+    return LayoutBuilder(builder: (context, viewport) => Align(alignment: Alignment.topCenter, child: ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: AppAdaptive.contentWidth(viewport.maxWidth)),
+      child: Container(
       color: Colors.transparent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,6 +361,6 @@ class _TeacherTabScreenState extends State<TeacherTabScreen>
           ),
         ],
       ),
-    );
+    ))));
   }
 }

@@ -1,7 +1,12 @@
+import 'package:shaladarpan/widgets/adaptive_layout.dart';
 // lib/tabs/student/student.dart
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shaladarpan/services/portals/shaladarpan/student_nic_service.dart';
+import 'modules/student_nic/nic_pdf_preview_screen.dart';
+import 'modules/student_nic/nic_download_indicator.dart';
+import 'modules/study_certificate/study_certificate_screen.dart';
 
 import 'modules/student_attendance/screens/daily_attendance_sheet_screen.dart';
 import 'modules/student_attendance/screens/school_report_screen.dart';
@@ -23,7 +28,14 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
   Color get _line => _dark ? const Color(0xFF343B46) : const Color(0xFFE5E9EF);
   static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   static const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  final List<String> _classList = ['All Classes', 'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8'];
+  List<String> _classList = ['All Classes'];
+  List<String?> _nicClassIds = [null];
+  bool _nicCatalogLoading = false;
+  bool _nicCatalogReady = false;
+  bool _nicDownloading = false;
+  double _nicProgress = 0;
+  String? _nicError;
+  String? _nicSchoolId;
   DateTime _reportDate = DateUtils.dateOnly(DateTime.now());
   int _selectedClassIndex = 0;
   bool _nicExpanded = false;
@@ -50,8 +62,49 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
 
   void _planned(String name) => _showNotice('$name is not connected yet.');
 
-  void _downloadNicSheet() => _showNotice(
-      'NIC sheet download is not connected yet (${_classList[_selectedClassIndex]}).');
+  Future<void> _loadNicClasses() async {
+    if (_nicCatalogLoading || _nicDownloading) return;
+    setState(() {
+      _nicCatalogLoading = true; _nicCatalogReady = false; _nicError = null; _nicSchoolId = null;
+      _classList = ['All Classes']; _nicClassIds = [null]; _selectedClassIndex = 0;
+    });
+    try {
+      final result = await StudentNicService.catalog();
+      final classes = (result['classes'] as List).map((value) => Map<String, dynamic>.from(value as Map)).toList();
+      if (!mounted) return;
+      setState(() {
+        _classList = ['All Classes', ...classes.map((c) => 'Class ${c['label']}')];
+        _nicClassIds = [null, ...classes.map((c) => '${c['id']}')];
+        _selectedClassIndex = 0;
+        _nicCatalogReady = true;
+        _nicSchoolId = '${result['school_id']}';
+      });
+    } catch (error) {
+      if (mounted) setState(() => _nicError = error is FormatException ? error.message : '$error');
+    } finally {
+      if (mounted) setState(() => _nicCatalogLoading = false);
+    }
+  }
+
+  Future<void> _downloadNicSheet() async {
+    if (_nicDownloading || !_nicCatalogReady) return;
+    _haptic();
+    final classId = _nicClassIds[_selectedClassIndex];
+    final label = _classList[_selectedClassIndex];
+    setState(() { _nicDownloading = true; _nicProgress = .08; _nicError = null; });
+    try {
+      final file = await StudentNicService.download(classId: classId, expectedSchool: _nicSchoolId!, onProgress: (progress) {
+        if (mounted) setState(() => _nicProgress = progress);
+      });
+      if (!mounted) return;
+      await Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => NicPdfPreviewScreen(
+        bytes: file.bytes, filename: file.filename, classLabel: label)));
+    } catch (error) {
+      if (mounted) setState(() => _nicError = error is FormatException ? error.message : '$error');
+    } finally {
+      if (mounted) setState(() => _nicDownloading = false);
+    }
+  }
 
   Future<void> _openAttendance() async {
     if (_attendanceOpening) return;
@@ -101,11 +154,13 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
   Widget build(BuildContext context) {
     // The parent tab owns the background; this dashboard paints no canvas.
     return SafeArea(top: false, bottom: false, child: LayoutBuilder(builder: (context, constraints) {
-      final padding = constraints.maxWidth < 360 ? 12.0 : 18.0;
+      final padding = constraints.maxWidth < 360 ? 12.0 : 16.0;
       return SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
-        child: SizedBox(
-          width: constraints.maxWidth,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+          width: AppAdaptive.contentWidth(constraints.maxWidth),
           child: Padding(
             padding: EdgeInsets.fromLTRB(padding, 12, padding, 88),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -113,14 +168,22 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
               const SizedBox(height: 4),
               Text('Attendance & student services', style: _text(11, color: _muted)),
               const SizedBox(height: 17),
+              AdaptivePanels(
+                first: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               _attendanceCard(),
               const SizedBox(height: 12),
+                ]),
+                second: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               _dailyRegister(),
               const SizedBox(height: 12),
               _surface(child: _moduleRow(title: 'Monthly attendance', subtitle: 'Monthly register • Planned',
                 icon: CupertinoIcons.calendar, iconAsset: 'assets/icons/leave.png',
                 onTap: () => _planned('Monthly Attendance'))),
               const SizedBox(height: 22),
+                ]),
+              ),
+              AdaptivePanels(
+                first: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               _sectionHeader('STUDENT RECORDS', 'Directories & enrollment'),
               const SizedBox(height: 10),
               _nicCard(),
@@ -141,11 +204,14 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
                 ]));
               }),
               const SizedBox(height: 22),
+                ]),
+                second: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               _sectionHeader('CERTIFICATES & FORMATS', 'Additional modules • Planned'),
               const SizedBox(height: 10),
               _surface(child: Column(children: [
                 _moduleRow(title: 'Study Certificate', subtitle: 'Academic validation',
-                  icon: CupertinoIcons.doc_checkmark, onTap: () => _planned('Study Certificate')),
+                  icon: CupertinoIcons.doc_checkmark, onTap: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(builder: (_) => const StudyCertificateScreen()))),
                 _rowDivider(),
                 _moduleRow(title: 'Character Certificate', subtitle: 'Conduct & behavior',
                   icon: CupertinoIcons.shield_lefthalf_fill, onTap: () => _planned('Character Certificate')),
@@ -156,10 +222,12 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
                 _moduleRow(title: 'Format 9', subtitle: 'Cumulative academic record',
                   icon: CupertinoIcons.folder, onTap: () => _planned('Format 9')),
               ])),
+                ]),
+              ),
             ]),
           ),
         ),
-      );
+      ));
     }));
   }
 
@@ -173,7 +241,8 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
   );
 
   Widget _surface({required Widget child}) => Material(
-    color: Theme.of(context).cardColor.withOpacity(0.65),
+    color: _dark ? const Color(0xFF242B35) : Colors.white,
+    surfaceTintColor: Colors.transparent,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: _line)),
     clipBehavior: Clip.antiAlias,
     child: child,
@@ -328,7 +397,7 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
   );
 
   Widget _moduleRow({required String title, required String subtitle, required IconData icon, String? iconAsset, required VoidCallback onTap}) =>
-      InkWell(onTap: onTap, child: Padding(
+      InkWell(splashColor: const Color(0x1418212F), highlightColor: const Color(0x0A18212F), onTap: onTap, child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(children: [
           _iconBox(icon, asset: iconAsset),
@@ -346,7 +415,7 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
   Widget _rowDivider() => Divider(height: 1, thickness: 0.6, color: _line, indent: 65, endIndent: 14);
 
   Widget _actionCard(String title, String subtitle, IconData icon, VoidCallback onTap) => _surface(
-    child: InkWell(onTap: onTap, child: Padding(
+    child: InkWell(splashColor: const Color(0x1418212F), highlightColor: const Color(0x0A18212F), onTap: onTap, child: Padding(
       padding: const EdgeInsets.all(14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [_iconBox(icon), const Spacer(), _navigationArrow()]),
@@ -359,9 +428,11 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
   );
 
   Widget _nicCard() => _surface(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    InkWell(onTap: () {
+    InkWell(splashColor: const Color(0x1418212F), highlightColor: const Color(0x0A18212F), onTap: () {
       _haptic();
+      if (_nicDownloading) return;
       setState(() => _nicExpanded = !_nicExpanded);
+      if (_nicExpanded) _loadNicClasses();
     }, child: Padding(
       padding: const EdgeInsets.all(14),
       child: Row(children: [
@@ -388,7 +459,7 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
             final selected = index == _selectedClassIndex;
             return Material(color: selected ? const Color(0xFF18212F) : (_dark ? const Color(0xFF2C333E) : const Color(0xFFF2F5F8)),
               borderRadius: BorderRadius.circular(9), clipBehavior: Clip.antiAlias,
-              child: InkWell(onTap: () {
+              child: InkWell(splashColor: const Color(0x1418212F), highlightColor: const Color(0x0A18212F), onTap: _nicDownloading || _nicCatalogLoading ? null : () {
                 _haptic();
                 setState(() => _selectedClassIndex = index);
               }, child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -401,7 +472,7 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
         )),
         const SizedBox(height: 12),
         SizedBox(width: double.infinity, child: TextButton(
-          onPressed: _downloadNicSheet,
+          onPressed: _nicCatalogLoading || _nicDownloading || !_nicCatalogReady ? null : _downloadNicSheet,
           style: TextButton.styleFrom(
             foregroundColor: _ink,
             backgroundColor: _dark ? const Color(0xFF303846) : const Color(0xFFE9EEF4),
@@ -409,14 +480,23 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           child: Row(children: [
-            const Icon(CupertinoIcons.arrow_down_to_line, size: 15),
+            if (_nicDownloading)
+              NicDownloadIndicator(size: 22, progress: _nicProgress)
+            else if (_nicCatalogLoading)
+              const CupertinoActivityIndicator(radius: 9, color: Color(0xFF007AFF))
+            else
+              const Icon(CupertinoIcons.arrow_down_to_line, size: 18),
             const SizedBox(width: 8),
-            Expanded(child: Text('Download NIC sheet', style: _text(11, weight: FontWeight.w600))),
+            Expanded(child: Text(_nicCatalogLoading ? 'Loading classes…' : (_nicDownloading ? 'Preparing NIC sheet…' : 'Download NIC sheet'), style: _text(11, weight: FontWeight.w600))),
             const Icon(CupertinoIcons.arrow_right, size: 13),
           ]),
         )),
         const SizedBox(height: 6),
-        Text('Download integration is planned.', style: _text(9, color: _muted)),
+        if (_nicError != null) ...[
+          Text(_nicError!, style: _text(11, color: _muted)),
+          if (!_nicCatalogReady) TextButton(onPressed: _nicCatalogLoading ? null : _loadNicClasses,
+            style: TextButton.styleFrom(foregroundColor: _ink), child: Text('Retry', style: _text(11))),
+        ],
       ]),
     ),
   ]));

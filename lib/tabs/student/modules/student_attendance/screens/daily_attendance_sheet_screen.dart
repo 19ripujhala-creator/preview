@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/adaptive_layout.dart';
 // lib/tabs/student/modules/student_attendance/screens/daily_attendance_sheet_screen.dart
 //
 // Needs Flutter 3.22+ (PopScope.onPopInvokedWithResult).
@@ -923,7 +924,11 @@ class _DailyAttendanceSheetScreenState
           Scaffold(
             backgroundColor: Colors.transparent,
             appBar: _buildAppBar(),
-            body: Column(
+            body: LayoutBuilder(builder: (context, box) {
+              return Align(alignment: Alignment.topCenter, child: SizedBox(
+                width: AppAdaptive.contentWidth(box.maxWidth),
+                height: box.maxHeight,
+                child: Column(
               children: [
                 Expanded(
                   child: RefreshIndicator(
@@ -970,7 +975,8 @@ class _DailyAttendanceSheetScreenState
                 ),
                 _buildSubmitButton(),
               ],
-            ),
+            )));
+            }),
           ),
         ],
       ),

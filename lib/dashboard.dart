@@ -1,5 +1,13 @@
+import 'package:shaladarpan/widgets/adaptive_layout.dart';
+import 'package:shaladarpan/services/portals/shaladarpan/monthly_task_service.dart';
+import 'package:shaladarpan/services/portals/shaladarpan/viffs_status_service.dart';
+import 'package:shaladarpan/services/portals/shaladarpan/ranking_status_service.dart';
+import 'package:lottie/lottie.dart';
+import 'package:shaladarpan/services/core/account_identity.dart';
 import 'package:shaladarpan/tabs/teacher/modules/shaladarpan/monthly_tasks_screen.dart';
+import 'package:shaladarpan/tabs/teacher/modules/shaladarpan/monthly_tasks_hub.dart';
 import 'dart:async';
+import 'package:shaladarpan/widgets/account_avatar.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -45,7 +53,21 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   OverlayEntry? _activeToast;
   Timer? _toastTimer;
   bool? _rankingTaskDone;
+  String? _rankingStatusPeriod;
+  String get _rankingDuePeriod {
+    final previous = DateTime(DateTime.now().year, DateTime.now().month, 0);
+    return '${previous.year}-${previous.month}';
+  }
+  bool? get _currentRankingDone {
+    final live = RankingStatusService.currentDue(widget.schoolId);
+    if (live?['completed'] is bool) return live!['completed'] as bool;
+    return _rankingStatusPeriod == _rankingDuePeriod ? _rankingTaskDone : null;
+  }
   bool _monthlyScreenOpen = false;
+  bool _viffsStatusLoading = false;
+  String? _viffsCheckedPeriod;
+  Timer? _viffsStatusRetry;
+  int _viffsStatusAttempts = 0;
   bool? _staffTaskDone;
   bool? _studentTaskDone;
   bool _studentStatusLoading = false;
@@ -62,11 +84,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       () => _onNavTabTapped(2)),
     _DashboardTask('Mid Day Meal (MDM)', 'assets/icons/mdm.png', _mdmLoaded ? _mdmStatusDone : null,
       () => _onNavTabTapped(3)),
-    _DashboardTask('District Ranking', 'assets/icons/ranking.png', _rankingTaskDone,
+    _DashboardTask('District Ranking', 'assets/icons/ranking.png', _currentRankingDone,
       () => _openMonthlyTasks('ranking')),
-    _DashboardTask('VIFFS Entry', 'assets/icons/viffs.png', null,
+    _DashboardTask('VIFFS Tablet Entry', 'assets/icons/viffs.png', ViffsStatusService.currentDue(widget.schoolId),
       () => _openMonthlyTasks('viffs')),
   ];
+  int get _notificationCount => _dashboardTasks.where((task) => task.done != true).length;
   int get _completedTasks => _dashboardTasks.where((task) => task.done == true).length;
   String _taskLabel(bool? done) => done == null ? 'Not synced' : (done ? 'Completed' : 'Pending');
 
@@ -85,7 +108,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   int _teacherSubModuleIndex = 0;
   int _teacherResetTrigger = 0;
 
-  late final AnimationController _syncRotateController;
   bool _isSyncing = false;
   bool _syncCompleted = false;
   bool _syncButtonPressed = false;
@@ -126,13 +148,16 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     _cardPageController = PageController(viewportFraction: 0.89);
     _timeNotifier = ValueNotifier<DateTime>(DateTime.now());
 
-    _syncRotateController = AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
 
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _appActive) _timeNotifier.value = DateTime.now();
     });
 
     DashboardBootstrap.mdmStatus.addListener(_onMdmStatusChanged);
+    RankingStatusService.changes.addListener(_onRankingStatusChanged);
+    ViffsStatusService.changes.addListener(_onViffsStatusChanged);
+    ViffsStatusService.restore(widget.schoolId);
+    _restoreLiveRankingStatus();
     _startNetworkTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -237,6 +262,19 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
 
+    final ranking = data['ranking_status'];
+    if (ranking is Map && ranking['school_id']?.toString() == widget.schoolId) {
+      final period = RankingStatusService.duePeriod;
+      if (ranking['year'] == period.year && ranking['month'] == period.month) {
+        await RankingStatusService.store(widget.schoolId, ranking);
+        if (mounted) setState(() {
+          final latest = RankingStatusService.currentDue(widget.schoolId);
+          _rankingTaskDone = latest?['completed'] as bool?;
+          _rankingStatusPeriod = _rankingDuePeriod;
+        });
+      }
+    }
+
     final kpiData = data['kpi'];
     if (kpiData is Map && kpiData.isNotEmpty && kpiData['success'] != false) {
       _applyKpiData(Map<String, dynamic>.from(kpiData));
@@ -270,6 +308,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
   Future<void> _startupSync() async {
     try {
+      final ranking = await RankingStatusService.readDue(widget.schoolId);
+      if (mounted && ranking != null) setState(() { _rankingTaskDone = ranking['completed'] as bool; _rankingStatusPeriod = _rankingDuePeriod; });
       await _loadInitialMetrics();
       await _refreshStaffFromCache();
       unawaited(_fetchLiveRajsimsMdmTileData());
@@ -278,6 +318,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         await _processBackendPayload(result['data'] is Map ? Map<String, dynamic>.from(result['data']) : result);
       }
       if (_studentTaskDone == null) unawaited(_fetchStudentTaskStatus());
+      unawaited(_fetchViffsMonthlyStatus());
     } catch (e) {
       debugPrint("Startup sync failed: $e");
     } finally {
@@ -295,7 +336,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       _isSyncing = true;
       _syncCompleted = false;
     });
-    _syncRotateController.repeat();
     try {
       if (_hasPendingOfflineAttendance) await OfflineAttendanceQueue.syncNow();
       final result = await ShaladarpanService.loginAndSyncDashboard(forceRefresh: true);
@@ -303,6 +343,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       if (result['success'] == true) {
         await _processBackendPayload(result['data'] is Map ? Map<String, dynamic>.from(result['data']) : result);
         await Future.wait([_fetchLiveRajsimsMdmTileData(), _fetchStudentTaskStatus()]);
+        unawaited(_fetchViffsMonthlyStatus(force: true));
         await _checkConnectivityAndQueue();
         if (!mounted) return;
         setState(() => _syncCompleted = true);
@@ -318,8 +359,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       if (mounted) _showAppleToast('Could not sync. Cached data remains available.');
     } finally {
       if (mounted) {
-        _syncRotateController.stop();
-        _syncRotateController.reset();
         setState(() => _isSyncing = false);
       }
     }
@@ -477,16 +516,18 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   @override
   void dispose() {
     _toastTimer?.cancel();
+    _viffsStatusRetry?.cancel();
     _activeToast?.remove();
     _activeToast = null;
     DashboardBootstrap.mdmStatus.removeListener(_onMdmStatusChanged);
+    RankingStatusService.changes.removeListener(_onRankingStatusChanged);
+    ViffsStatusService.changes.removeListener(_onViffsStatusChanged);
     WidgetsBinding.instance.removeObserver(this);
     _clockTimer.cancel();
     _networkCheckTimer?.cancel();
     _timeNotifier.dispose();
     _cardIndexNotifier.dispose();
     _cardPageController.dispose();
-    _syncRotateController.dispose();
     super.dispose();
   }
 
@@ -543,11 +584,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   constraints: const BoxConstraints(maxWidth: 420),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A).withOpacity(0.92),
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.92),
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white.withOpacity(0.14), width: 0.8),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.14), width: 0.8),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 18, offset: const Offset(0, 5)),
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 18, offset: const Offset(0, 5)),
                     ],
                   ),
                   child: Row(
@@ -702,8 +743,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                 shape: BoxShape.circle,
                                 gradient: RadialGradient(
                                   colors: [
-                                    const Color(0xFFBAE6FD).withOpacity(0.35),
-                                    const Color(0xFFBAE6FD).withOpacity(0.0),
+                                    const Color(0xFFBAE6FD).withValues(alpha: 0.35),
+                                    const Color(0xFFBAE6FD).withValues(alpha: 0.0),
                                   ],
                                 ),
                               ),
@@ -719,8 +760,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                 shape: BoxShape.circle,
                                 gradient: RadialGradient(
                                   colors: [
-                                    const Color(0xFFFDE68A).withOpacity(0.35),
-                                    const Color(0xFFFDE68A).withOpacity(0.0),
+                                    const Color(0xFFFDE68A).withValues(alpha: 0.35),
+                                    const Color(0xFFFDE68A).withValues(alpha: 0.0),
                                   ],
                                 ),
                               ),
@@ -774,8 +815,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       ),
                     ),
                     Positioned(
-                      left: 16,
-                      right: 16,
+                      left: AppAdaptive.gutter(MediaQuery.sizeOf(context).width) + 16,
+                      right: AppAdaptive.gutter(MediaQuery.sizeOf(context).width) + 16,
                       bottom: 12,
                       child: RepaintBoundary(child: _buildIosLiquidGlassDock()),
                     ),
@@ -797,7 +838,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 110.0),
+              padding: EdgeInsets.fromLTRB(AppAdaptive.gutter(constraints.maxWidth), 0, AppAdaptive.gutter(constraints.maxWidth), 110),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -806,16 +847,16 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
                   // 🚀 Instant Header (Visible immediately)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.96),
+                        color: Colors.white.withValues(alpha: 0.96),
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(color: Colors.white, width: 1.5),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF0F172A).withOpacity(0.04),
+                            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
                             blurRadius: 14,
                             offset: const Offset(0, 3),
                           ),
@@ -838,22 +879,14 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                 border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
+                                    color: Colors.black.withValues(alpha: 0.05),
                                     blurRadius: 6,
                                     offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
                               child: ClipOval(
-                                child: Image.asset(
-                                  'assets/icons/user.png',
-                                  width: 42,
-                                  height: 42,
-                                  fit: BoxFit.cover,
-                                  cacheWidth: 96,
-                                  errorBuilder: (c, e, s) =>
-                                      const Icon(Icons.person_rounded, color: Color(0xFF0F172A), size: 20),
-                                ),
+                                child: AccountAvatar(schoolId: widget.schoolId, size: 42),
                               ),
                             ),
                           ),
@@ -934,15 +967,16 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                   builder: (context, time, _) {
                                     return Row(
                                       children: [
-                                        Text(
+                                        Flexible(child: Text(
                                           "${_getFormattedDate(time)} • ${_getFormattedTime(time)}",
+                                          maxLines: 1, overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
                                             fontFamily: kAppFont,
                                             fontSize: 10.5,
                                             fontWeight: FontWeight.w500,
                                             color: Color(0xFF64748B),
                                           ),
-                                        ),
+                                        )),
                                         const SizedBox(width: 5),
                                         Container(
                                           width: 6.0,
@@ -962,6 +996,22 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                 ),
                               ],
                             ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            tooltip: 'Notifications', onPressed: _showNotifications,
+                            style: IconButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF0F172A),
+                              side: const BorderSide(color: Color(0xFFE2E8F0)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                            icon: Stack(clipBehavior: Clip.none, children: [
+                              const SizedBox(width: 26, height: 26, child: Center(child: Icon(CupertinoIcons.bell, size: 21))),
+                              if (_notificationCount > 0) Positioned(right: -5, top: -5,
+                                child: Container(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                  decoration: BoxDecoration(color: const Color(0xFFFF214B), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white)),
+                                  child: Text('$_notificationCount', textAlign: TextAlign.center,
+                                    style: const TextStyle(fontFamily: kAppFont, fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white)))),
+                            ]),
                           ),
                         ],
                       ),
@@ -997,17 +1047,17 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         children: [
                           // KPI Tiles Row
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 18.0),
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
                             child: Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(vertical: 9.5, horizontal: 8.0),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.96),
+                                color: Colors.white.withValues(alpha: 0.96),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(color: Colors.white, width: 1.2),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF0F172A).withOpacity(0.03),
+                                    color: const Color(0xFF0F172A).withValues(alpha: 0.03),
                                     blurRadius: 10,
                                     offset: const Offset(0, 2),
                                   ),
@@ -1062,6 +1112,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ),
                           const SizedBox(height: 14),
 
+                          LayoutBuilder(builder: (context, box) {
+                            final scale = (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.5);
+                            if (box.maxWidth < 680 * scale) {
+                              return Column(children: [
                           // Carousel Cards
                           RepaintBoundary(
                             child: SizedBox(
@@ -1101,7 +1155,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                         );
                                       else
                                         cardChild = GestureDetector(behavior: HitTestBehavior.opaque,
-                                          onTap: () => _openMonthlyTasks('ranking'), child: _buildMonthlyCard());
+                                          onTap: _openMonthlyTaskHub, child: _buildMonthlyCard());
 
                                       return Transform.scale(
                                         scale: scale,
@@ -1131,7 +1185,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                     decoration: BoxDecoration(
                                       color: isActive
                                           ? const Color(0xFF0F172A)
-                                          : const Color(0xFF94A3B8).withOpacity(0.45),
+                                          : const Color(0xFF94A3B8).withValues(alpha: 0.45),
                                       borderRadius: BorderRadius.circular(2.0),
                                     ),
                                   );
@@ -1139,19 +1193,38 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                               );
                             },
                           ),
+                              ]);
+                            }
+                            final columns = box.maxWidth >= 1100 * scale ? 3 : 2;
+                            final width = (box.maxWidth - 36 - (columns - 1) * 12) / columns;
+                            final cards = <Widget>[
+                              GestureDetector(behavior: HitTestBehavior.opaque,
+                                onTap: () => _onNavTabTapped(1, forceReset: true), child: _buildAttendanceCard()),
+                              GestureDetector(behavior: HitTestBehavior.opaque,
+                                onTap: () => _onNavTabTapped(3), child: _buildMdmCard()),
+                              GestureDetector(behavior: HitTestBehavior.opaque,
+                                onTap: _openMonthlyTaskHub, child: _buildMonthlyCard()),
+                            ];
+                            return Padding(padding: const EdgeInsets.symmetric(horizontal: 18),
+                              child: Wrap(spacing: 12, runSpacing: 12, children: [
+                                for (var index = 0; index < cards.length; index++)
+                                  SizedBox(width: columns == 2 && index == 0 ? box.maxWidth - 36 : width,
+                                    height: 198.0 * scale, child: cards[index]),
+                              ]));
+                          }),
                           const SizedBox(height: 14),
 
                           if (!_isOnline || _hasPendingOfflineAttendance)
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 2.0),
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.92),
+                                  color: Colors.white.withValues(alpha: 0.92),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
                                     color: _hasPendingOfflineAttendance
-                                        ? const Color(0xFFF59E0B).withOpacity(0.45)
+                                        ? const Color(0xFFF59E0B).withValues(alpha: 0.45)
                                         : const Color(0xFFCBD5E1),
                                     width: 1.0,
                                   ),
@@ -1161,7 +1234,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                           (_hasPendingOfflineAttendance
                                                   ? const Color(0xFFF59E0B)
                                                   : const Color(0xFF0F172A))
-                                              .withOpacity(0.04),
+                                              .withValues(alpha: 0.04),
                                       blurRadius: 10,
                                       offset: const Offset(0, 3),
                                     ),
@@ -1224,18 +1297,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             ),
                           const SizedBox(height: 10),
 
-                          SizedBox(height: 32,
-                            child: (_isVerifyingLiveStatus || _mdmFetchInProgress || _studentStatusLoading)
-                              ? const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 20),
-                                  child: Row(children: [
-                                    CupertinoActivityIndicator(radius: 7), SizedBox(width: 8),
-                                    Text('Updating school data…', style: TextStyle(fontFamily: kAppFont,
-                                      fontSize: 11, color: Color(0xFF64748B))),
-                                  ]),
-                                )
-                              : const SizedBox.shrink(),
-                          ),
+                          const SizedBox(height: 8),
                           Padding(padding: const EdgeInsets.symmetric(horizontal: 18), child: _buildTaskPanel()),
                         ],
                       ),
@@ -1289,7 +1351,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       (_syncCompleted
                               ? const Color(0xFF10B981)
                               : (_hasPendingOfflineAttendance ? const Color(0xFFF59E0B) : const Color(0xFF0F172A)))
-                          .withOpacity(0.18),
+                          .withValues(alpha: 0.18),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -1302,13 +1364,19 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               children: [
                 if (_syncCompleted)
                   const Icon(CupertinoIcons.checkmark_alt, size: 14, color: Colors.white)
+                else if (_isSyncing)
+                  SizedBox(width: 20, height: 20,
+                    child: ColorFiltered(
+                      colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                      child: Lottie.asset('assets/icons/Loading (Buffering).json',
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const CupertinoActivityIndicator(radius: 8, color: Colors.white)),
+                    ),
+                  )
                 else if (_hasPendingOfflineAttendance)
                   const Icon(CupertinoIcons.cloud_upload, size: 13, color: Colors.white)
                 else
-                  RotationTransition(
-                    turns: _syncRotateController,
-                    child: const Icon(CupertinoIcons.arrow_2_circlepath, size: 13, color: Colors.white),
-                  ),
+                  const Icon(CupertinoIcons.arrow_2_circlepath, size: 13, color: Colors.white),
                 const SizedBox(width: 5.5),
                 Text(
                   buttonLabel,
@@ -1343,7 +1411,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontFamily: kAppFont,
-            fontSize: 13.0,
+            fontSize: 14.5,
             fontWeight: FontWeight.w700,
             color: Color(0xFF0F172A),
             letterSpacing: -0.2,
@@ -1434,9 +1502,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2)),
           BoxShadow(
-            color: shadowColor.withOpacity(shadowColor.opacity * 0.32),
+            color: shadowColor.withValues(alpha: shadowColor.opacity * 0.32),
             blurRadius: 12,
             offset: const Offset(0, 4),
             spreadRadius: -2,
@@ -1502,7 +1570,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         end: Alignment.bottomRight,
         colors: [Color(0xFF1C2028), Color(0xFF111318), Color(0xFF090B0E)],
       ),
-      shadowColor: Colors.black.withOpacity(0.35),
+      shadowColor: Colors.black.withValues(alpha: 0.35),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1534,7 +1602,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       fontFamily: kAppFont,
                       fontSize: 11.0,
                       fontWeight: FontWeight.w500,
-                      color: Colors.white.withOpacity(0.72),
+                      color: Colors.white.withValues(alpha: 0.72),
                     ),
                   ),
                   const SizedBox(height: 1),
@@ -1542,7 +1610,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     _staffTotal != "0" ? _staffTotal : "--",
                     style: const TextStyle(
                       fontFamily: kAppFont,
-                      fontSize: 24,
+                      fontSize: 26,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                       letterSpacing: -0.4,
@@ -1553,13 +1621,13 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               RoundedGaugeWidget(
                 percentage: _staffRatio > 0.0 ? _staffRatio : 0.0,
                 progressColor: const Color(0xFF10B981),
-                backgroundColor: Colors.white.withOpacity(0.12),
+                backgroundColor: Colors.white.withValues(alpha: 0.12),
                 textColor: Colors.white,
                 size: 50,
               ),
             ],
           ),
-          Divider(height: 1, color: Colors.white.withOpacity(0.14)),
+          Divider(height: 1, color: Colors.white.withValues(alpha: 0.14)),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1582,7 +1650,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         colors: [Color(0xFFFFFFFF), Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
       ),
       borderColor: const Color(0xFFE2E8F0),
-      shadowColor: const Color(0xFF0F172A).withOpacity(0.12),
+      shadowColor: const Color(0xFF0F172A).withValues(alpha: 0.12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1621,7 +1689,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           _mdmBeneficiaries?.toString() ?? '--',
                           style: const TextStyle(
                             fontFamily: kAppFont,
-                            fontSize: 24,
+                            fontSize: 26,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF0F172A),
                             letterSpacing: -0.4,
@@ -1685,21 +1753,26 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   Widget _buildMonthlyCard() {
+    final ranking = _currentRankingDone;
+    final viffs = ViffsStatusService.currentDue(widget.schoolId);
+    final completed = [ranking, viffs].where((value) => value == true).length;
+    final known = ranking != null || viffs != null;
+    String label(bool? state) => state == true ? 'Done' : state == false ? 'Pending' : '—';
     return _build3DTactileCard(
-      borderColor: const Color(0xFF94A3B8).withOpacity(0.35),
+      borderColor: const Color(0xFF94A3B8).withValues(alpha: 0.35),
       surfaceGradient: const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         stops: [0.0, 0.32, 0.65, 1.0],
         colors: [Color(0xFFFFFFFF), Color(0xFFDCE3EB), Color(0xFF232834), Color(0xFF0A0C11)],
       ),
-      shadowColor: const Color(0xFF0F172A).withOpacity(0.32),
+      shadowColor: const Color(0xFF0F172A).withValues(alpha: 0.32),
       child: Stack(
         children: [
           Positioned.fill(
             child: IgnorePointer(
               child: CustomPaint(
-                painter: _TactileGridPatternPainter(dotColor: const Color(0xFF94A3B8).withOpacity(0.18)),
+                painter: _TactileGridPatternPainter(dotColor: const Color(0xFF94A3B8).withValues(alpha: 0.18)),
               ),
             ),
           ),
@@ -1711,7 +1784,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _buildTitlePill(title: "Monthly Tasks", iconPath: 'assets/icons/calendar (1).png', isBlackPill: true),
-                  _buildCardVerificationBadge(isVerified: false),
+                  _buildCardVerificationBadge(isVerified: ranking != null && viffs != null),
                 ],
               ),
               Row(
@@ -1722,11 +1795,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     crossAxisAlignment: CrossAxisAlignment.baseline,
                     textBaseline: TextBaseline.alphabetic,
                     children: [
-                      const Text(
-                        "—",
+                      Text(
+                        known ? "$completed/2" : "—",
                         style: TextStyle(
                           fontFamily: kAppFont,
-                          fontSize: 24,
+                          fontSize: 26,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                           letterSpacing: -0.4,
@@ -1739,25 +1812,30 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           fontFamily: kAppFont,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white.withOpacity(0.85),
+                          color: Colors.white.withValues(alpha: 0.85),
                         ),
                       ),
                     ],
                   ),
-                  Container(width: 50, height: 50,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withOpacity(0.18), width: 4)),
-                    child: const Text('—', style: TextStyle(fontFamily: kAppFont, fontSize: 16, color: Colors.white))),
+                  TweenAnimationBuilder<double>(
+                    tween: Tween<double>(begin: 0, end: known ? completed / 2 : 0),
+                    duration: const Duration(milliseconds: 450), curve: Curves.easeOutCubic,
+                    builder: (context, progress, _) => SizedBox(width: 58, height: 58,
+                      child: CustomPaint(painter: _GaugePainter(percentage: progress,
+                        progressColor: const Color(0xFF69F0AE),
+                        backgroundColor: Colors.white.withValues(alpha: 0.18), strokeWidth: 4),
+                        child: Center(child: Text(known ? '${completed * 50}%' : '—',
+                          style: TextStyle(fontFamily: kAppFont, fontSize: 15,
+                            fontWeight: FontWeight.w600, color: Colors.white))))),
+                  ),
                 ],
               ),
-              Divider(height: 1, color: Colors.white.withOpacity(0.18)),
+              Divider(height: 1, color: Colors.white.withValues(alpha: 0.18)),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildPill("Ranking: —", const Color(0xFF10B981), textColor: Colors.white),
-                  _buildPill("VIFFS: —", const Color(0xFF38BDF8), textColor: Colors.white),
-                  _buildPill("Audit: —", const Color(0xFFFBBF24), textColor: Colors.white),
+                  _buildPill("Ranking: ${label(ranking)}", const Color(0xFF10B981), textColor: Colors.white),
+                  _buildPill("VIFFS: ${ViffsStatusService.dueLabel(widget.schoolId)}", const Color(0xFF38BDF8), textColor: Colors.white),
                 ],
               ),
             ],
@@ -1767,6 +1845,98 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
+  Future<void> _fetchViffsMonthlyStatus({bool force = false}) async {
+    if (!mounted || _monthlyScreenOpen || _viffsStatusLoading) return;
+    final due = ViffsStatusService.duePeriod;
+    final period = '${due.year}-${due.month}';
+    if (!force && (_viffsCheckedPeriod == period || ViffsStatusService.currentDue(widget.schoolId) == true)) return;
+    _viffsStatusRetry?.cancel();
+    if (force) _viffsStatusAttempts = 0;
+    _viffsStatusLoading = true;
+    _viffsStatusAttempts++;
+    try {
+      // A cached attendance result does not establish the school's class range.
+      if (ViffsStatusService.requiredCategories(widget.schoolId) == null) {
+        await _fetchStudentTaskStatus();
+      }
+      if (!mounted || _monthlyScreenOpen) return;
+      final tablets = ViffsStatusService.requiredCategories(widget.schoolId);
+      if (tablets == null || tablets.isEmpty) return;
+      final metadata = MonthlyTaskService.cachedViffsSelectors(widget.schoolId);
+      final form = metadata ?? Map<String, dynamic>.from(
+        (await MonthlyTaskService.fetch(widget.schoolId, 'viffs', {}))['data']);
+      if (!mounted || _monthlyScreenOpen) return;
+      final fields = (form['selectors'] as List).whereType<Map>().toList();
+      List<Map> options(String suffix) => fields.where((f) => f['id'] == 'ContentPlaceHolder1_$suffix')
+          .expand((f) => (f['options'] as List).whereType<Map>()).toList();
+      final startYear = due.month >= 5 ? due.year : due.year - 1;
+      final sessions = options('ddlStudentType').where((o) =>
+        RegExp('^$startYear[-–](?:${startYear + 1}|${(startYear + 1).toString().substring(2)})\$')
+          .hasMatch(o['value'].toString().replaceAll(' ', ''))).toList();
+      if (sessions.length != 1 || !options('ddlmonth').any((o) => o['value'].toString() == '${due.month}')) return;
+      for (final tablet in tablets) {
+        if (!mounted || _monthlyScreenOpen) return;
+        if (!options('ddlClass').any((o) => o['value'].toString() == tablet)) return;
+        await MonthlyTaskService.fetch(widget.schoolId, 'viffs', {
+          'ContentPlaceHolder1_ddlStudentType': sessions.single['value'].toString(),
+          'ContentPlaceHolder1_ddlClass': tablet, 'ContentPlaceHolder1_ddlmonth': '${due.month}',
+        }, refresh: force);
+      }
+      _viffsCheckedPeriod = period;
+      _viffsStatusAttempts = 0;
+    } catch (e) {
+      debugPrint('VIFFS status read unavailable: $e');
+    } finally {
+      _viffsStatusLoading = false;
+      // Retry reads only; never Submit or Lock. Pause while a form is being used.
+      if (mounted && !_monthlyScreenOpen && _viffsCheckedPeriod != period && _viffsStatusAttempts < 3) {
+        _viffsStatusRetry = Timer(Duration(seconds: 5 * _viffsStatusAttempts), () {
+          unawaited(_fetchViffsMonthlyStatus());
+        });
+      }
+    }
+  }
+
+  void _onViffsStatusChanged() { if (mounted) setState(() {}); }
+
+  void _onRankingStatusChanged() {
+    final status = RankingStatusService.currentDue(widget.schoolId);
+    if (!mounted || status == null) return;
+    setState(() {
+      _rankingTaskDone = status['completed'] as bool;
+      _rankingStatusPeriod = _rankingDuePeriod;
+    });
+  }
+
+  Future<void> _restoreLiveRankingStatus() async {
+    final status = await RankingStatusService.readDue(widget.schoolId);
+    if (!mounted || status == null) return;
+    setState(() {
+      _rankingTaskDone = status['completed'] as bool;
+      _rankingStatusPeriod = _rankingDuePeriod;
+    });
+  }
+
+  Future<void> _openMonthlyTaskHub() async {
+    if (_monthlyScreenOpen) return;
+    _monthlyScreenOpen = true;
+    try {
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => MonthlyTasksHub(
+        schoolId: widget.schoolId,
+        onStatus: (name, completed) {
+          if (mounted && name == 'ranking') setState(() {
+            _rankingTaskDone = completed; _rankingStatusPeriod = _rankingDuePeriod;
+          });
+        },
+      )));
+    } finally {
+      _monthlyScreenOpen = false;
+      await _restoreLiveRankingStatus();
+      _viffsStatusAttempts = 0;
+      unawaited(_fetchViffsMonthlyStatus());
+    }
+  }
+
   Future<void> _openMonthlyTasks(String task) async {
     if (_monthlyScreenOpen) return;
     _monthlyScreenOpen = true;
@@ -1774,10 +1944,15 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => MonthlyTasksScreen(
         schoolId: widget.schoolId, initialTask: task,
         onStatus: (name, completed) {
-          if (mounted && name == 'ranking') setState(() => _rankingTaskDone = completed);
+          if (mounted && name == 'ranking') setState(() { _rankingTaskDone = completed; _rankingStatusPeriod = _rankingDuePeriod; });
         },
       )));
-    } finally { _monthlyScreenOpen = false; }
+    } finally {
+      _monthlyScreenOpen = false;
+      await _restoreLiveRankingStatus();
+      _viffsStatusAttempts = 0;
+      unawaited(_fetchViffsMonthlyStatus());
+    }
   }
 
   void _showUnavailableTask(String title) {
@@ -1789,6 +1964,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     if (task.done == true) return;
     if (task.unavailable) {
       _showUnavailableTask(task.title);
+      return;
+    }
+    if (task.title == 'District Ranking' || task.title == 'VIFFS Tablet Entry') {
+      task.onTap();
       return;
     }
     _showAppleToast('${task.title} • ${_taskLabel(task.done)}',
@@ -1866,10 +2045,14 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           if (grades.every((grade) => grade != null && grade >= 1 && grade <= 12)) {
             _schoolHasPrimary = grades.any((grade) => grade! <= 5);
             _schoolHasUpperPrimary = grades.any((grade) => grade! >= 6);
+            ViffsStatusService.setEligibility(widget.schoolId,
+              primary: grades.any((grade) => grade! >= 1 && grade <= 5),
+              upper: grades.any((grade) => grade! >= 6 && grade <= 12));
             _applyMdmCategoryFallback();
           }
         }
       });
+    unawaited(_fetchViffsMonthlyStatus());
   }
 
   Future<void> _fetchStudentTaskStatus() async {
@@ -1942,102 +2125,87 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
   Widget _buildTaskPanel() {
     final tasks = _dashboardTasks;
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white, width: 1.2),
-        boxShadow: [
-          BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.055),
-            blurRadius: 24, offset: const Offset(0, 8)),
-          BoxShadow(color: const Color(0xFF64748B).withOpacity(0.035),
-            blurRadius: 2, offset: const Offset(0, 1)),
-        ],
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFFF3F5F8),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: const EdgeInsets.fromLTRB(18, 19, 18, 16), child: Row(children: [
-          Container(width: 34, height: 34,
-            decoration: BoxDecoration(color: const Color(0xFF0F172A),
-              borderRadius: BorderRadius.circular(11)),
-            child: const Icon(CupertinoIcons.list_bullet, size: 18, color: Colors.white)),
-          const SizedBox(width: 10),
-          const Expanded(child: Text('Task Checklist', style: TextStyle(fontFamily: kAppFont,
-            fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: -0.2,
-            color: Color(0xFF0F172A)))),
-          const SizedBox(width: 12),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(padding: const EdgeInsets.only(left: 4, right: 4, bottom: 10),
+        child: Row(children: [
+          const Expanded(child: Text('Task Checklist', style: TextStyle(
+            fontFamily: kAppFont, fontSize: 12, fontWeight: FontWeight.w600,
+            height: 1.35, letterSpacing: -0.1, color: Color(0xFF64748B)))),
           Semantics(label: '$_completedTasks of ${tasks.length} tasks completed',
-            child: ExcludeSemantics(child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text('$_completedTasks/${tasks.length}', style: const TextStyle(fontFamily: kAppFont,
-                fontSize: 22, height: 1.1, fontWeight: FontWeight.w700,
-                letterSpacing: -0.8, color: Color(0xFF0F172A))),
-              const SizedBox(height: 3),
-              const Text('Completed', style: TextStyle(fontFamily: kAppFont,
-                fontSize: 9.5, fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
-            ]))),
-        ])),
-        const Padding(padding: EdgeInsets.symmetric(horizontal: 18),
-          child: Divider(height: 1, color: Color(0xFFE9EEF4))),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 3, 16, 10), child: Column(children: [
-          for (var index = 0; index < tasks.length; index++)
-            _buildUnifiedTaskRow(title: tasks[index].title,
-              time: tasks[index].unavailable ? '—' : _taskLabel(tasks[index].done),
-              iconPath: tasks[index].iconPath, done: tasks[index].done,
-              onTap: () => _openPendingTask(tasks[index]), showDivider: index < tasks.length - 1),
-        ])),
-      ]),
-    );
+            child: ExcludeSemantics(child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFE2E8F0))),
+              child: Text('$_completedTasks/${tasks.length}',
+                style: const TextStyle(fontFamily: kAppFont, fontSize: 14,
+                  height: 1.1, fontWeight: FontWeight.w600, letterSpacing: -0.2,
+                  color: Color(0xFF0F172A))),
+            ))),
+        ]),
+      ),
+      Container(width: double.infinity,
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: const Color(0xFFE2E8F0).withValues(alpha: 0.65)),
+          boxShadow: [BoxShadow(color: const Color(0xFF0F172A).withValues(alpha: 0.025),
+            blurRadius: 18, offset: const Offset(0, 5))]),
+        child: ClipRRect(borderRadius: BorderRadius.circular(22),
+          child: Column(children: [
+            for (var index = 0; index < tasks.length; index++)
+              _buildUnifiedTaskRow(title: tasks[index].title,
+                time: tasks[index].unavailable ? '—' : _taskLabel(tasks[index].done),
+                iconPath: tasks[index].iconPath, done: tasks[index].done,
+                onTap: () => _openPendingTask(tasks[index]), showDivider: index < tasks.length - 1),
+          ]),
+        ),
+      ),
+    ]);
   }
 
   Widget _buildUnifiedTaskRow({required String title, required String time,
     required String iconPath, bool? done, VoidCallback? onTap, bool showDivider = true}) {
     final complete = done == true;
+    final iconSize = title == 'Staff Attendance' ? 19.0 : 17.0;
     final status = time == '—' ? 'Planned' : time;
     final category = title == 'Mid Day Meal (MDM)' ? 'Meal distribution'
         : title.contains('Attendance') ? 'Daily attendance' : 'Monthly compliance';
     return Column(children: [
-      Material(color: Colors.transparent, child: InkWell(
-        onTap: complete ? null : onTap, borderRadius: BorderRadius.circular(10),
-        child: Padding(padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 13),
-          child: Row(children: [
-            SizedBox(width: 36, height: 36,
-              child: Center(child: Image.asset(iconPath, width: 23, height: 23,
-                fit: BoxFit.contain, color: const Color(0xFF334155), cacheWidth: 112,
-                errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.doc_text,
-                  size: 23, color: Color(0xFF334155))))),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontFamily: kAppFont, fontSize: 12.5,
-                  fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
-              const SizedBox(height: 4),
-              Text(complete ? category : status, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: kAppFont, fontSize: 10,
-                  fontWeight: FontWeight.w400,
-                  color: done == false ? const Color(0xFF9A6700) : const Color(0xFF64748B))),
-            ])),
-            const SizedBox(width: 12),
-            Tooltip(message: complete ? 'Completed' : status, child: Semantics(
-              label: '$title ${complete ? 'completed' : status}',
-              child: complete
-                  ? Image.asset('assets/icons/check.png', width: 22, height: 22,
-                      fit: BoxFit.contain, cacheWidth: 88,
-                      errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.checkmark_alt,
-                        size: 22, color: Color(0xFF16A34A)))
-                  : Container(width: 22, height: 22,
-                      decoration: BoxDecoration(shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFCBD5E1), width: 1.4))),
-            )),
-          ]),
-        ),
-      )),
-      if (showDivider) Padding(padding: const EdgeInsets.only(left: 50),
-        child: Divider(height: 1, color: const Color(0xFF94A3B8).withOpacity(0.16))),
+      CupertinoButton(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        onPressed: complete ? null : onTap,
+        child: Row(children: [
+          Container(width: 32, height: 32,
+            decoration: BoxDecoration(color: const Color(0xFFF1F4F7), borderRadius: BorderRadius.circular(10)),
+            child: Center(child: Image.asset(iconPath, width: iconSize, height: iconSize,
+              fit: BoxFit.contain, color: const Color(0xFF0F172A), cacheWidth: 112,
+              errorBuilder: (_, __, ___) => Icon(CupertinoIcons.doc_text,
+                size: iconSize, color: const Color(0xFF0F172A))))),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontFamily: kAppFont, fontSize: 13,
+                fontWeight: FontWeight.w500, height: 1.35, letterSpacing: -0.1, color: Color(0xFF0F172A))),
+            const SizedBox(height: 2),
+            Text(complete ? category : status, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontFamily: kAppFont, fontSize: 11,
+                fontWeight: FontWeight.w400, height: 1.35, letterSpacing: -0.1,
+                color: Color(0xFF64748B))),
+          ])),
+          const SizedBox(width: 8),
+          Tooltip(message: complete ? 'Completed' : status, child: Semantics(
+            label: '$title ${complete ? 'completed' : status}',
+            child: complete
+                ? Image.asset('assets/icons/check.png', width: 22, height: 22,
+                    fit: BoxFit.contain, cacheWidth: 88,
+                    errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.checkmark_alt,
+                      size: 22, color: Color(0xFF16A34A)))
+                : Container(width: 22, height: 22,
+                    decoration: BoxDecoration(shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFCBD5E1), width: 1.4))),
+          )),
+        ]),
+      ),
+      if (showDivider) const Divider(height: 1, indent: 68, color: Color(0xFFE2E8F0)),
     ]);
   }
 
@@ -2049,11 +2217,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 5.0),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
+            color: Colors.white.withValues(alpha: 0.95),
             borderRadius: BorderRadius.circular(30),
             border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
             boxShadow: [
-              BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.09), blurRadius: 18, offset: const Offset(0, 5)),
+              BoxShadow(color: const Color(0xFF0F172A).withValues(alpha: 0.09), blurRadius: 18, offset: const Offset(0, 5)),
             ],
           ),
           child: Row(
@@ -2156,14 +2324,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             ),
                           ),
                           child: ClipOval(
-                            child: Image.asset(
-                              'assets/icons/user.png',
-                              width: 20,
-                              height: 20,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Icon(Icons.person_rounded, size: 13, color: isSelected ? activeColor : inactiveColor),
-                            ),
+                            child: AccountAvatar(schoolId: widget.schoolId, size: 20),
                           ),
                         )
                       : Image.asset(
@@ -2206,67 +2367,102 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
-  void _showLogoutSheet(BuildContext context) {
-    FocusManager.instance.primaryFocus?.unfocus();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(22.0),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(2)),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              "${widget.schoolId} !",
-              style: const TextStyle(
-                fontFamily: kAppFont,
-                fontSize: 16.5,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              "Shaladarpan Automation Engine",
-              style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, color: Color(0xFF64748B)),
-            ),
-            const SizedBox(height: 22),
-            ListTile(
-              leading: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444)),
-              title: const Text(
-                "Sign Out",
-                style: TextStyle(
-                  fontFamily: kAppFont,
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFFEF4444),
-                ),
-              ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              tileColor: const Color(0xFFFEF2F2),
-              onTap: () async {
-                FocusManager.instance.primaryFocus?.unfocus();
-                Navigator.of(context, rootNavigator: true).pop();
-                await Future.delayed(const Duration(milliseconds: 100));
-                widget.onLogoutRequested();
-              },
-            ),
-            const SizedBox(height: 10),
-          ],
-        ),
-      ),
+  String _rankingReminder(bool? done) {
+    final now = DateTime.now(), previous = DateTime(DateTime.now().year, DateTime.now().month, 0);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    final period = '${months[previous.month - 1]} ${previous.year}';
+    final deadline = '5 ${months[now.month - 1]}';
+    if (done == null) return '$period · check entry · due $deadline';
+    return DateUtils.dateOnly(now).isAfter(DateTime(now.year, now.month, 5))
+      ? '$period pending · overdue since $deadline' : '$period pending · submit by $deadline';
+  }
+
+  void _showNotifications() {
+    final tasks = _dashboardTasks.where((task) => task.done != true).toList();
+    showModalBottomSheet<void>(
+      context: context, backgroundColor: Colors.white, isScrollControlled: true, useSafeArea: true,
+      constraints: const BoxConstraints(maxWidth: 520),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (sheetContext) => SafeArea(top: false, child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Expanded(child: Text('Notifications', style: TextStyle(fontFamily: kAppFont, fontSize: 17, fontWeight: FontWeight.w600, color: Color(0xFF0F172A)))),
+            IconButton(tooltip: 'Close', onPressed: () => Navigator.pop(sheetContext), icon: const Icon(CupertinoIcons.xmark, size: 16)),
+          ]),
+          const Text('Current school task status', style: TextStyle(fontFamily: kAppFont, fontSize: 11, color: Color(0xFF64748B))),
+          const SizedBox(height: 14),
+          if (tasks.isEmpty) const Padding(padding: EdgeInsets.symmetric(vertical: 18),
+            child: Text('No pending school tasks.', style: TextStyle(fontFamily: kAppFont, fontSize: 12, color: Color(0xFF64748B)))),
+          for (final task in tasks) ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Container(width: 34, height: 34, padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(color: const Color(0xFFF1F4F7), borderRadius: BorderRadius.circular(10)),
+              child: Image.asset(task.iconPath, fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(CupertinoIcons.bell, size: 19))),
+            title: Text(task.title, style: const TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w500)),
+            subtitle: Text(task.title == 'District Ranking' ? _rankingReminder(task.done) : task.done == false ? 'Pending' : 'Status not confirmed',
+              style: const TextStyle(fontFamily: kAppFont, fontSize: 10.5, color: Color(0xFF64748B))),
+            trailing: const Icon(CupertinoIcons.chevron_forward, size: 12, color: Color(0xFF64748B)),
+            onTap: () { Navigator.pop(sheetContext); task.onTap(); },
+          ),
+        ]),
+      )),
     );
   }
+
+  void _showLogoutSheet(BuildContext context) {
+    FocusManager.instance.primaryFocus?.unfocus();
+    bool signingOut = false;
+    final identity = AccountIdentity.load(widget.schoolId);
+    showModalBottomSheet<void>(
+      context: context, backgroundColor: Colors.white, isScrollControlled: true, useSafeArea: true,
+      constraints: const BoxConstraints(maxWidth: 520),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (sheetContext) => SafeArea(top: false, child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            AccountAvatar(schoolId: widget.schoolId, size: 42), const SizedBox(width: 12),
+            Expanded(child: FutureBuilder<Map<String, String>>(
+              future: identity,
+              builder: (context, snapshot) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(snapshot.data?['name'] ?? 'Account', maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontFamily: kAppFont, fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+                const SizedBox(height: 3),
+                Text('NIC : ${snapshot.data?['nic'] ?? '—'}',
+                  style: const TextStyle(fontFamily: kAppFont, fontSize: 11, color: Color(0xFF64748B))),
+              ]),
+            )),
+            IconButton(tooltip: 'Close', onPressed: () => Navigator.pop(sheetContext), icon: const Icon(CupertinoIcons.xmark, size: 16)),
+          ]),
+          const SizedBox(height: 20),
+          const Text('Saved details stay on this device. You can use Continue as to sign in again.',
+            style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, height: 1.4, color: Color(0xFF64748B))),
+          const SizedBox(height: 18),
+          Row(children: [
+            Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(sheetContext),
+              style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF0F172A), side: const BorderSide(color: Color(0xFFE2E8F0)),
+                padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
+              child: const Text('Cancel', style: TextStyle(fontFamily: kAppFont, fontSize: 12)))),
+            const SizedBox(width: 12),
+            Expanded(child: FilledButton.icon(
+              onPressed: () {
+                if (signingOut) return;
+                signingOut = true;
+                Navigator.pop(sheetContext);
+                if (mounted) widget.onLogoutRequested();
+              },
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFFF214B), foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11))),
+              icon: const Icon(Icons.logout_rounded, size: 15),
+              label: const Text('Sign Out', style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w600)))),
+          ]),
+        ]),
+      )),
+    );
+  }
+
 }
 
 class _TactileGridPatternPainter extends CustomPainter {
@@ -2380,7 +2576,7 @@ class _GaugePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _GaugePainter oldDelegate) => oldDelegate.percentage != percentage;
+  bool shouldRepaint(covariant _GaugePainter oldDelegate) => oldDelegate.percentage != percentage || oldDelegate.progressColor != progressColor || oldDelegate.backgroundColor != backgroundColor || oldDelegate.strokeWidth != strokeWidth;
 }
 
 // Each placeholder animates only while its value is unknown.

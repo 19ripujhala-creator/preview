@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/adaptive_layout.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -176,6 +177,7 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
     final bool isAnyLoading = _isLoadingStock || _isLoadingStatus;
     final bool isActivelySyncing = isAnyLoading || _isStaleData;
 
+    return LayoutBuilder(builder: (context, viewport) {
     return Container(
       width: double.infinity,
       color: Colors.transparent,
@@ -184,7 +186,9 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 110.0),
-          child: ConstrainedBox(
+          child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: AppAdaptive.contentWidth(viewport.maxWidth) - 32),
+            child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: math.max(400.0, screenHeight - 160.0)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,7 +234,7 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                                 height: 10,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 1.6,
-                                  color: Color(0xFFF59E0B),
+                                  color: Color(0xFF64748B),
                                 ),
                               )
                             else
@@ -256,6 +260,8 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                 ),
                 const SizedBox(height: 14),
 
+                AdaptivePanels(
+                  first: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 // 2. School Info (Ab 100% Dynamic)
                 Container(
                   width: double.infinity,
@@ -283,6 +289,7 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                 ),
                 const SizedBox(height: 16),
 
+
                 // 3. Stock Status (Instantly Loaded)
                 const Text("Food Grain Stock Status", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
                 const SizedBox(height: 8),
@@ -295,42 +302,46 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                 ),
                 const SizedBox(height: 14),
 
-                // 4. Today's Distribution Status
+                  ]),
+                  second: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                // 4. Today's distribution
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(14),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
+                      Expanded(child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Today's Distribution Status", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                          const SizedBox(height: 2),
+                          const Text("Today's Distribution Status", style: TextStyle(fontFamily: kAppFont, fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
+                          const SizedBox(height: 5),
                           Text(
                             _isLoadingStatus 
                                 ? "Status: Syncing from portal..." 
                                 : (_todayEntryExists ? "Status: Completed • $_beneficiaryCount Students served" : "Status: Pending Entry for Today"),
                             style: TextStyle(
-                              fontFamily: kAppFont, fontSize: 11.0, fontWeight: FontWeight.w600, 
-                              color: _isLoadingStatus ? const Color(0xFF64748B) : (_todayEntryExists ? const Color(0xFF10B981) : const Color(0xFFF59E0B))
+                              fontFamily: kAppFont, fontSize: 12, fontWeight: FontWeight.w500, 
+                              color: const Color(0xFF64748B)
                             ),
                           ),
                         ],
-                      ),
+                      )),
+                      const SizedBox(width: 12),
                       Container(
-                        padding: const EdgeInsets.all(7),
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
                         decoration: BoxDecoration(
-                          color: _isLoadingStatus ? const Color(0xFFF1F5F9) : (_todayEntryExists ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7)), 
-                          borderRadius: BorderRadius.circular(9)
+                          color: _isLoadingStatus ? const Color(0xFFF1F5F9) : (_todayEntryExists ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7)),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        child: _isLoadingStatus 
+                        child: _isLoadingStatus
                             ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF64748B)))
-                            : Icon(_todayEntryExists ? CupertinoIcons.checkmark_alt : CupertinoIcons.clock, size: 16, color: _todayEntryExists ? const Color(0xFF16A34A) : const Color(0xFFD97706)),
+                            : Icon(_todayEntryExists ? CupertinoIcons.checkmark_alt : CupertinoIcons.clock, size: 16,
+                                color: _todayEntryExists ? const Color(0xFF16A34A) : const Color(0xFFD97706)),
                       ),
                     ],
                   ),
@@ -387,20 +398,19 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                   ],
                 ),
                 const SizedBox(height: 18),
-
                 // 6. Registered Log Lists
                 const Text("Distribution Records & Logs", style: TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
                 const SizedBox(height: 8),
 
                 Container(
-                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0))),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE2E8F0))),
                   child: Column(
                     children: [
                       _buildListRow(
                         title: "View Distribution List", subtitle: "Consolidated daily consumption records", icon: CupertinoIcons.list_bullet_below_rectangle,
                         onTap: () { _haptic(); Navigator.push(context, MaterialPageRoute(builder: (context) => const DistributionListScreen(isLegacy: false))); },
                       ),
-                      const Divider(height: 1, color: Color(0xFFF1F5F9), indent: 46, endIndent: 12),
+                      const Divider(height: 1, thickness: 0.7, color: Color(0xFFE2E8F0), indent: 60, endIndent: 16),
                       _buildListRow(
                         title: "Distribution Legacy List", subtitle: "Audit view for unsettled/settled legacy drafts", icon: CupertinoIcons.clock_fill,
                         onTap: () { _haptic(); Navigator.push(context, MaterialPageRoute(builder: (context) => const DistributionListScreen(isLegacy: true))); },
@@ -408,56 +418,65 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                     ],
                   ),
                 ),
+                  ]),
+                ),
+
               ],
             ),
-          ),
+          ))),
         ),
       ),
     );
+    });
   }
 
   Widget _buildStockCard(String title, String amount, String unit, String iconPath) {
     return Container(
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 8, offset: const Offset(0, 2))],
+        color: Colors.white, borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [BoxShadow(color: Color(0x060F172A), blurRadius: 18, offset: Offset(0, 5))],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Image.asset(iconPath, width: 24, height: 24, errorBuilder: (c, e, s) => const Icon(CupertinoIcons.cube_box_fill, size: 24, color: Color(0xFF0F172A))),
-          const SizedBox(height: 8),
-          Text(title, style: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
-          const SizedBox(height: 2),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(amount, style: const TextStyle(fontFamily: kAppFont, fontSize: 24.0, fontWeight: FontWeight.w600, color: Color(0xFF0F172A), letterSpacing: -0.5)),
-              const SizedBox(width: 4),
-              Text(unit, style: const TextStyle(fontFamily: kAppFont, fontSize: 12.0, fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
-            ],
-          ),
-        ],
-      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: Text(title, style: const TextStyle(fontFamily: kAppFont, fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF64748B)))),
+          const SizedBox(width: 6),
+          Container(width: 32, height: 32,
+            decoration: BoxDecoration(color: const Color(0xFFF1F4F7), borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.all(6),
+            child: Image.asset(iconPath, fit: BoxFit.contain,
+              errorBuilder: (c, e, s) => const Icon(CupertinoIcons.cube_box_fill, size: 20, color: Color(0xFF0F172A)))),
+        ]),
+        const SizedBox(height: 6),
+        SizedBox(width: double.infinity, child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
+          child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+            Text(amount, style: const TextStyle(fontFamily: kAppFont, fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF0F172A), letterSpacing: -0.7)),
+            const SizedBox(width: 5),
+            Text(unit, style: const TextStyle(fontFamily: kAppFont, fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
+          ]))),
+      ]),
     );
   }
 
   Widget _buildListRow({required String title, required String subtitle, required IconData icon, required VoidCallback onTap}) {
     return InkWell(
-      onTap: onTap, borderRadius: BorderRadius.circular(14),
+      onTap: onTap, borderRadius: BorderRadius.circular(18),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 18, color: const Color(0xFF0F172A)),
-            const SizedBox(width: 14),
+            Container(width: 32, height: 32,
+              decoration: BoxDecoration(color: const Color(0xFFF1F4F7), borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, size: 18, color: const Color(0xFF0F172A))),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title, style: const TextStyle(fontFamily: kAppFont, fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF0F172A))),
-                  Text(subtitle, style: const TextStyle(fontFamily: kAppFont, fontSize: 11, color: Color(0xFF64748B))),
+                  const SizedBox(height: 3),
+                  Text(subtitle, style: const TextStyle(fontFamily: kAppFont, fontSize: 11.5, color: Color(0xFF64748B))),
                 ],
               ),
             ),
@@ -724,7 +743,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
     return ScrollConfiguration(
       behavior: const _NoGlowScrollBehavior(),
       child: Scaffold(
-        extendBodyBehindAppBar: true, backgroundColor: Colors.white,
+        extendBodyBehindAppBar: false, backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.white.withOpacity(0.85), elevation: 0,
           leading: IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF0F172A), size: 20), onPressed: () => Navigator.pop(context)),
@@ -759,6 +778,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
           ],
         ),
         body: Stack(
+          fit: StackFit.expand,
           children: [
             Positioned.fill(child: Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: [0.0, 0.45, 1.0], colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)])))),
             Positioned(left: -50, top: -40, child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 85, sigmaY: 85), child: Container(width: 260, height: 260, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFBAE6FD).withOpacity(0.42))))),
@@ -770,10 +790,11 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                 builder: (context, constraints) {
                   return SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()), padding: const EdgeInsets.fromLTRB(14.0, 6.0, 14.0, 30.0),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: math.max(0.0, constraints.maxHeight - 36.0)),
-                      child: IntrinsicHeight(
-                        child: Container(
+                    child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: AppAdaptive.contentWidth(constraints.maxWidth) - 32),
+                      child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 0),
+                      child: Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE2E8F0)),
@@ -782,10 +803,13 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildLabel("Transaction Type"), _buildReadOnlyField("Distribution"),
-                              const SizedBox(height: 10), _buildLabel("Customer Type"), _buildReadOnlyField("Beneficiary Dept."),
-                              const SizedBox(height: 10), _buildLabel("Distribution No."), _buildReadOnlyField("Auto Generated"),
-                              const SizedBox(height: 10), _buildLabel("Distribution Date *", isRequired: true), _buildReadOnlyField(formatDisplayDate(DateTime.now())),
+                              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                              AdaptiveFieldGrid(children: [
+                                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_buildLabel("Transaction Type"), _buildReadOnlyField("Distribution")]),
+                                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_buildLabel("Customer Type"), _buildReadOnlyField("Beneficiary Dept.")]),
+                                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_buildLabel("Distribution No."), _buildReadOnlyField("Auto Generated")]),
+                                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_buildLabel("Distribution Date *", isRequired: true), _buildReadOnlyField(formatDisplayDate(DateTime.now()))]),
+                              ]),
                               const SizedBox(height: 14), const Text("Zero Consumption (If Any)", style: TextStyle(fontFamily: kAppFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))), const SizedBox(height: 6),
                               
                               Container(
@@ -815,7 +839,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                 ),
                               ],
 
-                              if (!_isZeroConsumption || isShriKrishnaBhog) ...[
+]), Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [                              if (!_isZeroConsumption || isShriKrishnaBhog) ...[
                                 const SizedBox(height: 14), const Divider(height: 1, color: Color(0xFFF1F5F9)), const SizedBox(height: 12),
                                 const Text("Daily Consumption Entry", style: TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
                                 if (!isShriKrishnaBhog) ...[
@@ -959,10 +983,13 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                 ],
                               ],
 
-                              const Spacer(), const SizedBox(height: 20),
+])]),
+                              const SizedBox(height: 24),
 
                               // Cancel / Save CTA
-                              Row(
+                              Align(alignment: Alignment.centerRight,
+                                child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 520),
+                                  child: Row(
                                 children: [
                                   Expanded(
                                     child: SizedBox(
@@ -994,12 +1021,11 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                     ),
                                   ),
                                 ],
-                              ),
+                              ))),
                             ],
                           ),
                         ),
-                      ),
-                    ),
+                    ))),
                   );
                 },
               ),
@@ -1378,13 +1404,14 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
     return ScrollConfiguration(
       behavior: const _NoGlowScrollBehavior(),
       child: Scaffold(
-        extendBodyBehindAppBar: true, backgroundColor: Colors.white,
+        extendBodyBehindAppBar: false, backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.white.withOpacity(0.85), elevation: 0,
           leading: IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF0F172A), size: 20), onPressed: () => Navigator.pop(context)),
           title: const Text("Add Legacy Distribution", style: TextStyle(fontFamily: kAppFont, fontSize: 15.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))), centerTitle: false,
         ),
         body: Stack(
+          fit: StackFit.expand,
           children: [
             Positioned.fill(child: Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: [0.0, 0.45, 1.0], colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)])))),
             Positioned(left: -50, top: -40, child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 85, sigmaY: 85), child: Container(width: 260, height: 260, decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFFBAE6FD).withOpacity(0.42))))),
@@ -1396,10 +1423,11 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                 builder: (context, constraints) {
                   return SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()), padding: const EdgeInsets.fromLTRB(14.0, 6.0, 14.0, 30.0),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: math.max(0.0, constraints.maxHeight - 36.0)),
-                      child: IntrinsicHeight(
-                        child: Container(
+                    child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: AppAdaptive.contentWidth(constraints.maxWidth) - 32),
+                      child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 0),
+                      child: Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFE2E8F0)),
@@ -1408,6 +1436,7 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                               Container(
                                 padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFFDE68A))),
                                 child: Column(
@@ -1419,8 +1448,10 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                                 ),
                               ),
 
-                              const SizedBox(height: 12), _buildLabel("Transaction Type"), _buildReadOnlyField("Distribution"),
-                              const SizedBox(height: 10), _buildLabel("Customer Type"), _buildReadOnlyField("Beneficiary Dept."),
+                              const SizedBox(height: 12), AdaptiveFieldGrid(children: [
+                                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_buildLabel("Transaction Type"), _buildReadOnlyField("Distribution")]),
+                                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [_buildLabel("Customer Type"), _buildReadOnlyField("Beneficiary Dept.")]),
+                              ]),
                               const SizedBox(height: 10), _buildLabel("Distribution Date (Legacy Date) *", isRequired: true),
                               GestureDetector(
                                 onTap: _openLegacyCalendarPicker, behavior: HitTestBehavior.opaque,
@@ -1464,7 +1495,7 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                                 ),
                               ],
 
-                              if (!_isZeroConsumption || isShriKrishnaBhog) ...[
+]), Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [                              if (!_isZeroConsumption || isShriKrishnaBhog) ...[
                                 const SizedBox(height: 14), const Divider(height: 1, color: Color(0xFFF1F5F9)), const SizedBox(height: 12),
                                 const Text("Daily Consumption Entry", style: TextStyle(fontFamily: kAppFont, fontSize: 13.0, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
                                 if (!isShriKrishnaBhog) ...[
@@ -1608,10 +1639,13 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                                 ],
                               ],
 
-                              const Spacer(), const SizedBox(height: 20),
+])]),
+                              const SizedBox(height: 24),
 
                               // Cancel / Save CTA
-                              Row(
+                              Align(alignment: Alignment.centerRight,
+                                child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 520),
+                                  child: Row(
                                 children: [
                                   Expanded(
                                     child: SizedBox(
@@ -1643,12 +1677,11 @@ class _AddLegacyDistributionScreenState extends State<AddLegacyDistributionScree
                                     ),
                                   ),
                                 ],
-                              ),
+                              ))),
                             ],
                           ),
                         ),
-                      ),
-                    ),
+                    ))),
                   );
                 },
               ),
@@ -2268,7 +2301,7 @@ Widget _buildLabel(String label, {bool isRequired = false}) {
     return ScrollConfiguration(
       behavior: const _NoGlowScrollBehavior(),
       child: Scaffold(
-        extendBodyBehindAppBar: true, backgroundColor: Colors.white,
+        extendBodyBehindAppBar: false, backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.white.withOpacity(0.85), elevation: 0,
           leading: IconButton(icon: const Icon(CupertinoIcons.back, color: Color(0xFF0F172A), size: 20), onPressed: () => Navigator.pop(context)),
@@ -2287,7 +2320,8 @@ Widget _buildLabel(String label, {bool isRequired = false}) {
             ),
           ],
         ),
-        body: Stack(
+        body: AdaptiveWorkspace(background: true, child: Stack(
+          fit: StackFit.expand,
           children: [
             Positioned.fill(
               child: Container(
@@ -2362,9 +2396,8 @@ Widget _buildLabel(String label, {bool isRequired = false}) {
                                   )
                                 : RefreshIndicator(
                                     onRefresh: () => _fetchDistributionRecords(force: true),
-                                    child: ListView.separated(
-                                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()), padding: const EdgeInsets.fromLTRB(14, 4, 14, 20), itemCount: displayedList.length, separatorBuilder: (_, __) => const SizedBox(height: 8),
-                                      itemBuilder: (context, index) {
+                                    child: LayoutBuilder(builder: (context, box) {
+                                      Widget recordBuilder(BuildContext context, int index) {
                                         final item = displayedList[index];
                                         return Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), decoration: BoxDecoration(color: Colors.white.withOpacity(0.95), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFE2E8F0)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.015), blurRadius: 6, offset: const Offset(0, 1))]),
@@ -2400,15 +2433,20 @@ Widget _buildLabel(String label, {bool isRequired = false}) {
                                             ],
                                           ),
                                         );
-                                      },
-                                    ),
+                                      }
+                                      return ListView.separated(
+                                        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                                        padding: const EdgeInsets.fromLTRB(14, 4, 14, 20),
+                                        itemCount: displayedList.length,
+                                        separatorBuilder: (_, __) => const SizedBox(height: 8), itemBuilder: recordBuilder);
+                                    }),
                                   ),
                   ),
                 ],
               ),
             ),
           ],
-        ),
+        )),
       ),
     );
   }

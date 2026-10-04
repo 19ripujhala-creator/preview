@@ -518,6 +518,8 @@ class _InchargeRolesViewState extends State<InchargeRolesView> {
           'school_id': sId,
           'action_type': 'deactive',
           'button_id': buttonId,
+          'employee_id': _currentIncharges.firstWhere((r) => r['button_id']?.toString() == buttonId)['employee_id'],
+          'expected_role': _currentIncharges.firstWhere((r) => r['button_id']?.toString() == buttonId)['role'],
         }),
       ).timeout(const Duration(seconds: 35));
 

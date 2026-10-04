@@ -67,6 +67,7 @@ class _ClassMappingViewState extends State<ClassMappingView> {
 
       if (response.statusCode == 200) {
         final jsonRes = jsonDecode(response.body);
+        if (!mounted) return;
         if (jsonRes['success'] == true && jsonRes['data'] != null && (jsonRes['data'] as List).isNotEmpty) {
           final freshData = jsonRes['data'];
           setState(() {
@@ -82,22 +83,7 @@ class _ClassMappingViewState extends State<ClassMappingView> {
         }
       }
     } catch (e) {
-      if (_mappingRows.isEmpty) {
-        final fallbackData = [
-          {
-            "index": 0,
-            "class": "1",
-            "section": "A",
-            "session": "2026-27",
-            "selected_teacher_id": "",
-            "teachers_list": []
-          }
-        ];
-        setState(() {
-          _mappingRows = fallbackData;
-          _initialRowsBackup = jsonDecode(jsonEncode(fallbackData));
-        });
-      }
+      if (mounted) _showSnackBar('Class mappings could not be fetched from the portal.', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -167,11 +153,6 @@ class _ClassMappingViewState extends State<ClassMappingView> {
     setState(() => _isSubmitting = true);
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString("cached_class_mapping_${widget.schoolId}", jsonEncode(_mappingRows));
-    } catch (_) {}
-
-    try {
       final response = await http.post(
         BackendConfig.uri('/api/shaladarpan/class-mapping/save'),
         headers: {"Content-Type": "application/json"},
@@ -179,22 +160,25 @@ class _ClassMappingViewState extends State<ClassMappingView> {
           "school_id": widget.schoolId,
           "updates": _mappingRows.map((row) => {
             "index": row['index'],
-            "teacher_id": row['selected_teacher_id']
+            "teacher_id": row['selected_teacher_id'],
+            "class_section_id": row['class_section_id']
           }).toList()
         }),
       ).timeout(const Duration(seconds: 40));
 
       final jsonRes = jsonDecode(response.body);
+      if (!mounted) return;
 
       if (response.statusCode == 200 && jsonRes['success'] == true) {
-        _initialRowsBackup = jsonDecode(jsonEncode(_mappingRows));
-        _showSnackBar("Class Teacher Mappings saved successfully!", isError: false);
+        await _fetchClassMappings();
+        if (mounted) _showSnackBar(jsonRes['message']?.toString() ?? 'Mappings confirmed by the portal.', isError: false);
       } else {
-        final errorMsg = jsonRes['message'] ?? "Portal session timed out. Retrying on next sync.";
-        _showSnackBar("Saved locally. Portal: $errorMsg", isCancel: true);
+        final detail = jsonRes['detail'];
+        final errorMsg = detail is Map ? detail['message'] : jsonRes['message'];
+        _showSnackBar(errorMsg?.toString() ?? 'Save was not confirmed. Refresh before retrying.', isError: true);
       }
     } catch (e) {
-      _showSnackBar("Saved offline. Changes are safe on device.", isCancel: true);
+      if (mounted) _showSnackBar('Save result is unknown. Refresh the portal before retrying.', isError: true);
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

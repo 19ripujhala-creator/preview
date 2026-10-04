@@ -1,3 +1,4 @@
+import 'ranking_status_service.dart';
 // lib/services/portals/shaladarpan/shaladarpan_service.dart
 import 'dart:async';
 import 'dart:convert';
@@ -136,13 +137,16 @@ class ShaladarpanService {
           )
           .timeout(const Duration(seconds: 310));
       final result = EcosystemService.decode(response);
-      if (response.statusCode != 200 || result['success'] != true) return result;
+      if (response.statusCode != 200) return result;
       final payload = result['data'] is Map ? Map<String, dynamic>.from(result['data']) : result;
       final prefs = await SharedPreferences.getInstance();
       final current = await SecureStorageService.getShaladarpanCreds();
       if (current['id']?.trim() != schoolId) {
         return {'success': false, 'code': 'ACCOUNT_CHANGED', 'message': 'Account changed during sync.'};
       }
+      await RankingStatusService.store(schoolId, payload['ranking_status']);
+      RankingStatusService.rememberForm(schoolId, payload['ranking_form']);
+      if (result['success'] != true) return result;
       for (final entry in {
         'kpi': 'cached_student_kpi',
         'staff_attendance': 'cached_staff_attendance',

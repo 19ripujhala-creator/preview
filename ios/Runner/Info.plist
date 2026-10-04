@@ -6,6 +6,8 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a profile photo to display in your Shaladarpan account on this device.</string>
 	<key>CFBundleDisplayName</key>
 	<string>Shaladarpan</string>
 	<key>CFBundleExecutable</key>

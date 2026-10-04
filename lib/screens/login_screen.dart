@@ -1,3 +1,5 @@
+import 'package:lottie/lottie.dart';
+import 'package:shaladarpan/widgets/account_avatar.dart';
 // C:\shaladarpan_app\lib\screens\login_screen.dart
 import 'dart:async';
 import 'dart:ui';
@@ -5,7 +7,6 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lottie/lottie.dart';
 import 'package:video_player/video_player.dart';
 import 'package:shaladarpan/services/core/secure_storage_service.dart';
 import 'package:shaladarpan/services/core/ecosystem_service.dart';
@@ -23,6 +24,7 @@ class LoginDesignScreen extends StatefulWidget {
 class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerProviderStateMixin {
   final PageController _wizardController = PageController();
   int _currentStep = 0;
+  final Map<TextEditingController, bool> _passwordVisible = {};
 
   final TextEditingController _shalaIdController = TextEditingController();
   final TextEditingController _shalaPassController = TextEditingController();
@@ -34,6 +36,13 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
   final TextEditingController _rajsimsPassController = TextEditingController();
 
   bool _isLoggedOutState = false;
+  bool _credentialsReady = false;
+
+  bool get _hasSavedAccount => [
+    _shalaIdController.text.trim(), _shalaPassController.text,
+    _staffIdController.text.trim(), _staffPassController.text,
+    _rajsimsIdController.text.trim(), _rajsimsPassController.text,
+  ].every((value) => value.isNotEmpty);
   bool _isLoading = false;
   bool _progressKnown = false;
   double _loginProgressTarget = 0.0;
@@ -75,13 +84,13 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
     setState(() {
       _isLoading = false;
       _isApiCallInProgress = false;
-      _isLoggedOutState = true;
-      _currentStep = 3;
+      _isLoggedOutState = _hasSavedAccount;
+      _currentStep = _isLoggedOutState ? 3 : 0;
       _liveStatusMessage = "Connecting to Ecosystem...";
     });
     _progressController.value = 0.0;
-    if (_wizardController.hasClients) {
-      _wizardController.jumpToPage(3);
+    if (!_isLoggedOutState && _wizardController.hasClients) {
+      _wizardController.jumpToPage(0);
     }
     if (_isVideoReady && !_videoController.value.isPlaying) {
       _videoController.play();
@@ -130,9 +139,14 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
       restore(_shalaIdController, _shalaPassController, 'school_id', 'school_password');
       restore(_staffIdController, _staffPassController, 'staff_id', 'staff_password');
       restore(_rajsimsIdController, _rajsimsPassController, 'sso_id', 'sso_password');
-      setState(() {});
+      setState(() {
+        _isLoggedOutState = _hasSavedAccount;
+        _currentStep = _isLoggedOutState ? 3 : 0;
+      });
     } catch (_) {
       // Manual entry remains available when storage is unavailable.
+    } finally {
+      if (mounted) setState(() => _credentialsReady = true);
     }
   }
 
@@ -277,7 +291,8 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
   void _onNextPressed() {
     FocusManager.instance.primaryFocus?.unfocus();
     // Step 0 aur 1 par aage badhein, Step 2 (RajSIMS) ya Step 3 (Logged-out Continue) par direct login initiate karein
-    if (_isLoggedOutState && _currentStep == 3) {
+    if (!_credentialsReady || _isLoading || _isApiCallInProgress) return;
+    if (_isLoggedOutState) {
       _performActualLogin();
     } else if (_currentStep < 2) {
       HapticFeedback.selectionClick();
@@ -287,7 +302,19 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
     }
   }
 
+  void _onBackPressed() {
+    if (!_credentialsReady || _isLoading || _isApiCallInProgress ||
+        _isLoggedOutState || _currentStep <= 0 || !_wizardController.hasClients) return;
+    FocusManager.instance.primaryFocus?.unfocus();
+    HapticFeedback.selectionClick();
+    _wizardController.previousPage(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
   void _onSkipPressed() {
+    if (!_credentialsReady || _isLoading || _isApiCallInProgress) return;
     FocusManager.instance.primaryFocus?.unfocus();
     if (_currentStep < 2) {
       HapticFeedback.lightImpact();
@@ -298,16 +325,43 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
   }
 
   void _onSetupDifferentAccount() {
+    if (!_credentialsReady || _isLoading || _isApiCallInProgress) return;
     HapticFeedback.mediumImpact();
     setState(() {
       _isLoggedOutState = false;
       _currentStep = 0;
     });
-    _wizardController.jumpToPage(0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_isLoggedOutState && _wizardController.hasClients) {
+        _wizardController.jumpToPage(0);
+      }
+    });
+  }
+
+  // Keep portal log text readable without emoji, keycaps or joiner fragments.
+  static String _cleanLoginStatus(String message) {
+    final text = String.fromCharCodes(message.runes.where((rune) {
+      final emoji = (rune >= 0x1F000 && rune <= 0x1FAFF) ||
+          (rune >= 0x2600 && rune <= 0x27BF) ||
+          (rune >= 0x2300 && rune <= 0x23FF) ||
+          (rune >= 0x2B00 && rune <= 0x2BFF) ||
+          (rune >= 0x2190 && rune <= 0x21FF) ||
+          (rune >= 0xFE00 && rune <= 0xFE0F) ||
+          rune == 0x200D || rune == 0x20E3 || rune == 0x00A9 ||
+          rune == 0x00AE || rune == 0x203C || rune == 0x2049 ||
+          rune == 0x2122 || rune == 0x2139 || rune == 0x3030 ||
+          rune == 0x303D || rune == 0x3297 || rune == 0x3299 ||
+          (rune >= 0xE0020 && rune <= 0xE007F);
+      return !emoji;
+    })).replaceAll(RegExp(r'\s+'), ' ').trim();
+    return text.isEmpty ? 'Connecting to portals…' : text;
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_credentialsReady) {
+      return const Scaffold(backgroundColor: Color(0xFFD3D9E1), body: Center(child: CupertinoActivityIndicator()));
+    }
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -329,7 +383,12 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     stops: [0.0, 0.35, 0.75, 1.0],
-                    colors: [Colors.white, Colors.white, Color(0xFFE8EEF2), Color(0xFFF9E7BA)],
+                    colors: [
+                      Colors.white,
+                      Colors.white,
+                      Color(0xFFE8EEF2),
+                      Color(0xFFF9E7BA),
+                    ],
                   ),
                 ),
               ),
@@ -337,7 +396,9 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
             SafeArea(
               child: Align(
                 alignment: Alignment.topCenter,
-                child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 528),
+                  child: SingleChildScrollView(
                   physics: const ClampingScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
                   child: Column(
@@ -366,10 +427,10 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
+                          Expanded(child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              Row(children: [Flexible(child: Text(
                                 _isLoggedOutState ? "Welcome back !" : "Account setup",
                                 style: const TextStyle(
                                   fontSize: 18.5,
@@ -378,21 +439,29 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                                   color: Color(0xFF0F172A),
                                   letterSpacing: -0.2,
                                 ),
-                              ),
+                              )), if (!_isLoggedOutState) ...[const SizedBox(width: 8), _portalStack()]]),
                               const SizedBox(height: 2),
                               const Text(
-                                "Triple-Portal Ecosystem Active",
-                                style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.w500, color: Color(0xFF475569)),
+                                "Shaladarpan · Staff Login · RajSIMS",
+                                style: TextStyle(
+                                  fontSize: 12.0,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF475569),
+                                ),
                               ),
                             ],
-                          ),
+                          )),
                           Image.asset(
                             'assets/icons/app_icon_v1.ico',
                             width: 36,
                             height: 36,
                             fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Image.asset('assets/icons/icon.png', width: 36, height: 36, fit: BoxFit.contain),
+                            errorBuilder: (context, error, stackTrace) => Image.asset(
+                              'assets/icons/icon.png',
+                              width: 36,
+                              height: 36,
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ],
                       ),
@@ -401,12 +470,12 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.96),
+                          color: Colors.white.withValues(alpha: 0.96),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: Colors.white, width: 1.2),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF0F172A).withOpacity(0.04),
+                              color: const Color(0xFF0F172A).withValues(alpha: 0.04),
                               blurRadius: 18,
                               offset: const Offset(0, 5),
                             ),
@@ -416,17 +485,17 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             SizedBox(
-                              height: 135,
-                              child: PageView(
+                              height: 155 + (MediaQuery.textScalerOf(context).scale(13) - 13) * 4,
+                              child: _isLoggedOutState ? _buildContinueAsScreen() : PageView(
                                 controller: _wizardController,
                                 physics: const NeverScrollableScrollPhysics(),
                                 onPageChanged: (idx) => setState(() => _currentStep = idx),
                                 children: [
                                   _buildPortalForm(
-                                    title: "1. Shala Darpan School",
+                                    title: "1. Shaladarpan",
                                     userController: _shalaIdController,
                                     passController: _shalaPassController,
-                                    userHint: "School UDISE ID",
+                                    userHint: "School NIC ID",
                                   ),
                                   _buildPortalForm(
                                     title: "2. Staff Corner Login",
@@ -435,12 +504,11 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                                     userHint: "Staff NIC-SD ID",
                                   ),
                                   _buildPortalForm(
-                                    title: "3. RajSSO / RajSIMS",
+                                    title: "3. RajSIMS",
                                     userController: _rajsimsIdController,
                                     passController: _rajsimsPassController,
-                                    userHint: "RajSSO ID (e.g. RJPG...)",
+                                    userHint: "SSO ID",
                                   ),
-                                  _buildContinueAsScreen(),
                                 ],
                               ),
                             ),
@@ -458,7 +526,10 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF8FAFC),
                                   borderRadius: BorderRadius.circular(22),
-                                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
+                                  border: Border.all(
+                                    color: const Color(0xFFE2E8F0),
+                                    width: 1.0,
+                                  ),
                                 ),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -470,19 +541,19 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                                           child: Row(
                                             children: [
                                               SizedBox(
-                                                width: 22,
-                                                height: 22,
+                                                width: 24,
+                                                height: 24,
                                                 child: Lottie.asset(
                                                   'assets/icons/Loading (Buffering).json',
                                                   fit: BoxFit.contain,
                                                   errorBuilder: (_, __, ___) =>
-                                                      const CupertinoActivityIndicator(radius: 7.5),
+                                                      const CupertinoActivityIndicator(radius: 9),
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
                                               Expanded(
                                                 child: Text(
-                                                  _liveStatusMessage,
+                                                  _cleanLoginStatus(_liveStatusMessage),
                                                   maxLines: 1,
                                                   overflow: TextOverflow.ellipsis,
                                                   style: const TextStyle(
@@ -526,7 +597,9 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                                             return LinearProgressIndicator(
                                               value: _progressKnown ? _progressController.value : null,
                                               backgroundColor: const Color(0xFFE2E8F0),
-                                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0F172A)),
+                                              valueColor: const AlwaysStoppedAnimation<Color>(
+                                                Color(0xFF0F172A),
+                                              ),
                                             );
                                           },
                                         ),
@@ -537,6 +610,23 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                               )
                             : Row(
                                 children: [
+                                  if (!_isLoggedOutState && _currentStep > 0) ...[
+                                    SizedBox(
+                                      width: 44,
+                                      height: 44,
+                                      child: IconButton(
+                                        tooltip: 'Back to previous portal',
+                                        onPressed: _onBackPressed,
+                                        icon: const Icon(CupertinoIcons.chevron_left, size: 18),
+                                        style: IconButton.styleFrom(
+                                          foregroundColor: const Color(0xFF0F172A),
+                                          backgroundColor: Colors.white,
+                                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
                                   if (_currentStep < 3 || _isLoggedOutState) ...[
                                     Container(
                                       height: 44,
@@ -546,7 +636,7 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                                         border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: const Color(0xFF0F172A).withOpacity(0.04),
+                                            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
                                             blurRadius: 8,
                                             offset: const Offset(0, 2),
                                           ),
@@ -584,11 +674,15 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                                         gradient: const LinearGradient(
                                           begin: Alignment.topCenter,
                                           end: Alignment.bottomCenter,
-                                          colors: [Color(0xFF27272A), Color(0xFF18181B), Color(0xFF000000)],
+                                          colors: [
+                                            Color(0xFF27272A),
+                                            Color(0xFF18181B),
+                                            Color(0xFF000000),
+                                          ],
                                         ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(0.28),
+                                            color: Colors.black.withValues(alpha: 0.28),
                                             blurRadius: 10,
                                             offset: const Offset(0, 4),
                                           ),
@@ -599,7 +693,7 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                                         child: InkWell(
                                           borderRadius: BorderRadius.circular(22),
                                           splashColor: Colors.transparent,
-                                          highlightColor: Colors.white.withOpacity(0.06),
+                                          highlightColor: Colors.white.withValues(alpha: 0.06),
                                           onTap: _onNextPressed,
                                           child: Padding(
                                             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -643,17 +737,17 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                               ),
                       ),
                       const SizedBox(height: 10),
-                      Container(
+                      SizedBox(height: 72, width: double.infinity, child: Container(
                         width: double.infinity,
                         height: 72,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.95),
+                          color: Colors.white.withValues(alpha: 0.95),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF0F172A).withOpacity(0.03),
+                              color: const Color(0xFF0F172A).withValues(alpha: 0.03),
                               blurRadius: 10,
                               offset: const Offset(0, 2),
                             ),
@@ -687,7 +781,11 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                                         fact["subtitle"]!,
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 10.8, height: 1.25, color: Color(0xFF475569)),
+                                        style: const TextStyle(
+                                          fontSize: 10.8,
+                                          height: 1.25,
+                                          color: Color(0xFF475569),
+                                        ),
                                       ),
                                     ],
                                   );
@@ -707,14 +805,14 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                                     borderRadius: BorderRadius.circular(2),
                                     color: _currentFactIndex == dotIndex
                                         ? const Color(0xFF0F172A)
-                                        : const Color(0xFF94A3B8).withOpacity(0.4),
+                                        : const Color(0xFF94A3B8).withValues(alpha: 0.4),
                                   ),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      ),
+                      )),
                       const SizedBox(height: 12),
                       const Center(
                         child: Text.rich(
@@ -729,7 +827,10 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                             children: [
                               TextSpan(
                                 text: "Ripudaman Singh Jhala",
-                                style: TextStyle(fontWeight: FontWeight.normal, color: Color(0xFF475569)),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.normal,
+                                  color: Color(0xFF475569),
+                                ),
                               ),
                             ],
                           ),
@@ -749,7 +850,7 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
                       ),
                     ],
                   ),
-                ),
+                )),
               ),
             ),
           ],
@@ -757,6 +858,14 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
       ),
     );
   }
+
+  Widget _portalStack() => SizedBox(width: 68, height: 30, child: Stack(children: [
+    for (final entry in ['assets/icons/shaladarpan_logo.png', 'assets/icons/staff_logo.png', 'assets/icons/rajsims.png'].asMap().entries)
+      Positioned(left: entry.key * 19, child: Container(width: 30, height: 30, padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white, border: Border.all(color: const Color(0xFFE2E8F0))),
+        child: Image.asset(entry.value, fit: BoxFit.contain,
+          errorBuilder: (context, error, stack) => Image.asset(['assets/icons/shaladarpan.png', 'assets/icons/staff.png', 'assets/icons/rajsims.png'][entry.key], fit: BoxFit.contain)))),
+  ]));
 
   Widget _buildPortalForm({
     required String title,
@@ -774,17 +883,26 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
             const SizedBox(width: 8),
             Text(
               title,
-              style: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+              style: const TextStyle(
+                fontSize: 14.0,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1E293B),
+              ),
             ),
           ],
         ),
         const SizedBox(height: 10),
         TextField(
           controller: userController,
-          style: const TextStyle(fontSize: 13.0, color: Color(0xFF0F172A)),
+          enabled: !_isLoading, autocorrect: false, enableSuggestions: false,
+          style: const TextStyle(fontFamily: 'PlusJakartaSans', fontSize: 13.0, fontWeight: FontWeight.w500, color: Color(0xFF111827)),
           decoration: InputDecoration(
             hintText: userHint,
-            hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12.5, fontWeight: FontWeight.w500),
+            hintStyle: const TextStyle(
+              color: Color(0xFF475569),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+            ),
             prefixIcon: Padding(
               padding: const EdgeInsets.all(12.0),
               child: Image.asset(
@@ -816,11 +934,22 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
         const SizedBox(height: 8),
         TextField(
           controller: passController,
-          obscureText: true,
-          style: const TextStyle(fontSize: 13.0, color: Color(0xFF0F172A)),
+          enabled: !_isLoading,
+          obscureText: !(_passwordVisible[passController] ?? false),
+          autocorrect: false, enableSuggestions: false,
+          style: const TextStyle(fontFamily: 'PlusJakartaSans', fontSize: 13.0, fontWeight: FontWeight.w500, color: Color(0xFF111827)),
           decoration: InputDecoration(
             hintText: "Password",
-            hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12.5, fontWeight: FontWeight.w500),
+            suffixIcon: IconButton(
+              tooltip: _passwordVisible[passController] == true ? 'Hide password' : 'Show password',
+              onPressed: _isLoading ? null : () => setState(() => _passwordVisible[passController] = !(_passwordVisible[passController] ?? false)),
+              icon: Icon(_passwordVisible[passController] == true ? CupertinoIcons.eye_slash : CupertinoIcons.eye, size: 18, color: const Color(0xFF64748B)),
+            ),
+            hintStyle: const TextStyle(
+              color: Color(0xFF475569),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+            ),
             prefixIcon: Padding(
               padding: const EdgeInsets.all(12.0),
               child: Image.asset(
@@ -864,22 +993,33 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
           decoration: BoxDecoration(
             color: const Color(0xFF0F172A),
             shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 2))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          child: Center(
-            child: Text(
-              _shalaIdController.text.isNotEmpty ? _shalaIdController.text[0].toUpperCase() : "S",
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-          ),
+          child: AccountAvatar(schoolId: _shalaIdController.text.trim(), size: 52),
         ),
         const SizedBox(height: 10),
         Text(
           "Continue as ID: ${_shalaIdController.text}",
-          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+          style: const TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF0F172A),
+          ),
         ),
         const SizedBox(height: 3),
-        const Text("Saved securely on this device", style: TextStyle(fontSize: 11.0, color: Color(0xFF64748B))),
+        const Text(
+          "Saved securely on this device",
+          style: TextStyle(
+            fontSize: 11.0,
+            color: Color(0xFF64748B),
+          ),
+        ),
       ],
     );
   }
@@ -893,18 +1033,25 @@ class LoginDesignScreenState extends State<LoginDesignScreen> with SingleTickerP
         height: 36,
         padding: const EdgeInsets.all(8.5),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
+          color: Colors.white.withValues(alpha: 0.95),
           shape: BoxShape.circle,
           border: Border.all(color: const Color(0xFFE2E8F0), width: 1.0),
           boxShadow: [
-            BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+            BoxShadow(
+              color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: Image.asset(
           assetPath,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) =>
-              const Icon(Icons.help_outline_rounded, size: 16, color: Color(0xFF475569)),
+          errorBuilder: (context, error, stackTrace) => const Icon(
+            Icons.help_outline_rounded,
+            size: 16,
+            color: Color(0xFF475569),
+          ),
         ),
       ),
     );

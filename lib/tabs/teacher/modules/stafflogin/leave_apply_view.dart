@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/adaptive_layout.dart';
 // lib/tabs/teacher/modules/stafflogin/leave_apply_view.dart
 import 'dart:async';
 import 'dart:ui';
@@ -1958,13 +1959,8 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                               )
                             : Column(
                                 children: [
-                                  ListView.separated(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    padding: const EdgeInsets.symmetric(vertical: 2),
-                                    itemCount: displayedLeaves.length,
-                                    separatorBuilder: (_, _) => const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
-                                    itemBuilder: (context, index) {
+                                  LayoutBuilder(builder: (context, box) {
+                                    Widget leaveItem(BuildContext context, int index) {
                                       final item = displayedLeaves[index];
                                       final String status = item["status"];
                                       final bool isPending = status.toLowerCase() == "pending";
@@ -2166,8 +2162,14 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                           ],
                                         ),
                                       );
-                                    },
-                                  ),
+                                    }
+                                    return ListView.separated(shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      padding: const EdgeInsets.symmetric(vertical: 2),
+                                      itemCount: displayedLeaves.length,
+                                      separatorBuilder: (_, __) => const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
+                                      itemBuilder: leaveItem);
+                                  }),
                                   if (filteredList.length > 3)
                                     Container(
                                       width: double.infinity,
@@ -2404,7 +2406,7 @@ class ModernLeavePdfPreviewScreen extends StatelessWidget {
             child: Divider(height: 1, thickness: 0.8, color: Color(0xFFE2E8F0)),
           ),
         ),
-        body: Stack(
+        body: AdaptiveWorkspace(background: true, child: Stack(
           fit: StackFit.expand,
           children: [
             // 🎨 Exact Dashboard Linear Gradient & Ambient Glow Spheres
@@ -2522,7 +2524,7 @@ class ModernLeavePdfPreviewScreen extends StatelessWidget {
               ),
             ),
           ],
-        ),
+        )),
       ),
     );
   }

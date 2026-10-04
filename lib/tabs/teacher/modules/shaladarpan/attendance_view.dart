@@ -691,12 +691,7 @@ class _AttendanceViewState extends State<AttendanceView> {
                 boxShadow: const [BoxShadow(color: Color(0x060F172A),
                   blurRadius: 5, offset: Offset(0, 2))],
               ),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: SizedBox(
-                  width: compact ? 96 : (constraints.maxWidth - gap * 3) / 4 - 26,
-                  child: Row(children: [
+              child: Row(children: [
                     Expanded(child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -709,9 +704,10 @@ class _AttendanceViewState extends State<AttendanceView> {
                             fontSize: 20, height: 1.2, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)))),
                       ],
                     )),
-                    const SizedBox(width: 6),
+                    if (constraints.maxWidth >= 350) ...[
+                    const SizedBox(width: 4),
                     Container(
-                      width: 32, height: 32,
+                      width: compact ? 24 : 32, height: compact ? 24 : 32,
                       padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(color: items[i].$3.withOpacity(0.09),
                         borderRadius: BorderRadius.circular(9)),
@@ -720,9 +716,8 @@ class _AttendanceViewState extends State<AttendanceView> {
                               color: items[i].$3, present: i == 0))
                           : Icon(items[i].$4, size: 22, color: items[i].$3),
                     ),
+                  ],
                   ]),
-                ),
-              ),
             ),
           )),
         ],

@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/adaptive_layout.dart';
 // lib/tabs/student/modules/student_attendance/screens/school_report_screen.dart
 import 'dart:convert';
 import 'dart:math' as math;
@@ -685,10 +686,10 @@ class _SchoolReportScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final foreground = theme.colorScheme.onSurface;
+    final foreground = theme.brightness == Brightness.dark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
     return Scaffold(
       backgroundColor: _background,
-      body: Container(
+      body: AdaptiveWorkspace(background: true, child: Container(
         decoration: Theme.of(context).brightness == Brightness.dark
           ? BoxDecoration(color: _background)
           : const BoxDecoration(gradient: LinearGradient(
@@ -699,10 +700,10 @@ class _SchoolReportScreenState
         child: SafeArea(
         child: Column(children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
             child: Container(
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface.withOpacity(0.40),
+                color: theme.brightness == Brightness.dark ? const Color(0xFF1E293B) : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: foreground.withOpacity(0.08)),
               ),
@@ -755,7 +756,7 @@ class _SchoolReportScreenState
           Expanded(child: _body()),
         ]),
         ),
-      ),
+      )),
     );
   }
 

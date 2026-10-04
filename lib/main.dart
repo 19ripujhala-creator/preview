@@ -40,7 +40,19 @@ class RajShalaMobileApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Shaladarpan Ecosystem Automation',
       theme: ThemeData(
-        fontFamily: 'Segoe UI',
+        fontFamily: 'PlusJakartaSans',
+        textTheme: const TextTheme(
+          headlineSmall: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: -.4, color: Color(0xFF0F172A)),
+          titleLarge: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: -.35, color: Color(0xFF0F172A)),
+          titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: -.2, color: Color(0xFF0F172A)),
+          titleSmall: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: -.1, color: Color(0xFF0F172A)),
+          bodyMedium: TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: Color(0xFF475569)),
+          bodySmall: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w400, color: Color(0xFF64748B)),
+        ),
+        appBarTheme: const AppBarTheme(
+          titleTextStyle: TextStyle(fontFamily: 'PlusJakartaSans', fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -.3, color: Color(0xFF0F172A)),
+          surfaceTintColor: Colors.transparent, elevation: 0,
+        ),
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFFD3D9E1),
         splashFactory: NoSplash.splashFactory,

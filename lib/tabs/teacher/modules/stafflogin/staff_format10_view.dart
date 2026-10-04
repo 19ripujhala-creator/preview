@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/adaptive_layout.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui';
@@ -485,11 +486,7 @@ class _StaffFormat10ViewState extends State<StaffFormat10View> {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Employee Header Badge Card
-          Container(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -525,7 +522,7 @@ class _StaffFormat10ViewState extends State<StaffFormat10View> {
                               fontWeight: FontWeight.w700,
                               color: Color(0xFF0F172A),
                             ),
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
@@ -623,11 +620,7 @@ class _StaffFormat10ViewState extends State<StaffFormat10View> {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-
-          // Action Trigger Card
-          Container(
+          ), const SizedBox(height: 16), Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -716,9 +709,7 @@ class _StaffFormat10ViewState extends State<StaffFormat10View> {
                 ),
               ],
             ),
-          ),
-        ],
-      ),
+          )]),
     );
   }
 }
@@ -793,7 +784,7 @@ class _Format10PreviewScreen extends StatelessWidget {
             child: Divider(height: 1, thickness: 0.8, color: Color(0xFFE2E8F0)),
           ),
         ),
-        body: Stack(
+        body: AdaptiveWorkspace(background: true, child: Stack(
           fit: StackFit.expand,
           children: [
             RepaintBoundary(
@@ -943,7 +934,7 @@ class _Format10PreviewScreen extends StatelessWidget {
               ),
             ),
           ],
-        ),
+        )),
       ),
     );
   }

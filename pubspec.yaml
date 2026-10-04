@@ -11,6 +11,10 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+  image_picker: ^1.2.3
+  package_info_plus: ^8.3.1
+  file_selector: ^1.1.0
+  flutter_email_sender: ^10.0.1
 
   # Networking & APIs
   http: ^1.2.0
