@@ -55,7 +55,6 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
   String _schoolName = "GOVT. SCHOOL";
   String _inchargeName = "MDM Incharge";
 
-  Timer? _refreshTimer;
   Future<void>? _loadFuture;
   bool _loadIsForced = false;
   bool _queuedForcedRefresh = false;
@@ -66,16 +65,11 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
   void initState() {
     super.initState();
     DashboardBootstrap.mdmRevision.addListener(_onMdmChanged);
-    _loadDataProgressive(); // 🚀 Changed to Progressive
-    // Auto-poll to keep UI synced without freezing
-    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      _loadDataProgressive(isSilent: true); // 🚀 Changed to Progressive
-    });
+    _loadDataProgressive();
   }
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
     DashboardBootstrap.mdmRevision.removeListener(_onMdmChanged);
     super.dispose();
   }
@@ -175,7 +169,7 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
   Widget build(BuildContext context) {
     final double screenHeight = MediaQuery.of(context).size.height;
     final bool isAnyLoading = _isLoadingStock || _isLoadingStatus;
-    final bool isActivelySyncing = isAnyLoading || _isStaleData;
+    final bool isActivelySyncing = isAnyLoading;
 
     return LayoutBuilder(builder: (context, viewport) {
     return Container(
