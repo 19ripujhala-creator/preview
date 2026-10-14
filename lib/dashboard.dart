@@ -8,7 +8,7 @@ import 'package:lottie/lottie.dart';
 import 'package:shaladarpan/services/core/account_identity.dart';
 import 'package:shaladarpan/tabs/teacher/modules/shaladarpan/monthly_tasks_screen.dart';
 import 'package:shaladarpan/tabs/teacher/modules/shaladarpan/monthly_tasks_hub.dart';
-import 'app_notice.dart'; // Ya agar widgets folder mein hai toh: import 'widgets/app_notice.dart';
+import 'widgets/app_notice.dart';
 
 import 'dart:async';
 
