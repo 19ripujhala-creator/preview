@@ -32,7 +32,14 @@ jobs:
           pod install --repo-update
           cd ..
 
-      # 🚀 NEW STEP: Disable Automatic Code Signing so Xcode doesn't demand an Apple ID Team
+      # Prepares Flutter's generated Xcode config (Generated.xcconfig, Flutter frameworks, etc.)
+      # without invoking Flutter's own signing precheck, which fails even with --no-codesign.
+      - name: Prepare Flutter build assets
+        run: |
+          flutter build ios --release --no-codesign --config-only \
+            --dart-define=RAJSHALA_DDDDOCR_VERSION=1.5.6
+
+      # Disable Automatic Code Signing so Xcode doesn't demand an Apple ID Team
       - name: Disable Automatic Code Signing in Xcode
         run: |
           cd ios
@@ -40,18 +47,34 @@ jobs:
           sed -i '' 's/DEVELOPMENT_TEAM = "[^"]*";/DEVELOPMENT_TEAM = "";/g' Runner.xcodeproj/project.pbxproj
           cd ..
 
-      - name: Build iOS Release (No Codesign)
+      # Build directly with xcodebuild, overriding signing settings on the command line.
+      # These overrides take precedence over the pbxproj, which is why this succeeds
+      # where `flutter build ios --no-codesign` fails on its own precheck.
+      - name: Build iOS Release (No Codesign) via xcodebuild
         run: |
-          flutter build ios --release --no-codesign \
-            --dart-define=RAJSHALA_DDDDOCR_VERSION=1.5.6
+          cd ios
+          xcodebuild build \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath ../build/ios/archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER=""
+          cd ..
 
       - name: Package Runner.app into Shaladarpan.ipa
         run: |
-          cd build/ios/iphoneos
+          APP_PATH=$(find build/ios/archive -name "Runner.app" -maxdepth 6 -print -quit)
+          echo "Found app at: $APP_PATH"
+          mkdir -p build/ios/iphoneos
           mkdir -p Payload
-          cp -r Runner.app Payload/
-          zip -r -9 Shaladarpan.ipa Payload
-          cd ../../..
+          cp -r "$APP_PATH" Payload/
+          zip -r -9 build/ios/iphoneos/Shaladarpan.ipa Payload
+          rm -rf Payload
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
