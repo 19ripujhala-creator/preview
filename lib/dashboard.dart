@@ -8,6 +8,7 @@ import 'package:lottie/lottie.dart';
 import 'package:shaladarpan/services/core/account_identity.dart';
 import 'package:shaladarpan/tabs/teacher/modules/shaladarpan/monthly_tasks_screen.dart';
 import 'package:shaladarpan/tabs/teacher/modules/shaladarpan/monthly_tasks_hub.dart';
+import 'app_notice.dart'; // Ya agar widgets folder mein hai toh: import 'widgets/app_notice.dart';
 
 import 'dart:async';
 
@@ -684,87 +685,17 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   void _showAppleToast(
     String message, {
-    IconData icon = CupertinoIcons.checkmark_alt,
-    Color iconColor = const Color(0xFF10B981),
+    IconData icon = Icons.info_outline_rounded,
+    Color iconColor = const Color(0xFF93C5FD),
   }) {
     if (!mounted) return;
-    _toastTimer?.cancel();
-    _activeToast?.remove();
-    _activeToast = null;
     HapticFeedback.lightImpact();
-    final overlay = Overlay.of(context);
-    final topInset = MediaQuery.of(context).padding.top;
-
-    late OverlayEntry entry;
-    entry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: topInset + 12,
-        left: 20,
-        right: 20,
-        child: Center(
-          child: Material(
-            color: Colors.transparent,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18.0, sigmaY: 18.0),
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8.5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A).withValues(alpha: 0.92),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.14),
-                      width: 0.8,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.18),
-                        blurRadius: 18,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(icon, color: iconColor, size: 14),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          message,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: kAppFont,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+    AppNotice.show(
+      context,
+      message,
+      icon: icon,
+      iconColor: iconColor,
     );
-
-    _activeToast = entry;
-    overlay.insert(entry);
-    _toastTimer = Timer(const Duration(milliseconds: 3000), () {
-      if (identical(_activeToast, entry)) {
-        entry.remove();
-        _activeToast = null;
-      }
-    });
   }
 
   String _getFormattedDate(DateTime time) {

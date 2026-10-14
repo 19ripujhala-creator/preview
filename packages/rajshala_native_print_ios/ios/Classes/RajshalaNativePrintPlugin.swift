@@ -132,7 +132,7 @@ public final class RajshalaNativePrintPlugin: NSObject, FlutterPlugin, WKNavigat
 
     private func begin(_ args: [String: Any], result: @escaping FlutterResult) {
         guard let requested = args["base"] as? String,
-              requested.range(of: "^https://rajshaladarpan\\.rajasthan\\.gov\\.in/SD[1-5]$", options: .caseInsensitive) != nil,
+              requested.range(of: "^https://rajshaladarpan\\.rajasthan\\.gov\\.in/SD[1-5]$", options: [.regularExpression, .caseInsensitive]) != nil,
               let rootView = (controller?.view ?? UIApplication.shared.connectedScenes
                   .compactMap { $0 as? UIWindowScene }
                   .flatMap { $0.windows }
