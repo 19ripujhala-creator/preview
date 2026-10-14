@@ -9,7 +9,7 @@ on:
 jobs:
   build-ios:
     name: Build Unsigned iOS IPA (AltStore / Sideloadly)
-    runs-on: macos-14
+    runs-on: macos-latest
 
     steps:
       - name: Checkout repository
