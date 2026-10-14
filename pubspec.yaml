@@ -1,4 +1,4 @@
-name: shaladarpan
+﻿name: shaladarpan
 description: "A new Flutter project."
 publish_to: 'none'
 
@@ -43,7 +43,6 @@ dependencies:
 
   # Network Monitoring & Background Sync
   connectivity_plus: ^6.1.1 # Internet aate hi instant event catch karega
-  workmanager: ^0.10.10       # App killed/band hone par bhi OS-level sync
   html: ^0.15.7
 
 dev_dependencies:
