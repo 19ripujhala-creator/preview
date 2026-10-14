@@ -47,3 +47,9 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+// Merge original portal PDF pages without drawing or rebuilding their layout.
+dependencies {
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    implementation("androidx.webkit:webkit:1.6.1")
+}

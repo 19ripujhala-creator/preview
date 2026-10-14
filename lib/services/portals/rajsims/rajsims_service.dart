@@ -1,3 +1,8 @@
+import 'direct/mpr_pdf_service.dart';
+import 'direct/mpr_pdf.dart';
+import 'direct/rajsims_app_service.dart';
+import '../shaladarpan/student_service.dart';
+
 import 'package:shaladarpan/services/core/backend_config.dart';
 import 'package:shaladarpan/services/core/secure_storage_service.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/dashboard_bootstrap.dart';
@@ -9,6 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class RajsimsService {
+  static Future<List<int>> Function(Map<String, dynamic>)? directMprPdfProvider;
   // ============================================================
   // BASE URL
   // ============================================================
@@ -29,7 +35,6 @@ class RajsimsService {
   // ============================================================
 
   static const Duration _stockTimeout = Duration(seconds: 45);
-  static const Duration _fetchTimeout = Duration(seconds: 45);
   static const Duration _listTimeout = Duration(seconds: 60);
   static const Duration _submitTimeout = Duration(seconds: 45);
   static const Duration _entryTimeout = Duration(seconds: 45);
@@ -39,9 +44,14 @@ class RajsimsService {
   // COMMON HEADERS
   // ============================================================
 
-  static const Map<String, String> _jsonHeaders = {'Content-Type': 'application/json', 'Accept': 'application/json'};
+  static const Map<String, String> _jsonHeaders = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
 
-  static const Map<String, String> _acceptHeaders = {'Accept': 'application/json'};
+  static const Map<String, String> _acceptHeaders = {
+    'Accept': 'application/json',
+  };
 
   // ============================================================
   // RESPONSE HELPERS
@@ -91,7 +101,8 @@ class RajsimsService {
       result['success'] = false;
       result['status_code'] = statusCode;
 
-      if (!_hasUsableValue(result['message']) && _hasUsableValue(result['detail'])) {
+      if (!_hasUsableValue(result['message']) &&
+          _hasUsableValue(result['detail'])) {
         result['message'] = _extractDetail(result['detail']);
       }
 
@@ -105,7 +116,11 @@ class RajsimsService {
     // ------------------------------------------------------------
     // Non-JSON server error
     // ------------------------------------------------------------
-    return {'success': false, 'status_code': statusCode, 'message': _serverErrorMessage(statusCode)};
+    return {
+      'success': false,
+      'status_code': statusCode,
+      'message': _serverErrorMessage(statusCode),
+    };
   }
 
   /// Generic request exception ko user-friendly response mein convert karta hai.
@@ -113,7 +128,11 @@ class RajsimsService {
     debugPrint('$operation Error: $error');
 
     if (error is TimeoutException) {
-      return {'success': false, 'error_type': 'timeout', 'message': '$operation timed out. Server response nahi mila.'};
+      return {
+        'success': false,
+        'error_type': 'timeout',
+        'message': '$operation timed out. Server response nahi mila.',
+      };
     }
 
     if (error is http.ClientException) {
@@ -124,7 +143,11 @@ class RajsimsService {
       };
     }
 
-    return {'success': false, 'error_type': 'unknown', 'message': '$operation failed: $error'};
+    return {
+      'success': false,
+      'error_type': 'unknown',
+      'message': '$operation failed: $error',
+    };
   }
 
   static bool _hasUsableValue(dynamic value) {
@@ -199,12 +222,18 @@ class RajsimsService {
   // ============================================================
 
   /// FAST API: Sirf Dashboard ka stock instantly lane ke liye.
-  static Future<Map<String, dynamic>> fetchStockData({bool force = false}) async {
+  static Future<Map<String, dynamic>> fetchStockData({
+    bool force = false,
+  }) async {
+    if (StudentService.directAttendanceEnabled)
+      return RajsimsAppService.stock(force: force);
     try {
       final uri = Uri.parse('$baseUrl/mdm/stock')
           .replace(queryParameters: {if (force) 'force': 'true'});
 
-      final response = await http.get(uri, headers: _acceptHeaders).timeout(_stockTimeout);
+      final response = await http
+          .get(uri, headers: _acceptHeaders)
+          .timeout(_stockTimeout);
 
       return _parseResponse(response);
     } catch (e) {
@@ -219,8 +248,11 @@ class RajsimsService {
   /// Stock + Status lane ke liye.
   static Future<Map<String, dynamic>> fetchMdmData({bool force = false}) async {
     try {
-      final school = (await SecureStorageService.getShaladarpanCreds())['id']?.trim() ?? '';
-      if (school.isEmpty) return {'success': false, 'message': 'School login is required.'};
+      final school =
+          (await SecureStorageService.getShaladarpanCreds())['id']?.trim() ??
+          '';
+      if (school.isEmpty)
+        return {'success': false, 'message': 'School login is required.'};
       return await DashboardBootstrap.loadMdm(school, fresh: force);
     } catch (e) {
       return _handleException(e, 'MDM Fetch');
@@ -232,17 +264,27 @@ class RajsimsService {
   // ============================================================
 
   /// Normal ya Legacy distribution list fetch karne ke liye.
-  static Future<Map<String, dynamic>> fetchMdmList({bool isLegacy = false, bool force = false}) async {
+  static Future<Map<String, dynamic>> fetchMdmList({
+    bool isLegacy = false,
+    bool force = false,
+  }) async {
+    if (StudentService.directAttendanceEnabled)
+      return RajsimsAppService.history(legacy: isLegacy, force: force);
     try {
-      final Map<String, String> queryParameters = {'legacy': isLegacy.toString()};
+      final Map<String, String> queryParameters = {
+        'legacy': isLegacy.toString(),
+      };
 
       if (force) {
         queryParameters['force'] = 'true';
       }
 
-      final uri = Uri.parse('$baseUrl/mdm/list').replace(queryParameters: queryParameters);
+      final uri = Uri.parse('$baseUrl/mdm/list')
+          .replace(queryParameters: queryParameters);
 
-      final response = await http.get(uri, headers: _acceptHeaders).timeout(_listTimeout);
+      final response = await http
+          .get(uri, headers: _acceptHeaders)
+          .timeout(_listTimeout);
 
       final result = _parseResponse(response);
 
@@ -261,11 +303,15 @@ class RajsimsService {
   // ============================================================
 
   /// Nayi distribution entry submit karne ke liye (Normal & Legacy).
-  static Future<Map<String, dynamic>> submitDistribution(Map<String, dynamic> payload) async {
+  static Future<Map<String, dynamic>> submitDistribution(
+    Map<String, dynamic> payload,
+  ) async {
     var saved = false;
     var school = '';
     try {
-      school = (await SecureStorageService.getShaladarpanCreds())['id']?.trim() ?? '';
+      school =
+          (await SecureStorageService.getShaladarpanCreds())['id']?.trim() ??
+          '';
       final finalPayload = Map<String, dynamic>.from(payload);
 
       // Agar legacy_date maujood hai aur khali nahi hai, to automatically 'legacy: true' set karein
@@ -275,8 +321,17 @@ class RajsimsService {
         finalPayload['legacy'] = true;
       }
 
+      if (StudentService.directAttendanceEnabled) {
+        final result = await RajsimsAppService.submit(finalPayload);
+        saved = result['success'] == true;
+        return result;
+      }
       final response = await http
-          .post(Uri.parse('$baseUrl/mdm/submit'), headers: _jsonHeaders, body: jsonEncode(finalPayload))
+          .post(
+            Uri.parse('$baseUrl/mdm/submit'),
+            headers: _jsonHeaders,
+            body: jsonEncode(finalPayload),
+          )
           .timeout(_submitTimeout);
 
       final result = _parseResponse(response);
@@ -293,7 +348,9 @@ class RajsimsService {
   static Future<void> _refreshMdmAfterWrite(String school) async {
     try {
       if (school.isEmpty) return;
-      final current = (await SecureStorageService.getShaladarpanCreds())['id']?.trim() ?? '';
+      final current =
+          (await SecureStorageService.getShaladarpanCreds())['id']?.trim() ??
+          '';
       if (current != school) return;
       await DashboardBootstrap.loadMdm(school, fresh: true);
     } catch (e) {
@@ -302,7 +359,9 @@ class RajsimsService {
   }
 
   /// Explicit Legacy Submit Helper
-  static Future<Map<String, dynamic>> submitLegacyDistribution(Map<String, dynamic> payload) async {
+  static Future<Map<String, dynamic>> submitLegacyDistribution(
+    Map<String, dynamic> payload,
+  ) async {
     final legacyPayload = Map<String, dynamic>.from(payload);
     legacyPayload['legacy'] = true;
     return submitDistribution(legacyPayload);
@@ -313,18 +372,33 @@ class RajsimsService {
   // ============================================================
 
   /// Kisi existing distribution entry ki details fetch karta hai.
-  static Future<Map<String, dynamic>> fetchEntryDetails(String distNo, {bool isLegacy = false}) async {
+  static Future<Map<String, dynamic>> fetchEntryDetails(
+    String distNo, {
+    bool isLegacy = false,
+  }) async {
     try {
       final cleanedDistNo = distNo.trim();
 
       if (cleanedDistNo.isEmpty) {
-        return {'success': false, 'error_type': 'validation', 'message': 'Distribution number is required.'};
+        return {
+          'success': false,
+          'error_type': 'validation',
+          'message': 'Distribution number is required.',
+        };
       }
 
-      final uri = Uri.parse('$baseUrl/mdm/entry')
-          .replace(queryParameters: {'dist_no': cleanedDistNo, 'legacy': isLegacy.toString()});
+      if (StudentService.directAttendanceEnabled)
+        return await RajsimsAppService.entry(cleanedDistNo, legacy: isLegacy);
+      final uri = Uri.parse('$baseUrl/mdm/entry').replace(
+        queryParameters: {
+          'dist_no': cleanedDistNo,
+          'legacy': isLegacy.toString(),
+        },
+      );
 
-      final response = await http.get(uri, headers: _acceptHeaders).timeout(_entryTimeout);
+      final response = await http
+          .get(uri, headers: _acceptHeaders)
+          .timeout(_entryTimeout);
 
       return _parseResponse(response);
     } catch (e) {
@@ -337,13 +411,26 @@ class RajsimsService {
   // ============================================================
 
   /// Existing distribution entry update karta hai.
-  static Future<Map<String, dynamic>> updateDistribution(Map<String, dynamic> payload) async {
+  static Future<Map<String, dynamic>> updateDistribution(
+    Map<String, dynamic> payload,
+  ) async {
     var saved = false;
     var school = '';
     try {
-      school = (await SecureStorageService.getShaladarpanCreds())['id']?.trim() ?? '';
+      school =
+          (await SecureStorageService.getShaladarpanCreds())['id']?.trim() ??
+          '';
+      if (StudentService.directAttendanceEnabled) {
+        final result = await RajsimsAppService.update(payload);
+        saved = result['success'] == true;
+        return result;
+      }
       final response = await http
-          .post(Uri.parse('$baseUrl/mdm/update'), headers: _jsonHeaders, body: jsonEncode(payload))
+          .post(
+            Uri.parse('$baseUrl/mdm/update'),
+            headers: _jsonHeaders,
+            body: jsonEncode(payload),
+          )
           .timeout(_updateTimeout);
 
       final result = _parseResponse(response);
@@ -355,5 +442,66 @@ class RajsimsService {
       DashboardBootstrap.invalidateMdm();
       if (saved) unawaited(_refreshMdmAfterWrite(school));
     }
+  }
+
+  static Future<Map<String, dynamic>> fetchMprJson(String path) async {
+    if (StudentService.directAttendanceEnabled)
+      return RajsimsAppService.mpr(path);
+    try {
+      final response = await http
+          .get(
+            Uri.parse('${BackendConfig.baseUrl}$path'),
+            headers: _acceptHeaders,
+          )
+          .timeout(const Duration(seconds: 200));
+      return _parseResponse(response);
+    } catch (error) {
+      return _handleException(error, 'Monthly report');
+    }
+  }
+
+  static Future<List<int>> generateMprPdf(Map<String, dynamic> payload) async {
+    if (StudentService.directAttendanceEnabled) {
+      final school = await SecureStorageService.getShaladarpanCreds();
+      final sso = await SecureStorageService.getRajSimsCreds();
+      final reportSchool = payload['school'];
+      if (reportSchool is Map &&
+          reportSchool['school_id'] != null &&
+          reportSchool['school_id'].toString() != school['id']?.trim()) {
+        throw const MprPdfError(
+          'The report school differs from the current School login. Fetch the report again.',
+        );
+      }
+      final bytes =
+          await (directMprPdfProvider?.call(payload) ??
+              MprPdfService.instance.generate(payload));
+      final currentSchool = await SecureStorageService.getShaladarpanCreds();
+      final currentSso = await SecureStorageService.getRajSimsCreds();
+      if (!StudentService.directAttendanceEnabled ||
+          currentSchool['id'] != school['id'] ||
+          currentSchool['pass'] != school['pass'] ||
+          currentSso['id'] != sso['id'] ||
+          currentSso['pass'] != sso['pass']) {
+        throw const MprPdfError(
+          'Portal account changed during PDF generation. Fetch the report again.',
+        );
+      }
+      return bytes;
+    }
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/mdm/mpr/pdf'),
+          headers: _jsonHeaders,
+          body: jsonEncode(payload),
+        )
+        .timeout(const Duration(seconds: 60));
+    if (response.statusCode != 200 ||
+        !(response.headers['content-type'] ?? '').contains('application/pdf')) {
+      throw StateError(
+        _parseResponse(response)['message']?.toString() ??
+            'PDF generation failed.',
+      );
+    }
+    return response.bodyBytes;
   }
 }

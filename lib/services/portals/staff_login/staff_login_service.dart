@@ -1,3 +1,12 @@
+import 'direct/staff_runtime.dart';
+import 'direct/staff_read_service.dart';
+import 'direct/native_print_service.dart';
+import 'direct/leave_apply_service.dart';
+import 'direct/portal_state.dart';
+import 'direct/http_login.dart' show staffLower;
+import '../shaladarpan/student_service.dart';
+import '../../core/secure_storage_service.dart';
+
 import 'package:shaladarpan/services/core/backend_config.dart';
 
 // lib/services/portals/staff_login/staff_login_service.dart
@@ -8,10 +17,140 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class StaffLoginService {
+  /// Optional dependency injection; production always uses the shared runtime.
+  static Future<StaffReadService> Function()? directReadProvider;
+  static Future<StaffNativePrintService> Function()? directPrintProvider;
+  static Future<StaffLeaveApplyService> Function()? directLeaveProvider;
+
+  static Future<Uint8List?> _directPdf({
+    bool format10 = false,
+    String? nicId,
+    String? sNo,
+    String? fromDate,
+    String? toDate,
+    String? leaveType,
+  }) async {
+    final credentials = await SecureStorageService.getStaffCreds();
+    final user = credentials['id']?.trim() ?? '';
+    if (user.isEmpty)
+      throw const StaffPortalError('SESSION_EXPIRED', 'Staff session expired.');
+    final prints =
+        await (directPrintProvider?.call() ??
+            StaffDirectRuntime.get().then((runtime) => runtime.prints));
+    if (!directReadsEnabled ||
+        staffLower(prints.registry.current()?.user ?? '') != staffLower(user)) {
+      throw const StaffPortalError('ACCOUNT_CHANGED', 'Staff login changed.');
+    }
+    // A restored cookie jar does not restore the coordinator's in-memory
+    // recovery credentials. Bind the saved same-account credentials without
+    // logging in; only the existing coordinator may recover an expired session.
+    final password = credentials['pass'] ?? '';
+    if (password.isNotEmpty) {
+      prints.coordinator.rememberCredentials(user, password);
+    }
+    final result = format10
+        ? await prints.format10Pdf(user, nicId: nicId)
+        : await prints.leavePdf(
+            user,
+            sNo: sNo,
+            fromDate: fromDate,
+            toDate: toDate,
+            leaveType: leaveType,
+          );
+    final current = await SecureStorageService.getStaffCreds();
+    if (!directReadsEnabled ||
+        current['id']?.trim() != user ||
+        current['pass'] != credentials['pass']) {
+      throw const StaffPortalError('ACCOUNT_CHANGED', 'Staff login changed.');
+    }
+    if (result['success'] != true) {
+      throw StaffPortalError(
+        (result['code'] ?? 'PRINT_CAPTURE_FAILED').toString(),
+        (result['message'] ?? 'The portal PDF could not be captured.')
+            .toString(),
+      );
+    }
+    return result['pdf_bytes'] as Uint8List;
+  }
+
+  static bool get directReadsEnabled => StudentService.directAttendanceEnabled;
+  static Future<Map<String, dynamic>> _directRead({
+    bool history = false,
+    String filter = 'all',
+    int? page,
+    int? pageSize,
+    bool refresh = false,
+  }) async {
+    final credentials = await SecureStorageService.getStaffCreds();
+    final user = credentials['id']?.trim() ?? '';
+    if (user.isEmpty)
+      return {
+        'success': false,
+        'code': 'SESSION_EXPIRED',
+        'message': 'Staff session expired.',
+        'records': <dynamic>[],
+      };
+    try {
+      final reads =
+          await (directReadProvider?.call() ??
+              StaffDirectRuntime.get().then((runtime) => runtime.reads));
+      if (!directReadsEnabled ||
+          staffLower(reads.registry.current()?.user ?? '') != staffLower(user))
+        return {
+          'success': false,
+          'code': 'ACCOUNT_CHANGED',
+          'message': 'Staff login changed.',
+          'records': <dynamic>[],
+        };
+      final password = credentials['pass'] ?? '';
+      if (password.isNotEmpty) {
+        reads.coordinator.rememberCredentials(user, password);
+      }
+      final result = history
+          ? await reads.fetchHistory(
+              user,
+              filter: filter,
+              page: page,
+              pageSize: pageSize,
+              refresh: refresh,
+            )
+          : await reads.fetchProfile(user);
+      final current = await SecureStorageService.getStaffCreds();
+      if (!directReadsEnabled ||
+          current['id']?.trim() != user ||
+          current['pass'] != credentials['pass'])
+        return {
+          'success': false,
+          'code': 'ACCOUNT_CHANGED',
+          'message': 'Staff login changed.',
+          'records': <dynamic>[],
+        };
+      return history
+          ? {
+              ...result,
+              'hasMore': result['has_more'] ?? false,
+              'page': page ?? 1,
+            }
+          : result;
+    } catch (_) {
+      return {
+        'success': false,
+        'code': 'PAGE_NOT_READY',
+        'message': history
+            ? 'Staff leave history could not be loaded completely.'
+            : 'Staff profile could not be read.',
+        'records': <dynamic>[],
+      };
+    }
+  }
+
   // PC testing: Flutter Web/Desktop + FastAPI same machine par hone ke liye 127.0.0.1
   static String get _baseUrl => '${BackendConfig.baseUrl}/api/staff';
 
-  static const Map<String, String> _headers = {'Content-Type': 'application/json', 'Accept': 'application/json'};
+  static const Map<String, String> _headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
 
   // ═════════════════════════════════════════════════════════════════════
   // RESPONSE HELPERS
@@ -30,7 +169,11 @@ class StaffLoginService {
     }
   }
 
-  static String _extractErrorMessage(dynamic data, int statusCode, {String fallback = 'Server returned an error.'}) {
+  static String _extractErrorMessage(
+    dynamic data,
+    int statusCode, {
+    String fallback = 'Server returned an error.',
+  }) {
     if (data is Map) {
       final detail = data['detail'];
 
@@ -45,7 +188,8 @@ class StaffLoginService {
         }
 
         final detailMessage = detail['detail'];
-        if (detailMessage != null && detailMessage.toString().trim().isNotEmpty) {
+        if (detailMessage != null &&
+            detailMessage.toString().trim().isNotEmpty) {
           return detailMessage.toString().trim();
         }
       }
@@ -81,12 +225,15 @@ class StaffLoginService {
   // ═════════════════════════════════════════════════════════════════════
 
   static Future<Map<String, dynamic>> fetchProfile() async {
+    if (directReadsEnabled) return _directRead();
     final uri = Uri.parse('$_baseUrl/profile');
 
     try {
       debugPrint('📡 [StaffService] Fetching dynamic profile from: $uri');
 
-      final response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 30));
+      final response = await http
+          .get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 30));
 
       final data = _decodeJson(response);
 
@@ -99,21 +246,35 @@ class StaffLoginService {
           'profile': map['profile'],
           'message':
               map['message'] ??
-              (map['success'] == true ? 'Profile fetched successfully.' : 'Unable to fetch staff profile.'),
+              (map['success'] == true
+                  ? 'Profile fetched successfully.'
+                  : 'Unable to fetch staff profile.'),
         };
       }
 
-      final errorMsg = _extractErrorMessage(data, response.statusCode, fallback: 'Failed to load live staff profile.');
+      final errorMsg = _extractErrorMessage(
+        data,
+        response.statusCode,
+        fallback: 'Failed to load live staff profile.',
+      );
 
       debugPrint('⚠️ [StaffService] Profile error: $errorMsg');
 
       return {'success': false, 'profile': null, 'message': errorMsg};
     } on FormatException catch (e) {
       debugPrint('❌ [StaffService] Profile JSON exception: $e');
-      return {'success': false, 'profile': null, 'message': 'Invalid response received from Staff backend.'};
+      return {
+        'success': false,
+        'profile': null,
+        'message': 'Invalid response received from Staff backend.',
+      };
     } catch (e) {
       debugPrint('❌ [StaffService] Profile network exception: $e');
-      return {'success': false, 'profile': null, 'message': 'Network error while connecting to Staff profile: $e'};
+      return {
+        'success': false,
+        'profile': null,
+        'message': 'Network error while connecting to Staff profile: $e',
+      };
     }
   }
 
@@ -121,11 +282,50 @@ class StaffLoginService {
   // 2. LEAVE APPLY
   // ═════════════════════════════════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> applyLeave(Map<String, dynamic> payload) async {
+  static Future<Map<String, dynamic>> applyLeave(
+    Map<String, dynamic> payload,
+  ) async {
+    if (directReadsEnabled) {
+      final credentials = await SecureStorageService.getStaffCreds();
+      final user = credentials['id']?.trim() ?? '';
+      if (user.isEmpty)
+        return {
+          'success': false,
+          'code': 'SESSION_EXPIRED',
+          'message': 'Staff session expired.',
+        };
+      final service =
+          await (directLeaveProvider?.call() ??
+              StaffDirectRuntime.get().then((runtime) => runtime.leaves));
+      if (!directReadsEnabled ||
+          staffLower(service.registry.current()?.user ?? '') !=
+              staffLower(user))
+        return {
+          'success': false,
+          'code': 'ACCOUNT_CHANGED',
+          'message': 'Staff login changed.',
+        };
+      final password = credentials['pass'] ?? '';
+      if (password.isNotEmpty)
+        service.coordinator.rememberCredentials(user, password);
+      final result = await service.apply(user, payload);
+      final current = await SecureStorageService.getStaffCreds();
+      if (!directReadsEnabled ||
+          current['id']?.trim() != user ||
+          current['pass'] != credentials['pass'])
+        return {
+          'success': false,
+          'code': 'ACCOUNT_CHANGED',
+          'message': 'Staff login changed.',
+        };
+      return {...result, 'data': result};
+    }
     final uri = Uri.parse('$_baseUrl/leave/apply');
 
     try {
-      debugPrint('📤 [StaffService] Sending leave application payload: ${jsonEncode(payload)}');
+      debugPrint(
+        '📤 [StaffService] Sending leave application payload: ${jsonEncode(payload)}',
+      );
 
       final response = await http
           .post(uri, headers: _headers, body: jsonEncode(payload))
@@ -144,17 +344,27 @@ class StaffLoginService {
         };
       }
 
-      final errorMsg = _extractErrorMessage(data, response.statusCode, fallback: 'Leave request failed.');
+      final errorMsg = _extractErrorMessage(
+        data,
+        response.statusCode,
+        fallback: 'Leave request failed.',
+      );
 
       debugPrint('❌ [StaffService] Leave server error: $errorMsg');
 
       return {'success': false, 'message': errorMsg, 'data': data};
     } on FormatException catch (e) {
       debugPrint('❌ [StaffService] Leave JSON exception: $e');
-      return {'success': false, 'message': 'Invalid response received from Staff backend.'};
+      return {
+        'success': false,
+        'message': 'Invalid response received from Staff backend.',
+      };
     } catch (e) {
       debugPrint('❌ [StaffService] Leave network exception: $e');
-      return {'success': false, 'message': 'Failed to connect to Staff Portal backend: $e'};
+      return {
+        'success': false,
+        'message': 'Failed to connect to Staff Portal backend: $e',
+      };
     }
   }
 
@@ -170,8 +380,19 @@ class StaffLoginService {
   }) async {
     final normalizedFilter = filter.trim().toLowerCase();
     final safeFilter = normalizedFilter == 'pending' ? 'pending' : 'all';
+    if (directReadsEnabled)
+      return _directRead(
+        history: true,
+        filter: safeFilter,
+        page: page,
+        pageSize: pageSize,
+        refresh: refresh,
+      );
 
-    final queryParams = <String, String>{'filter': safeFilter, 'refresh': '$refresh'};
+    final queryParams = <String, String>{
+      'filter': safeFilter,
+      'refresh': '$refresh',
+    };
 
     if (page != null && page >= 1) {
       queryParams['page'] = '$page';
@@ -180,19 +401,24 @@ class StaffLoginService {
       queryParams['page_size'] = '$pageSize';
     }
 
-    final uri = Uri.parse('$_baseUrl/leave/history').replace(queryParameters: queryParams);
+    final uri = Uri.parse('$_baseUrl/leave/history')
+        .replace(queryParameters: queryParams);
 
     try {
       debugPrint('📡 [StaffService] Fetching leave history from: $uri');
 
-      final response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 45));
+      final response = await http
+          .get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 45));
 
       final data = _decodeJson(response);
 
       if (response.statusCode == 200) {
         final map = _safeMap(data);
 
-        final records = map['records'] is List ? List<dynamic>.from(map['records']) : <dynamic>[];
+        final records = map['records'] is List
+            ? List<dynamic>.from(map['records'])
+            : <dynamic>[];
 
         final total = map['total'] is num ? map['total'] : records.length;
         final bool hasMore = map['has_more'] is bool
@@ -209,7 +435,11 @@ class StaffLoginService {
         };
       }
 
-      final errorMsg = _extractErrorMessage(data, response.statusCode, fallback: 'Failed to fetch leave history.');
+      final errorMsg = _extractErrorMessage(
+        data,
+        response.statusCode,
+        fallback: 'Failed to fetch leave history.',
+      );
 
       debugPrint('❌ [StaffService] Leave history error: $errorMsg');
 
@@ -261,20 +491,32 @@ class StaffLoginService {
     String? reason,
     String? remark,
   }) async {
+    if (directReadsEnabled)
+      return _directPdf(
+        sNo: sNo,
+        fromDate: fromDate,
+        toDate: toDate,
+        leaveType: leaveType,
+      );
     final queryParams = <String, String>{};
     if (sNo != null && sNo.isNotEmpty) queryParams['s_no'] = sNo;
-    if (printUrl != null && printUrl.isNotEmpty) queryParams['print_url'] = printUrl;
+    if (printUrl != null && printUrl.isNotEmpty)
+      queryParams['print_url'] = printUrl;
     if (name != null && name.isNotEmpty) queryParams['name'] = name;
-    if (designation != null && designation.isNotEmpty) queryParams['designation'] = designation;
+    if (designation != null && designation.isNotEmpty)
+      queryParams['designation'] = designation;
     if (school != null && school.isNotEmpty) queryParams['school'] = school;
-    if (leaveType != null && leaveType.isNotEmpty) queryParams['leave_type'] = leaveType;
-    if (fromDate != null && fromDate.isNotEmpty) queryParams['from_date'] = fromDate;
+    if (leaveType != null && leaveType.isNotEmpty)
+      queryParams['leave_type'] = leaveType;
+    if (fromDate != null && fromDate.isNotEmpty)
+      queryParams['from_date'] = fromDate;
     if (toDate != null && toDate.isNotEmpty) queryParams['to_date'] = toDate;
     if (days != null && days.isNotEmpty) queryParams['days'] = days;
     if (reason != null && reason.isNotEmpty) queryParams['reason'] = reason;
     if (remark != null && remark.isNotEmpty) queryParams['remark'] = remark;
 
-    final uri = Uri.parse('$_baseUrl/leave/pdf').replace(queryParameters: queryParams);
+    final uri = Uri.parse('$_baseUrl/leave/pdf')
+        .replace(queryParameters: queryParams);
 
     try {
       debugPrint('📡 [StaffService] Downloading GFAR 64 PDF from: $uri');
@@ -283,7 +525,9 @@ class StaffLoginService {
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         return response.bodyBytes;
       }
-      debugPrint('❌ [StaffService] PDF download failed with HTTP ${response.statusCode}');
+      debugPrint(
+        '❌ [StaffService] PDF download failed with HTTP ${response.statusCode}',
+      );
       return null;
     } catch (e) {
       debugPrint('❌ [StaffService] PDF download exception: $e');
@@ -296,12 +540,14 @@ class StaffLoginService {
   // ═════════════════════════════════════════════════════════════════════
 
   static Future<Uint8List?> downloadFormat10Pdf({String? nicId}) async {
+    if (directReadsEnabled) return _directPdf(format10: true, nicId: nicId);
     final queryParams = <String, String>{};
     if (nicId != null && nicId.isNotEmpty) {
       queryParams['nic_id'] = nicId;
     }
 
-    final uri = Uri.parse('$_baseUrl/format10/pdf').replace(queryParameters: queryParams);
+    final uri = Uri.parse('$_baseUrl/format10/pdf')
+        .replace(queryParameters: queryParams);
 
     try {
       debugPrint('📡 [StaffService] Fetching Format-10 PDF from: $uri');
@@ -310,7 +556,9 @@ class StaffLoginService {
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         return response.bodyBytes;
       }
-      debugPrint('❌ [StaffService] Format-10 PDF failed: HTTP ${response.statusCode}');
+      debugPrint(
+        '❌ [StaffService] Format-10 PDF failed: HTTP ${response.statusCode}',
+      );
       return null;
     } catch (e) {
       debugPrint('❌ [StaffService] Format-10 PDF exception: $e');
@@ -322,7 +570,10 @@ class StaffLoginService {
   // 6. LOGIN
   // ═════════════════════════════════════════════════════════════════════
 
-  static Future<Map<String, dynamic>> login(String username, String password) async {
+  static Future<Map<String, dynamic>> login(
+    String username,
+    String password,
+  ) async {
     final uri = Uri.parse('$_baseUrl/login');
 
     final cleanUsername = username.trim();
@@ -359,14 +610,21 @@ class StaffLoginService {
         };
       }
 
-      final errorMsg = _extractErrorMessage(data, response.statusCode, fallback: 'Authentication failed.');
+      final errorMsg = _extractErrorMessage(
+        data,
+        response.statusCode,
+        fallback: 'Authentication failed.',
+      );
 
       debugPrint('❌ [StaffService] Login error: $errorMsg');
 
       return {'success': false, 'message': errorMsg};
     } on FormatException catch (e) {
       debugPrint('❌ [StaffService] Login JSON exception: $e');
-      return {'success': false, 'message': 'Invalid response received from Staff backend.'};
+      return {
+        'success': false,
+        'message': 'Invalid response received from Staff backend.',
+      };
     } catch (e) {
       debugPrint('❌ [StaffService] Login network exception: $e');
       return {'success': false, 'message': 'Login connection failed: $e'};
@@ -381,7 +639,9 @@ class StaffLoginService {
     final uri = Uri.parse('$_baseUrl/status');
 
     try {
-      final response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 10));
 
       final data = _decodeJson(response);
 
@@ -401,10 +661,19 @@ class StaffLoginService {
         'success': false,
         'connected': false,
         'authenticated': false,
-        'error': _extractErrorMessage(data, response.statusCode, fallback: 'Status request failed.'),
+        'error': _extractErrorMessage(
+          data,
+          response.statusCode,
+          fallback: 'Status request failed.',
+        ),
       };
     } catch (e) {
-      return {'success': false, 'connected': false, 'authenticated': false, 'error': '$e'};
+      return {
+        'success': false,
+        'connected': false,
+        'authenticated': false,
+        'error': '$e',
+      };
     }
   }
 }

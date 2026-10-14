@@ -113,8 +113,7 @@ class StudentRecord {
   bool get isChanged => attendanceStatus != originalStatus;
 
   static String _code(Map<String, dynamic> j) {
-    final st =
-        (j['status'] ?? '').toString().toLowerCase().replaceAll(' ', '');
+    final st = (j['status'] ?? '').toString().toLowerCase().replaceAll(' ', '');
 
     if (st.contains('medical') || st == 'm' || st == 'ml') return 'M';
     if (st.contains('leave') || st == 'l') return 'L';
@@ -158,8 +157,9 @@ class StudentRecord {
     String s(dynamic v) => (v ?? '').toString().trim();
 
     return StudentRecord(
-      serialNo:
-          s(j['serialNo']).isNotEmpty ? s(j['serialNo']) : '$fallbackSerial',
+      serialNo: s(j['serialNo']).isNotEmpty
+          ? s(j['serialNo'])
+          : '$fallbackSerial',
       srNo: s(j['srNo']).isEmpty ? '-' : s(j['srNo']),
       name: s(j['name']).isEmpty ? 'Student' : s(j['name']),
       className: className,
@@ -196,6 +196,8 @@ class _Entry {
   final List<String> sections;
   bool marked;
   bool verified;
+  bool dataVerified;
+  bool held;
 
   _Entry({
     required this.students,
@@ -203,6 +205,8 @@ class _Entry {
     required this.sections,
     required this.marked,
     required this.verified,
+    required this.dataVerified,
+    required this.held,
   });
 }
 
@@ -245,8 +249,11 @@ class _DailyAttendanceSheetScreenState
   // FIX: initial true, warna pehle frame me "No students found" flash hota tha
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isConfirming = false;
   bool _isAlreadyMarked = false;
   bool _isPortalVerified = false;
+  bool _portalDataVerified = false;
+  bool _submissionHold = false;
 
   String _errorMessage = '';
 
@@ -292,24 +299,12 @@ class _DailyAttendanceSheetScreenState
   // STRICT PORTAL VERIFICATION
   // ==========================================
   bool _parsePortalVerification(Map<String, dynamic> result) {
-    final sources = <Map>[result];
-    if (result['summary'] is Map) sources.add(result['summary'] as Map);
-    if (result['data'] is Map) sources.add(result['data'] as Map);
-    bool confirmed = false;
-    for (final source in sources) {
-      final status = (source['attendance_status'] ?? source['submission_status'] ?? source['status'] ?? '')
-          .toString().trim().toLowerCase();
-      if (status.contains('pending') || status.contains('unmarked') ||
-          status.contains('not_marked') || status.contains('not marked') ||
-          status.contains('not_done') || status.contains('not done')) return false;
-      for (final key in ['is_already_marked', 'already_marked', 'is_marked', 'marked', 'done', 'attendance_verified']) {
-        if (source[key] == false) return false;
-        if (source[key] == true) confirmed = true;
-      }
-      if (['marked', 'submitted', 'done', 'completed'].contains(status)) confirmed = true;
-    }
-    // Generic verified/data_verified describe scraping, never submission.
-    return confirmed;
+    // Generic data_verified ONLY confirms scraping, not submission.
+    // Never infer "marked" from loosely related summary fields.
+    return result['is_already_marked'] == true &&
+        result['attendance_verified'] == true &&
+        (result['attendance_status'] ?? '').toString().trim().toLowerCase() ==
+            'marked';
   }
 
   // ==========================================
@@ -328,9 +323,8 @@ class _DailyAttendanceSheetScreenState
   // Boys / Girls breakdown (sirf tab jab portal se gender data mile)
   bool get _hasGender => _students.any((s) => s.gender.isNotEmpty);
   int _gTotal(String g) => _students.where((s) => s.gender == g).length;
-  int _gCount(String g, String st) => _students
-      .where((s) => s.gender == g && s.attendanceStatus == st)
-      .length;
+  int _gCount(String g, String st) =>
+      _students.where((s) => s.gender == g && s.attendanceStatus == st).length;
 
   List<StudentRecord> get _visible {
     if (_query.isEmpty) return _students;
@@ -371,6 +365,8 @@ class _DailyAttendanceSheetScreenState
     _sections = e.sections;
     _isAlreadyMarked = e.marked;
     _isPortalVerified = e.verified;
+    _portalDataVerified = e.dataVerified;
+    _submissionHold = e.held;
     _isLoading = false;
     _errorMessage = '';
     _isAutoRetrying = false;
@@ -399,14 +395,17 @@ class _DailyAttendanceSheetScreenState
       _errorMessage = '';
       _isPortalVerified = false;
       _isAlreadyMarked = false;
+      _portalDataVerified = false;
+      _submissionHold = false;
       _isAutoRetrying = retryAttempt > 0;
       // FIX: loading ke dauran purani class ke students dikhte the aur
       // Submit dabane par nayi class ke naam se save ho jaate the.
       _students = [];
     });
 
-    final classId =
-        _portalSectionLabel.isNotEmpty ? _portalSectionLabel : _classNum;
+    final classId = _portalSectionLabel.isNotEmpty
+        ? _portalSectionLabel
+        : _classNum;
 
     try {
       final result = await StudentService.fetchAttendance(
@@ -416,7 +415,10 @@ class _DailyAttendanceSheetScreenState
 
       if (!mounted || loadId != _currentLoadId) return;
 
-      if (result['success'] == true) {
+      if (result['success'] == true &&
+          result['data_verified'] == true &&
+          result['students'] is List &&
+          (result['students'] as List).isNotEmpty) {
         final portalVerified = _parsePortalVerification(result);
         final portalSection = (result['section'] ?? '').toString().trim();
         final letter = portalSection.isNotEmpty
@@ -447,8 +449,9 @@ class _DailyAttendanceSheetScreenState
           if (parsed.contains(_activeClass)) {
             _classes = parsed;
             SharedPreferences.getInstance()
-                .then((p) =>
-                    p.setStringList('portal_available_classes', parsed))
+                .then(
+                  (p) => p.setStringList('portal_available_classes', parsed),
+                )
                 .catchError((_) => false);
           }
         }
@@ -473,6 +476,8 @@ class _DailyAttendanceSheetScreenState
           sections: found.toList()..sort(),
           marked: marked,
           verified: portalVerified,
+          dataVerified: true,
+          held: result['submission_on_hold'] == true,
         );
 
         _cache[_cacheKey(_activeClass, letter)] = entry;
@@ -524,11 +529,13 @@ class _DailyAttendanceSheetScreenState
   }
 
   Future<void> _guardedChange(VoidCallback action) async {
+    if (_isSaving || _isConfirming) return;
     if (_dirty) {
       final ok = await _confirmDiscard();
-      if (ok != true || !mounted) return;
+      if (ok != true || !mounted || _isSaving || _isConfirming) return;
       _revertAll();
     }
+    if (!mounted || _isSaving || _isConfirming) return;
     action();
   }
 
@@ -627,11 +634,23 @@ class _DailyAttendanceSheetScreenState
               const SizedBox(height: 18),
               Row(
                 children: [
-                  btn(cancelLabel, _C.chip, _C.slate, FontWeight.w600, false,
-                      ctx),
+                  btn(
+                    cancelLabel,
+                    _C.chip,
+                    _C.slate,
+                    FontWeight.w600,
+                    false,
+                    ctx,
+                  ),
                   const SizedBox(width: 10),
-                  btn(confirmLabel, _C.roseDeep, Colors.white, FontWeight.w700,
-                      true, ctx),
+                  btn(
+                    confirmLabel,
+                    _C.roseDeep,
+                    Colors.white,
+                    FontWeight.w700,
+                    true,
+                    ctx,
+                  ),
                 ],
               ),
             ],
@@ -653,7 +672,12 @@ class _DailyAttendanceSheetScreenState
   }
 
   void _setStatus(StudentRecord s, String code) {
-    if (_isSaving || s.attendanceStatus == code) return;
+    if (_isSaving ||
+        _isConfirming ||
+        _isLoading ||
+        _submissionHold ||
+        s.attendanceStatus == code)
+      return;
     _haptic();
     setState(() {
       s.attendanceStatus = code;
@@ -661,7 +685,12 @@ class _DailyAttendanceSheetScreenState
   }
 
   Future<void> _markAll(String code) async {
-    if (_students.isEmpty || _isSaving || _isLoading) return;
+    if (_students.isEmpty ||
+        _isSaving ||
+        _isConfirming ||
+        _isLoading ||
+        _submissionHold)
+      return;
     HapticFeedback.mediumImpact();
 
     if (code == 'A') {
@@ -673,7 +702,12 @@ class _DailyAttendanceSheetScreenState
         confirmLabel: 'Mark Absent',
         barrierDismissible: true,
       );
-      if (ok != true || !mounted) return;
+      if (ok != true ||
+          !mounted ||
+          _isSaving ||
+          _isConfirming ||
+          _submissionHold)
+        return;
     }
 
     setState(() {
@@ -684,13 +718,13 @@ class _DailyAttendanceSheetScreenState
   }
 
   void _resetChanges() {
-    if (_isSaving) return;
+    if (_isSaving || _isConfirming || _submissionHold) return;
     HapticFeedback.selectionClick();
     setState(_revertAll);
   }
 
   Future<void> _pickDate() async {
-    if (_isSaving) return;
+    if (_isSaving || _isConfirming) return;
     _haptic();
 
     final picked = await showCustomCalendarDialog(
@@ -717,44 +751,154 @@ class _DailyAttendanceSheetScreenState
     }
   }
 
+  Future<void> _checkPreviousSave() async {
+    if (_isSaving || _isConfirming || _isLoading || _students.isEmpty) return;
+
+    setState(() => _isConfirming = true);
+    bool? proceed;
+    try {
+      proceed = await _showConfirmDialog(
+        icon: CupertinoIcons.exclamationmark_triangle_fill,
+        title: 'Check Previous Save?',
+        message: 'The previous submission result is uncertain. Two fresh portal checks will be performed. No attendance will be submitted.',
+        cancelLabel: 'Cancel',
+        confirmLabel: 'Verify Portal',
+      );
+    } finally {
+      if (mounted) setState(() => _isConfirming = false);
+    }
+    if (proceed != true || !mounted || _isSaving || _isConfirming) return;
+    final cls = _portalSectionLabel.isNotEmpty
+        ? _portalSectionLabel
+        : _classNum;
+    final date = _fmtPortal(_selectedDate);
+    setState(() => _isSaving = true);
+    try {
+      final outcome = await StudentService.checkPreviousSubmission(
+        classId: cls,
+        date: date,
+        section: _portalSectionLabel.isNotEmpty ? _portalSectionLabel : null,
+      );
+      if (!mounted) return;
+      if (outcome['success'] == true) {
+        _cache.clear();
+        // Force a new authoritative snapshot; never silently re-submit.
+        await _loadClassData(forceRefresh: true);
+        if (!mounted) return;
+        _snack(
+          outcome['message']?.toString() ?? 'Portal status refreshed.',
+          success: true,
+        );
+      } else {
+        if (outcome['code'] == 'REVIEW_REQUIRED' &&
+            outcome['manual_retry_allowed'] == true) {
+          // Never silently retry a POST. This is an explicit second decision.
+          final approved = await _showConfirmDialog(
+            icon: CupertinoIcons.exclamationmark_triangle_fill,
+            title: 'Release Previous Hold?',
+            message: 'Two verified portal reads differ from the previous Save. The earlier outcome is not confirmed. Release its safety hold only after manually reviewing portal statuses. This does NOT send attendance.',
+            cancelLabel: 'Keep Hold',
+            confirmLabel: 'I Reviewed',
+          );
+          if (approved == true && mounted) {
+            final review = await StudentService.checkPreviousSubmission(
+              classId: cls,
+              date: date,
+              section: _portalSectionLabel.isNotEmpty
+                  ? _portalSectionLabel
+                  : null,
+              acknowledgeManualRetry: true,
+            );
+            if (!mounted) return;
+            if (review['success'] == true) {
+              _cache.clear();
+              await _loadClassData(forceRefresh: true);
+              if (!mounted) return;
+              _snack(
+                review['message']?.toString() ?? 'Portal status refreshed.',
+                success: true,
+              );
+              return;
+            }
+            _snack(
+              review['message']?.toString() ??
+                  'Previous submission remains on hold.',
+              error: true,
+            );
+          }
+        } else {
+          _snack(
+            outcome['message']?.toString() ??
+                'Previous submission is still unresolved. Do not submit again.',
+            error: true,
+          );
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        _snack(
+          'Verification failed. Previous submission is still on hold.',
+          error: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   Future<void> _onSubmitTap() async {
-    if (_isSaving || _isLoading) return;
+    if (_isSaving || _isLoading || _isConfirming) return;
+    if (_submissionHold) {
+      await _checkPreviousSave();
+      return;
+    }
     if (_students.isEmpty) {
       _snack('No student records to submit.', error: true);
       return;
     }
-
-    // Already marked + koi change nahi -> faaltu portal call mat karo
+    // Portal supports genuine same-day updates. No-change updates waste a POST.
     if ((_isAlreadyMarked || _isPortalVerified) && !_dirty) {
       _snack('No changes to update.');
       return;
     }
+    if (!_portalDataVerified) {
+      _snack('Refresh and verify class data before submitting.', error: true);
+      return;
+    }
 
     HapticFeedback.mediumImpact();
+    setState(() => _isConfirming = true);
+    bool? confirmed;
+    try {
+      confirmed = await showModalBottomSheet<bool>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (_) => _ConfirmSheet(
+          className: _classTitle,
+          date: _fmtDisplayDate(_selectedDate),
+          present: _present,
+          absent: _absent,
+          leave: _leave,
+          medical: _medical,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isConfirming = false);
+    }
+    if (confirmed != true ||
+        !mounted ||
+        _isSaving ||
+        _isLoading ||
+        _submissionHold ||
+        !_portalDataVerified)
+      return;
 
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _ConfirmSheet(
-        className: _classTitle,
-        date: _fmtDisplayDate(_selectedDate),
-        present: _present,
-        absent: _absent,
-        leave: _leave,
-        medical: _medical,
-      ),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    setState(() {
-      _isSaving = true;
-    });
-
+    setState(() => _isSaving = true);
     final payload = {
-      'class_id':
-          _portalSectionLabel.isNotEmpty ? _portalSectionLabel : _classNum,
+      'class_id': _portalSectionLabel.isNotEmpty
+          ? _portalSectionLabel
+          : _classNum,
       'class': _classNum,
       'class_num': _classNum,
       'className': _activeClass,
@@ -772,47 +916,61 @@ class _DailyAttendanceSheetScreenState
 
       if (result['success'] == true && _parsePortalVerification(result)) {
         HapticFeedback.heavyImpact();
-
         setState(() {
-          _isSaving = false;
           _isAlreadyMarked = true;
           _isPortalVerified = true;
-
+          _submissionHold = false;
           for (final s in _students) {
             s.originalStatus = s.attendanceStatus;
           }
-
-          // is list wale saare cache entries (section + blank key) update karo
           for (final e in _cache.values) {
             if (identical(e.students, _students)) {
               e.marked = true;
               e.verified = true;
+              e.held = false;
             }
           }
         });
-
-        _snack('Attendance saved successfully', success: true);
+        _snack('Attendance saved and verified on the portal.', success: true);
       } else {
-        setState(() => _isSaving = false);
+        final attempted = result['submission_attempted'] != false;
+        final code = '${result['code'] ?? ''}';
+        final ambiguous =
+            attempted ||
+            code == 'SAVE_UNCONFIRMED' ||
+            code == 'MUTATION_AMBIGUOUS';
+        if (ambiguous) {
+          // Do not make another POST until a user-initiated independent check.
+          _cache.clear();
+          setState(() => _submissionHold = true);
+        }
+        if (code == 'ALREADY_MARKED') {
+          _cache.clear();
+          // The portal is authoritative: fetch its actual recorded statuses.
+          await _loadClassData(forceRefresh: true);
+        }
+        if (!mounted) return;
         _snack(
-          result['success'] == true
-              ? 'Submission is not confirmed by the portal. Refresh the class before submitting again.'
-              : result['message']?.toString() ?? 'Submission failed.',
+          ambiguous
+              ? 'Save outcome is uncertain. Use Verify Previous Save before trying again.'
+              : (result['message']?.toString() ?? 'Submission failed.'),
           error: true,
         );
       }
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-      setState(() => _isSaving = false);
-      _snack('Error: $e', error: true);
+      _cache.clear();
+      setState(() => _submissionHold = true);
+      _snack(
+        'Submission outcome unknown. Verify the portal before retrying.',
+        error: true,
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
-  void _snack(
-    String msg, {
-    bool error = false,
-    bool success = false,
-  }) {
+  void _snack(String msg, {bool error = false, bool success = false}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -856,9 +1014,9 @@ class _DailyAttendanceSheetScreenState
     final list = _visible;
 
     return PopScope(
-      canPop: !_dirty,
+      canPop: !_dirty && !_isSaving && !_isConfirming,
       onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
+        if (didPop || _isSaving || _isConfirming) return;
         final discard = await _confirmDiscard();
         if (discard == true && context.mounted) {
           _revertAll(); // cache me edited state na bache
@@ -924,59 +1082,63 @@ class _DailyAttendanceSheetScreenState
           Scaffold(
             backgroundColor: Colors.transparent,
             appBar: _buildAppBar(),
-            body: LayoutBuilder(builder: (context, box) {
-              return Align(alignment: Alignment.topCenter, child: SizedBox(
-                width: AppAdaptive.contentWidth(box.maxWidth),
-                height: box.maxHeight,
-                child: Column(
-              children: [
-                Expanded(
-                  child: RefreshIndicator(
-                    color: _C.ink,
-                    onRefresh: () async {
-                      if (_isSaving) return;
-                      if (_dirty) {
-                        final ok = await _confirmDiscard();
-                        if (ok != true) return;
-                        _revertAll();
-                      }
-                      await _loadClassData(forceRefresh: true);
-                    },
-                    child: CustomScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(
-                        parent: ClampingScrollPhysics(),
-                      ),
-                      slivers: [
-                        SliverToBoxAdapter(
-                          child: _buildDailyAttendanceHeader(),
-                        ),
-                        SliverToBoxAdapter(
-                          child: _buildClassAndSectionSelectors(),
-                        ),
-                        SliverToBoxAdapter(
-                          child: _buildHeroCard(),
-                        ),
-                        if (_hasGender && !_isLoading)
-                          SliverToBoxAdapter(
-                            child: _buildGenderStrip(),
+            body: LayoutBuilder(
+              builder: (context, box) {
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    width: AppAdaptive.contentWidth(box.maxWidth),
+                    height: box.maxHeight,
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: RefreshIndicator(
+                            color: _C.ink,
+                            onRefresh: () async {
+                              if (_isSaving || _isConfirming) return;
+                              if (_dirty) {
+                                final ok = await _confirmDiscard();
+                                if (ok != true) return;
+                                _revertAll();
+                              }
+                              await _loadClassData(forceRefresh: true);
+                            },
+                            child: CustomScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(
+                                parent: ClampingScrollPhysics(),
+                              ),
+                              slivers: [
+                                SliverToBoxAdapter(
+                                  child: _buildDailyAttendanceHeader(),
+                                ),
+                                SliverToBoxAdapter(
+                                  child: _buildClassAndSectionSelectors(),
+                                ),
+                                SliverToBoxAdapter(child: _buildHeroCard()),
+                                if (_hasGender && !_isLoading)
+                                  SliverToBoxAdapter(
+                                    child: _buildGenderStrip(),
+                                  ),
+                                SliverPersistentHeader(
+                                  pinned: true,
+                                  delegate: _PinnedHeaderDelegate(
+                                    // FIX: 80 tight tha (overflow risk) + ab solid bg hai
+                                    height: 84,
+                                    child: _buildSearchAndTableHeaders(),
+                                  ),
+                                ),
+                                ..._buildListSlivers(list),
+                              ],
+                            ),
                           ),
-                        SliverPersistentHeader(
-                          pinned: true,
-                          delegate: _PinnedHeaderDelegate(
-                            // FIX: 80 tight tha (overflow risk) + ab solid bg hai
-                            height: 84,
-                            child: _buildSearchAndTableHeaders(),
-                          ),
                         ),
-                        ..._buildListSlivers(list),
+                        _buildSubmitButton(),
                       ],
                     ),
                   ),
-                ),
-                _buildSubmitButton(),
-              ],
-            )));
-            }),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -1007,9 +1169,17 @@ class _DailyAttendanceSheetScreenState
       ),
       actions: [
         PopupMenuButton<String>(
-          enabled: !_isLoading && !_isSaving && _students.isNotEmpty,
-          icon: const Icon(CupertinoIcons.ellipsis_circle,
-              color: _C.ink, size: 20),
+          enabled:
+              !_isLoading &&
+              !_isSaving &&
+              !_isConfirming &&
+              !_submissionHold &&
+              _students.isNotEmpty,
+          icon: const Icon(
+            CupertinoIcons.ellipsis_circle,
+            color: _C.ink,
+            size: 20,
+          ),
           color: Colors.white,
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
@@ -1021,13 +1191,25 @@ class _DailyAttendanceSheetScreenState
             if (v == 'R') _resetChanges();
           },
           itemBuilder: (_) => [
-            _menuItem('P', CupertinoIcons.checkmark_circle, 'Mark all present',
-                _C.green),
             _menuItem(
-                'A', CupertinoIcons.xmark_circle, 'Mark all absent', _C.rose),
+              'P',
+              CupertinoIcons.checkmark_circle,
+              'Mark all present',
+              _C.green,
+            ),
+            _menuItem(
+              'A',
+              CupertinoIcons.xmark_circle,
+              'Mark all absent',
+              _C.rose,
+            ),
             if (_dirty)
-              _menuItem('R', CupertinoIcons.arrow_counterclockwise,
-                  'Undo changes', _C.slate),
+              _menuItem(
+                'R',
+                CupertinoIcons.arrow_counterclockwise,
+                'Undo changes',
+                _C.slate,
+              ),
           ],
         ),
         const SizedBox(width: 4),
@@ -1181,7 +1363,7 @@ class _DailyAttendanceSheetScreenState
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () {
-                    if (selected || _isSaving) return;
+                    if (selected || _isSaving || _isConfirming) return;
 
                     _guardedChange(() {
                       _haptic();
@@ -1216,8 +1398,9 @@ class _DailyAttendanceSheetScreenState
                       style: TextStyle(
                         fontFamily: kAppFont,
                         fontSize: 11,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w600,
+                        fontWeight: selected
+                            ? FontWeight.w700
+                            : FontWeight.w600,
                         color: selected ? Colors.white : _C.slate,
                       ),
                     ),
@@ -1250,7 +1433,7 @@ class _DailyAttendanceSheetScreenState
                     return GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: () {
-                        if (sel || _isSaving) return;
+                        if (sel || _isSaving || _isConfirming) return;
 
                         _guardedChange(() {
                           _haptic();
@@ -1269,10 +1452,11 @@ class _DailyAttendanceSheetScreenState
                         duration: const Duration(milliseconds: 140),
                         margin: const EdgeInsets.only(right: 6),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 3.5),
+                          horizontal: 10,
+                          vertical: 3.5,
+                        ),
                         decoration: BoxDecoration(
-                          color:
-                              sel ? _C.ink : Colors.white.withOpacity(0.85),
+                          color: sel ? _C.ink : Colors.white.withOpacity(0.85),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
                             color: sel ? _C.ink : _C.line,
@@ -1284,8 +1468,7 @@ class _DailyAttendanceSheetScreenState
                           style: TextStyle(
                             fontFamily: kAppFont,
                             fontSize: 10.5,
-                            fontWeight:
-                                sel ? FontWeight.w700 : FontWeight.w600,
+                            fontWeight: sel ? FontWeight.w700 : FontWeight.w600,
                             color: sel ? Colors.white : _C.slate,
                           ),
                         ),
@@ -1719,8 +1902,9 @@ class _DailyAttendanceSheetScreenState
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(10)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(10),
+                ),
                 border: Border.all(color: _C.line, width: 0.8),
               ),
               child: const Row(
@@ -1730,8 +1914,11 @@ class _DailyAttendanceSheetScreenState
                   Expanded(child: Text('Student Info', style: hStyle)),
                   SizedBox(
                     width: 148,
-                    child: Text('Status',
-                        textAlign: TextAlign.center, style: hStyle),
+                    child: Text(
+                      'Status',
+                      textAlign: TextAlign.center,
+                      style: hStyle,
+                    ),
                   ),
                 ],
               ),
@@ -1879,8 +2066,9 @@ class _DailyAttendanceSheetScreenState
       dot = _C.medicalGrey;
     }
 
-    final sno =
-        s.serialNo.length == 1 ? s.serialNo.padLeft(2, '0') : s.serialNo;
+    final sno = s.serialNo.length == 1
+        ? s.serialNo.padLeft(2, '0')
+        : s.serialNo;
 
     return Padding(
       key: ValueKey('${s.srNo}_${s.serialNo}'),
@@ -1919,8 +2107,10 @@ class _DailyAttendanceSheetScreenState
                   Container(
                     width: 4,
                     height: 4,
-                    decoration:
-                        BoxDecoration(color: dot, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                      color: dot,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                   const SizedBox(width: 7),
                   Expanded(
@@ -1936,8 +2126,7 @@ class _DailyAttendanceSheetScreenState
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.2,
-                            color:
-                                isAbsent ? const Color(0xFF991B1B) : _C.ink,
+                            color: isAbsent ? const Color(0xFF991B1B) : _C.ink,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -1949,8 +2138,9 @@ class _DailyAttendanceSheetScreenState
                             fontFamily: kAppFont,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color:
-                                isAbsent ? const Color(0xFFB91C1C) : _C.slate,
+                            color: isAbsent
+                                ? const Color(0xFFB91C1C)
+                                : _C.slate,
                           ),
                         ),
                       ],
@@ -1963,7 +2153,8 @@ class _DailyAttendanceSheetScreenState
               width: 148,
               child: _StatusSelector(
                 status: st,
-                isSaving: _isSaving,
+                isSaving:
+                    _isSaving || _isConfirming || _isLoading || _submissionHold,
                 onChanged: (c) => _setStatus(s, c),
               ),
             ),
@@ -1978,9 +2169,16 @@ class _DailyAttendanceSheetScreenState
   // ==========================================
   Widget _buildSubmitButton() {
     // FIX: loading ke dauran bhi disabled (purana data submit hone ka bug)
-    final disabled = _students.isEmpty || _isSaving || _isLoading;
+    final disabled =
+        _students.isEmpty ||
+        _isSaving ||
+        _isConfirming ||
+        _isLoading ||
+        (!_submissionHold && !_portalDataVerified);
 
-    final title = (_isAlreadyMarked || _isPortalVerified)
+    final title = _submissionHold
+        ? 'Verify Previous Save'
+        : (_isAlreadyMarked || _isPortalVerified)
         ? 'Update Attendance'
         : 'Submit Attendance';
 
@@ -2378,10 +2576,7 @@ class _PinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double height;
   final Widget child;
 
-  _PinnedHeaderDelegate({
-    required this.height,
-    required this.child,
-  });
+  _PinnedHeaderDelegate({required this.height, required this.child});
 
   @override
   double get minExtent => height;

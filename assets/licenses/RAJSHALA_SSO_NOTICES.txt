@@ -1,0 +1,6 @@
+RajSSO default OCR model and charset: sml2h3/ddddocr (MIT).
+Official ddddocr 1.5.6 / 1.6.1 common_old.onnx SHA256:
+b8f2ad9cbc1f2e3922a6cb9459e30824e7e2467f3fb4fd61420640e34ea0bf68
+Pillow Lanczos/RGB-L preprocessing follows Pillow 11.3.0 libImaging/Resample.c and Convert.c (see accompanying license).
+The default model/charset bytes are unmodified. No trained/custom School model is substituted.
+Dart AES uses PointyCastle 4.0.0 through its CBC/AES and PKCS7 APIs.

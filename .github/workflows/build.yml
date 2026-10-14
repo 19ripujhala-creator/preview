@@ -1,4 +1,4 @@
-name: Build iOS IPA
+﻿name: Build iOS IPA
 
 on:
   workflow_dispatch:
@@ -7,9 +7,9 @@ on:
       - main
 
 jobs:
-  build:
-    name: Build iOS IPA
-    runs-on: macos-latest
+  build-ios:
+    name: Build Unsigned iOS IPA (AltStore / Sideloadly)
+    runs-on: macos-14
 
     steps:
       - name: Checkout repository
@@ -21,28 +21,23 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Install Flutter Dependencies
-        run: flutter pub get
-
-      - name: Setup iOS Platform & Podfile
+      - name: Clean & Get Flutter Dependencies
         run: |
-          # Agar ios folder ya Podfile nahi hai, toh flutter create se generate karein
-          if [ ! -d "ios" ] || [ ! -f "ios/Podfile" ]; then
-            flutter create . --platforms=ios
-          fi
-          
-          # Safety check: agar fir bhi Podfile missing ho toh pod init chala dein
+          flutter clean
+          flutter pub get
+
+      - name: Install CocoaPods Dependencies
+        run: |
           cd ios
-          if [ ! -f "Podfile" ]; then
-            pod init
-          fi
-          pod install
+          pod install --repo-update
           cd ..
 
-      - name: Build iOS App (Release without codesign)
-        run: flutter build ios --release --no-codesign
+      - name: Build iOS Release (No Codesign)
+        run: |
+          flutter build ios --release --no-codesign \
+            --dart-define=RAJSHALA_DDDDOCR_VERSION=1.5.6
 
-      - name: Package App into IPA
+      - name: Package Runner.app into Shaladarpan.ipa
         run: |
           cd build/ios/iphoneos
           mkdir -p Payload
@@ -53,6 +48,6 @@ jobs:
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Shaladarpan-iOS
+          name: Shaladarpan-iOS-Release
           path: build/ios/iphoneos/Shaladarpan.ipa
-          retention-days: 7
+          retention-days: 14

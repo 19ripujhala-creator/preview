@@ -24,6 +24,67 @@ class ViffsStatusService {
     return form == null ? null : Map<String, dynamic>.from(jsonDecode(jsonEncode(form)));
   }
 
+  static Map<String, dynamic>? periodTabletStatus(
+    String school,
+    int year,
+    int month,
+    String tablet,
+  ) {
+    Map<String, dynamic>? latest;
+    DateTime? latestAt;
+    for (final record in _records.values) {
+      if (record['school_id'] != school ||
+          record['year'] != year ||
+          record['month'] != month ||
+          record['tablet']?.toString() != tablet) {
+        continue;
+      }
+      final checkedAt = DateTime.tryParse('${record['checked_at'] ?? ''}');
+      if (latest == null ||
+          (checkedAt != null && (latestAt == null || checkedAt.isAfter(latestAt)))) {
+        latest = record;
+        latestAt = checkedAt;
+      }
+    }
+    return latest == null ? null : Map<String, dynamic>.from(latest);
+  }
+
+  static Map<String, int>? _lockedTotals(Map<dynamic, dynamic> form) {
+    if (form['locked'] != true || form['sections'] is! List) return null;
+
+    int boys = 0;
+    int girls = 0;
+    bool foundClass = false;
+    final ids = <String>{};
+    final boysId = RegExp(r'_lblBoys_Tablet_\d+$', caseSensitive: false);
+    final girlsId = RegExp(r'_lblGirls_Tablet_\d+$', caseSensitive: false);
+
+    for (final section in (form['sections'] as List).whereType<Map>()) {
+      final fields = (section['fields'] as List?)?.whereType<Map>().toList() ?? const <Map>[];
+      int? rowBoys;
+      int? rowGirls;
+
+      for (final field in fields) {
+        final id = '${field['id'] ?? ''}';
+        if (!ids.add(id)) return null;
+        final raw = '${field['value'] ?? ''}'.trim();
+        final value = int.tryParse(raw);
+        if (boysId.hasMatch(id)) rowBoys = value;
+        if (girlsId.hasMatch(id)) rowGirls = value;
+      }
+
+      if (rowBoys == null || rowGirls == null || rowBoys < 0 || rowGirls < 0) {
+        return null;
+      }
+      boys += rowBoys;
+      girls += rowGirls;
+      foundClass = true;
+    }
+
+    if (!foundClass) return null;
+    return {'boys': boys, 'girls': girls, 'total': boys + girls};
+  }
+
   static int? _year(String session, int month) {
     final match = RegExp(r'^(\d{4})\s*[-–]\s*(?:\d{2}|\d{4})$').firstMatch(session.trim());
     if (match == null) return null;
@@ -75,37 +136,73 @@ class ViffsStatusService {
 
   static Future<void> storeForm(String school, Map<String, dynamic> response, {bool saved = false}) async {
     final form = response['data'];
-    if (form is! Map || form['task'] != 'viffs' || form['school_id']?.toString() != school || form['selection'] is! Map) return;
+    if (form is! Map ||
+        form['task'] != 'viffs' ||
+        form['school_id']?.toString() != school ||
+        form['selection'] is! Map) {
+      return;
+    }
+
     final selection = form['selection'] as Map;
     final session = '${selection['ContentPlaceHolder1_ddlStudentType']}';
     final month = int.tryParse('${selection['ContentPlaceHolder1_ddlmonth']}');
     final tablet = '${selection['ContentPlaceHolder1_ddlClass']}';
-    if (month == null || month < 1 || month > 12 || !['P', 'B'].contains(tablet)) return;
-    final year = _year(session, month);
-    if (year == null || form['locked'] is! bool) return;
-    final key = _key(school, session, '$month', tablet);
-    if (form['no_records'] == true) {
-      await invalidate(school, Map<String, dynamic>.from(selection));
+    if (month == null ||
+        month < 1 ||
+        month > 12 ||
+        !['P', 'B'].contains(tablet)) {
       return;
     }
-    if (form['sections'] is! List || (form['sections'] as List).isEmpty) return;
-    final fingerprint = jsonEncode((form['sections'] as List).map((section) => {
-      'title': section['title'], 'identity': section['identity'],
-      'values': (section['fields'] as List).map((field) => {'id': field['id'], 'value': field['value']}).toList(),
+
+    final year = _year(session, month);
+    if (year == null || form['locked'] is! bool) return;
+
+    final key = _key(school, session, '$month', tablet);
+    final sections = form['sections'] is List ? form['sections'] as List : const [];
+    if (form['locked'] == true && sections.isEmpty) return;
+
+    final fingerprint = jsonEncode(sections.whereType<Map>().map((section) => {
+      'title': section['title'],
+      'identity': section['identity'],
+      'values': (section['fields'] is List ? section['fields'] as List : const [])
+          .whereType<Map>()
+          .map((field) => {'id': field['id'], 'value': field['value']})
+          .toList(),
     }).toList());
-    final value = <String, dynamic>{'school_id': school, 'session': session, 'year': year,
-      'month': month, 'tablet': tablet, 'locked': form['locked'],
-      'saved': form['locked'] == true || (saved && response['verified'] == true) || (_records[key]?['saved'] == true && _records[key]?['fingerprint'] == fingerprint),
+
+    final totals = form['locked'] == true ? _lockedTotals(form) : null;
+    if (form['locked'] == true && totals == null) return;
+
+    final value = <String, dynamic>{
+      'school_id': school,
+      'session': session,
+      'year': year,
+      'month': month,
+      'tablet': tablet,
+      'locked': form['locked'],
+      'saved': form['locked'] == true ||
+          (saved && response['verified'] == true) ||
+          (_records[key]?['saved'] == true &&
+              _records[key]?['fingerprint'] == fingerprint),
+      'boys': totals?['boys'],
+      'girls': totals?['girls'],
+      'total': totals?['total'],
+      'no_records': form['no_records'] == true,
       'fingerprint': fingerprint,
-      'checked_at': DateTime.now().toUtc().toIso8601String()};
+      'checked_at': DateTime.now().toUtc().toIso8601String(),
+    };
+
     _invalidated.remove(key);
     _forms[key] = Map<String, dynamic>.from(jsonDecode(jsonEncode(form)));
     _records[key] = value;
     changes.notifyListeners();
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(key, jsonEncode(_records[key]));
-    } catch (_) { /* Cache persistence cannot invalidate a verified portal result. */ }
+      await prefs.setString(key, jsonEncode(value));
+    } catch (_) {
+      // Cache persistence cannot invalidate a verified portal result.
+    }
   }
 
   static Future<void> restore(String school) async {
@@ -115,6 +212,10 @@ class ViffsStatusService {
         if (_records.containsKey(key) || _invalidated.contains(key)) continue;
         final value = jsonDecode(prefs.getString(key) ?? 'null');
         if (value is! Map || value['school_id'] != school || value['locked'] is! bool) continue;
+        if (value['locked'] == true && (value['boys'] is! num || value['girls'] is! num)) {
+          await prefs.remove(key);
+          continue;
+        }
         _records.putIfAbsent(key, () => Map<String, dynamic>.from(value));
       }
       changes.notifyListeners();

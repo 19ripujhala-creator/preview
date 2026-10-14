@@ -23,6 +23,7 @@ class _StaffLoginViewState extends State<StaffLoginView> {
   int _selectedStaffModuleIndex = 0;
   final ScrollController _tabScrollController = ScrollController();
   bool _isLoading = true;
+  String? _profileError;
 
   Map<String, String> _currentUser = {
     "name": "Loading...",
@@ -34,7 +35,7 @@ class _StaffLoginViewState extends State<StaffLoginView> {
   final List<String> _staffModules = [
     "Leave Apply",
     "Profile (Format-10)",
-    "Student Janaadhar Authentication"
+    "Student Janaadhar Authentication",
   ];
 
   @override
@@ -51,7 +52,40 @@ class _StaffLoginViewState extends State<StaffLoginView> {
 
   /// 🚀 100% DYNAMIC PROFILE LOADER
   Future<void> _loadStaffProfile() async {
+    _profileError = null;
     try {
+      if (StaffLoginService.directReadsEnabled) {
+        final result = await StaffLoginService.fetchProfile();
+        if (!mounted) return;
+        final profile = result['profile'];
+        setState(() {
+          _currentUser = result['success'] == true && profile is Map
+              ? {
+                  for (final key in [
+                    'name',
+                    'designation',
+                    'nicId',
+                    'staffLoginId',
+                    'p10Status',
+                    'isLocked',
+                    'p10StatusKnown',
+                  ])
+                    key: profile[key]?.toString() ?? '--',
+                }
+              : {
+                  'name': '--',
+                  'designation': '--',
+                  'nicId': '--',
+                  'staffLoginId': '--',
+                };
+          _profileError = result['success'] == true
+              ? null
+              : result['message']?.toString() ??
+                    'Staff profile could not be read.';
+          _isLoading = false;
+        });
+        return;
+      }
       final prefs = await SharedPreferences.getInstance();
 
       String name = prefs.getString('staff_name') ?? "";
@@ -104,6 +138,20 @@ class _StaffLoginViewState extends State<StaffLoginView> {
         _isLoading = false;
       });
     } catch (e) {
+      if (StaffLoginService.directReadsEnabled) {
+        if (mounted)
+          setState(() {
+            _currentUser = {
+              'name': '--',
+              'designation': '--',
+              'nicId': '--',
+              'staffLoginId': '--',
+            };
+            _profileError = 'Staff profile could not be read.';
+            _isLoading = false;
+          });
+        return;
+      }
       if (mounted) {
         setState(() {
           _currentUser = {
@@ -130,6 +178,28 @@ class _StaffLoginViewState extends State<StaffLoginView> {
       return const Center(child: CupertinoActivityIndicator());
     }
 
+    if (_profileError != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(_profileError!, textAlign: TextAlign.center),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _isLoading = true;
+                });
+                _loadStaffProfile();
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
     return Theme(
       data: ThemeData(
         useMaterial3: true,
@@ -209,7 +279,10 @@ class _StaffLoginViewState extends State<StaffLoginView> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(6),
@@ -247,7 +320,10 @@ class _StaffLoginViewState extends State<StaffLoginView> {
                       setState(() => _selectedStaffModuleIndex = index);
                       if (_tabScrollController.hasClients) {
                         _tabScrollController.animateTo(
-                          (index * 110.0).clamp(0.0, _tabScrollController.position.maxScrollExtent),
+                          (index * 110.0).clamp(
+                            0.0,
+                            _tabScrollController.position.maxScrollExtent,
+                          ),
                           duration: const Duration(milliseconds: 300),
                           curve: Curves.easeInOut,
                         );
@@ -255,12 +331,19 @@ class _StaffLoginViewState extends State<StaffLoginView> {
                     },
                     behavior: HitTestBehavior.opaque,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8.0,
+                      ),
                       decoration: BoxDecoration(
-                        color: isSelected ? const Color(0xFF0F172A) : Colors.transparent,
+                        color: isSelected
+                            ? const Color(0xFF0F172A)
+                            : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: isSelected ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0),
+                          color: isSelected
+                              ? const Color(0xFF0F172A)
+                              : const Color(0xFFE2E8F0),
                         ),
                       ),
                       child: Text(
@@ -268,8 +351,12 @@ class _StaffLoginViewState extends State<StaffLoginView> {
                         style: TextStyle(
                           fontFamily: kAppFont,
                           fontSize: 12.0,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                          color: isSelected ? Colors.white : const Color(0xFF475569),
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF475569),
                         ),
                       ),
                     ),

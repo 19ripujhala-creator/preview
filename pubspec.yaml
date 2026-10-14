@@ -8,6 +8,11 @@ environment:
   sdk: ">=3.13.2 <4.0.0"
 
 dependencies:
+  rajshala_native_print_ios:
+    path: packages/rajshala_native_print_ios
+  ffi: ^2.2.0
+  pdfium_flutter: 0.3.1
+  pointycastle: 4.0.0
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
@@ -15,12 +20,15 @@ dependencies:
   package_info_plus: ^8.3.1
   file_selector: ^1.1.0
   flutter_email_sender: ^10.0.1
+  crypto: ^3.0.6
+  onnxruntime: 1.4.1
+  opencv_dart: 2.2.2
 
   # Networking & APIs
   http: ^1.2.0
 
   # PDF Generation & Native Share / View (Android & iOS)
-  pdf: ^3.11.1
+  pdf: 3.13.1
   printing: ^5.13.2
 
   # Media & Animation
@@ -35,7 +43,8 @@ dependencies:
 
   # Network Monitoring & Background Sync
   connectivity_plus: ^6.1.1 # Internet aate hi instant event catch karega
-  workmanager: ^0.5.2       # App killed/band hone par bhi OS-level sync
+  workmanager: ^0.10.10       # App killed/band hone par bhi OS-level sync
+  html: ^0.15.7
 
 dev_dependencies:
   flutter_test:
@@ -46,8 +55,13 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/models/rajsso_common_old.onnx
+    - assets/models/rajsso_charset.json
+    - assets/licenses/
+    - assets/mpr/
     - assets/icons/
     - assets/images/
+    - assets/models/captcha_group_0_layer_0.onnx
 
   fonts:
     - family: PlusJakartaSans
@@ -92,3 +106,6 @@ flutter:
     - family: Inter
       fonts:
         - asset: assets/fonts/Inter_18pt-Regular.ttf
+dependency_overrides:
+  onnxruntime:
+    path: third_party/onnxruntime

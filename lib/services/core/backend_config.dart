@@ -1,8 +1,8 @@
 class BackendConfig {
-  // Sirf defaultValue wale string ko purane URL se naye Cloud URL se replace kiya gaya hai
+  // Hugging Face URL ko Oracle Cloud VM ke IP aur Port se replace kiya gaya hai
   static const String _configured = String.fromEnvironment(
       'BACKEND_URL', 
-      defaultValue: 'https://19ripudaman-rajshala-captcha-solver.hf.space'
+      defaultValue: 'http://192.168.31.225:7860'
   );
   static String get baseUrl => _configured.replaceFirst(RegExp(r'/+$'), '');
   static Uri uri(String path) => Uri.parse('$baseUrl$path');
