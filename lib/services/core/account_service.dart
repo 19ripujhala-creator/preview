@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -14,17 +15,24 @@ import '../portals/shaladarpan/student_service.dart';
 class AccountService {
   static Future<Map<String, dynamic>>? _profileFlight;
   static String? _profileScope;
-  static String _scope(Map<String, String> c) => jsonEncode([
-    for (final key in [
-      'school_id',
-      'school_password',
-      'staff_id',
-      'staff_password',
-      'sso_id',
-      'sso_password',
-    ])
-      c[key],
-  ]);
+  // Only a digest is kept in memory; raw passwords never sit in a static field.
+  static String _scope(Map<String, String> c) => sha256
+      .convert(
+        utf8.encode(
+          jsonEncode([
+            for (final key in [
+              'school_id',
+              'school_password',
+              'staff_id',
+              'staff_password',
+              'sso_id',
+              'sso_password',
+            ])
+              c[key],
+          ]),
+        ),
+      )
+      .toString();
 
   static Future<Map<String, dynamic>> _get(String path, int seconds) async {
     final client = http.Client();

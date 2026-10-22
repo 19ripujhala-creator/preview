@@ -1,5 +1,6 @@
 import '../services/core/direct/coordinator.dart';
 import '../services/core/direct/errors.dart';
+import '../services/portals/shaladarpan/direct/leave_result_messages.dart';
 import '../services/portals/shaladarpan/direct/leave_approvals.dart';
 import '../services/portals/shaladarpan/direct/staff_attendance.dart';
 import 'direct_portal_auth.dart';
@@ -66,12 +67,15 @@ class DirectLeaveApprovalService {
       try {
         result = await operation();
         if (key != _key || !auth.isVerified)
-          return LeaveApprovalsWorker.failure(
-            const StaffAttendanceError(
-              'ACCOUNT_CHANGED',
-              'School login session changed. Fetch leave approvals again.',
+          return LeaveResultMessages.attach(
+            LeaveApprovalsWorker.failure(
+              const StaffAttendanceError(
+                'ACCOUNT_CHANGED',
+                'School login session changed. Fetch leave approvals again.',
+              ),
+              result?['submission_attempted'] == true,
             ),
-            result?['submission_attempted'] == true,
+            LeaveResultMessages.portalTexts(result ?? {}),
           );
         return result!;
       } finally {

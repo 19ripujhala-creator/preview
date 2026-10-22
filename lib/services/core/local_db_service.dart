@@ -1,9 +1,12 @@
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:hive_flutter/hive_flutter.dart';
 
 class LocalDbService {
   // Hive box ka naam jisme pending offline tasks save honge
   static const String _boxName = 'offline_tasks';
+  static int _sequence = 0;
 
   // 1. App start hote hi Local Database initialize karna
   static Future<void> init() async {
@@ -19,8 +22,10 @@ class LocalDbService {
   }) async {
     final box = Hive.box(_boxName);
 
-    // Unique timestamp-based task ID
-    final taskId = DateTime.now().millisecondsSinceEpoch.toString();
+    // A millisecond timestamp alone can repeat when two tasks are queued in the
+    // same millisecond, silently overwriting the first one. Microseconds plus a
+    // process-wide counter keeps every task ID unique.
+    final taskId = '${DateTime.now().microsecondsSinceEpoch}-${_sequence++}';
 
     final taskPayload = {
       'taskId': taskId,
@@ -31,18 +36,27 @@ class LocalDbService {
     };
 
     await box.put(taskId, jsonEncode(taskPayload));
-    print(" Offline Saved: $taskType for $portal (ID: $taskId)");
+    debugPrint('Offline task saved: $taskType for $portal (ID: $taskId)');
   }
 
   // 3. Internet aane par saare bache hue tasks nikalna
   static List<Map<String, dynamic>> getPendingTasks() {
+    final tasks = <Map<String, dynamic>>[];
+    // main() swallows an init failure; do not crash every later sync with
+    // "box not found" when the database never opened.
+    if (!Hive.isBoxOpen(_boxName)) return tasks;
     final box = Hive.box(_boxName);
-    List<Map<String, dynamic>> tasks = [];
 
-    for (var key in box.keys) {
-      final dynamic raw = box.get(key);
-      if (raw != null) {
-        tasks.add(Map<String, dynamic>.from(jsonDecode(raw as String)));
+    for (final key in box.keys) {
+      // One unreadable entry must not block every other pending task. The bad
+      // entry stays in the box (nothing is deleted) and is simply skipped.
+      try {
+        final raw = box.get(key);
+        if (raw is! String) continue;
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) tasks.add(Map<String, dynamic>.from(decoded));
+      } catch (_) {
+        debugPrint('Skipping unreadable offline task: $key');
       }
     }
     return tasks;
@@ -52,7 +66,7 @@ class LocalDbService {
   static Future<void> removeTask(String taskId) async {
     final box = Hive.box(_boxName);
     await box.delete(taskId);
-    print(" Synced & Removed from offline box: $taskId");
+    debugPrint('Synced & removed from offline box: $taskId');
   }
 
   // 5. Box clear karna

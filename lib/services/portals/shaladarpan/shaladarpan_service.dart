@@ -7,6 +7,7 @@ import 'ranking_status_service.dart';
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shaladarpan/services/core/secure_storage_service.dart';
@@ -379,11 +380,14 @@ class ShaladarpanService {
         prefs.getBool('attendance_submission_hold_${school}_$_todayStr') ==
         true;
     final at = _staffSnapshotAt[key];
+    // A negative age means the device clock moved backwards: never trust it.
+    final snapshotAge = at == null ? null : DateTime.now().difference(at);
     if (!forceRefresh &&
         !held &&
         !_staffMutationInFlight &&
-        at != null &&
-        DateTime.now().difference(at) < const Duration(seconds: 30) &&
+        snapshotAge != null &&
+        !snapshotAge.isNegative &&
+        snapshotAge < const Duration(seconds: 30) &&
         _isCurrentStaffDocument(
           _staffSnapshots[key] ?? {},
           school,
@@ -540,7 +544,11 @@ class ShaladarpanService {
       }
       return data;
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      debugPrint('Staff attendance fetch failed: $e');
+      return {
+        'success': false,
+        'message': 'Staff attendance could not be loaded. Please try again.',
+      };
     }
   }
 

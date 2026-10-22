@@ -770,8 +770,10 @@ RajssoAction rajssoDocumentLaunchAction(String text, Uri url) {
       'stage': stage,
       'checks': bridgeChecks,
     };
+    // Submit the official form action as returned, including its query.
+    // Query parameters are opaque launch state; dropping them or requiring an
+    // empty query changes the portal form's browser submission behavior.
     if (url.host != 'sso.rajasthan.gov.in' ||
-        target.query.isNotEmpty ||
         target.fragment.isNotEmpty ||
         (form.attributes['method'] ?? 'get').toLowerCase() != 'post') {
       throw RajssoError(

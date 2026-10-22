@@ -422,6 +422,17 @@ class _AttendanceViewState extends State<AttendanceView> {
         _requiresVerification ||
         _isRefreshing)
       return;
+    for (final row in _staffList) {
+      if (row['editable'] == true &&
+          (row['attendanceCode']?.toString() ?? '').isEmpty) {
+        _showAppleToast(
+          'Select attendance status for ${row['name']} before submitting.',
+          icon: CupertinoIcons.exclamationmark_circle,
+          iconColor: const Color(0xFFF59E0B),
+        );
+        return;
+      }
+    }
     _haptic();
     showModalBottomSheet(
       context: context,
@@ -517,8 +528,11 @@ class _AttendanceViewState extends State<AttendanceView> {
                     final s = _staffList[index];
                     final code = s["attendanceCode"];
                     final label = _rowStatus(s);
-                    final isPresent = code == "0";
-                    final isCustom = code != "0" && code != "89";
+                    // Category comes from the portal label (same source as the
+                    // main list); portal option codes are not stable constants.
+                    final category = _rowCategory(s);
+                    final isPresent = category == 'present';
+                    final isCustom = category == 'leave' || category == 'other';
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -1105,7 +1119,7 @@ class _AttendanceViewState extends State<AttendanceView> {
                                   )
                                 : Icon(
                                     items[i].$4,
-                                    size: 22,
+                                    size: compact ? 14 : 22,
                                     color: items[i].$3,
                                   ),
                           ),

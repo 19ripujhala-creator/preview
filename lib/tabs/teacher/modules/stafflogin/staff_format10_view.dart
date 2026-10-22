@@ -365,7 +365,10 @@ class _StaffFormat10ViewState extends State<StaffFormat10View> {
     if (_isDownloading || _isViewing) return;
 
     final nicId = widget.currentUser['nicId'];
-    final fileName = "Format10_${widget.currentUser['name'] ?? 'Staff'}_${nicId ?? 'Doc'}.pdf";
+    // Portal names can contain characters that are illegal in file names.
+    final safeName = "${widget.currentUser['name'] ?? 'Staff'}_${nicId ?? 'Doc'}"
+        .replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1F]+'), '_');
+    final fileName = "Format10_$safeName.pdf";
 
     setState(() {
       if (isDownloadOnly) {
@@ -421,8 +424,11 @@ class _StaffFormat10ViewState extends State<StaffFormat10View> {
       }
     } catch (e) {
       _stopSimulatedProgress();
+      debugPrint('Format-10 failed: $e');
+      // The user may have left the screen; Overlay.of(context) would throw.
+      if (!mounted) return;
       _showAppleToast(
-        message: "Error: $e",
+        message: "Could not prepare Format-10. Please try again.",
         icon: CupertinoIcons.exclamationmark_triangle_fill,
         iconColor: const Color(0xFFEF4444),
       );

@@ -1456,8 +1456,13 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                     setModalState(() => validationError = "Check the leave dates. HCL must use one date.");
                                     return;
                                   }
-                                  final String finalType = _leaveTypes.firstWhere((t) => t["code"] == selectedTypeCode)["short"];
-                                  final String finalFull = _leaveTypes.firstWhere((t) => t["code"] == selectedTypeCode)["label"];
+                                  final selectedLeaveType = _leaveTypes.where((t) => t["code"] == selectedTypeCode);
+                                  if (selectedLeaveType.isEmpty) {
+                                    setModalState(() => validationError = "Please select a valid leave type.");
+                                    return;
+                                  }
+                                  final String finalType = selectedLeaveType.first["short"];
+                                  final String finalFull = selectedLeaveType.first["label"];
                                   final String formattedDays = calculatedDays % 1 == 0
                                       ? calculatedDays.toInt().toString()
                                       : calculatedDays.toString();

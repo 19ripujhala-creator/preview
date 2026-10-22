@@ -1,3 +1,4 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shaladarpan/experiments/direct_school_session.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/student_service.dart';
 import 'package:shaladarpan/widgets/adaptive_layout.dart';
@@ -291,7 +292,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     try {
       bool online = StudentService.directAttendanceEnabled ? _isOnline : false;
       try {
-        if (!StudentService.directAttendanceEnabled) {
+        if (StudentService.directAttendanceEnabled) {
+          // Direct mode has no backend /health; previously _isOnline was never
+          // set back to false, so the offline state could never show.
+          final links = await Connectivity().checkConnectivity();
+          online = links.any((r) => r != ConnectivityResult.none);
+        } else {
           final response = await http
               .get(BackendConfig.uri('/health'))
               .timeout(const Duration(seconds: 3));
@@ -333,6 +339,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       }
     }
 
+    // The ranking block above awaits; the screen may have been closed meanwhile.
+    if (!mounted) return;
     final kpiData = data['kpi'];
     if (kpiData is Map && kpiData.isNotEmpty && kpiData['success'] != false) {
       _applyKpiData(Map<String, dynamic>.from(kpiData));
@@ -354,6 +362,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       });
     }
 
+    if (!mounted) return;
     final staffData = data['staff_attendance'];
     if (staffData is Map &&
         staffData.isNotEmpty &&
@@ -366,6 +375,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         await prefs.remove('attendance_already_marked');
       }
       await prefs.setString('cached_staff_attendance', jsonEncode(staffData));
+      if (!mounted) return;
       _updateStaffUIFromData(staffData, isMarked, _todayStr);
     }
 

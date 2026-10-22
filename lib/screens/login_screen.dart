@@ -124,6 +124,56 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
 
   bool _directRajsimsRunning = false;
 
+  Future<void> _showRajsimsLoginFailure(Map failure) async {
+    if (!mounted) return;
+    final message =
+        failure['message']?.toString() ??
+        failure['code']?.toString() ??
+        'RajSIMS login was not verified.';
+    final diagnostics = EcosystemService.safeLoginDiagnostics(
+      failure['diagnostics'],
+    );
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('RajSIMS login'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SelectableText(message),
+              if (failure['code'] != null || diagnostics.isNotEmpty)
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: const Text('Technical details'),
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: SelectableText(
+                        const JsonEncoder.withIndent('  ').convert({
+                          if (failure['code'] != null) 'code': failure['code'],
+                          if (failure['message_source'] != null)
+                            'message_source': failure['message_source'],
+                          ...diagnostics,
+                        }),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _testDirectRajsimsLogin() async {
     if (_directRajsimsRunning ||
         _directStaffRunning ||
@@ -145,15 +195,15 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
       final runtime = await RajsimsDirectRuntime.get();
       final result = await runtime.coordinator.authenticate(user, password);
       if (!mounted) return;
-      final profile = runtime.registry.auth.getUserInfo();
       final message =
           result['message']?.toString() ??
           result['code']?.toString() ??
           'RajSIMS login was not verified.';
-      final details = result['diagnostics'];
-      final diagnosticText = details is Map
-          ? '\n\nTechnical response details:\n${const JsonEncoder.withIndent('  ').convert(details)}'
-          : '';
+      if (result['success'] != true) {
+        await _showRajsimsLoginFailure(result);
+        return;
+      }
+      final profile = runtime.registry.auth.getUserInfo();
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -168,7 +218,7 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
             child: SelectableText(
               result['success'] == true
                   ? '$message\nOffice: ${profile['office_id']} · Organization: ${profile['org_id']}\n${profile['name'] ?? ''}'
-                  : message + diagnosticText,
+                  : message,
             ),
           ),
           actions: [
@@ -725,6 +775,13 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
         );
       }
 
+      final portalStates = EcosystemService.statusSnapshot()['portals'];
+      final rajsimsState = portalStates is Map ? portalStates['rajsims'] : null;
+      if (rajsimsState is Map && rajsimsState['state'] == 'failed') {
+        await _showRajsimsLoginFailure(rajsimsState);
+        if (!mounted) return;
+      }
+
       HapticFeedback.mediumImpact();
 
       if (_isVideoReady) await _videoController.pause();
@@ -1148,6 +1205,24 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
                         ),
 
                         const SizedBox(height: 10),
+
+                        if (!kDebugMode && !kIsWeb && _currentStep == 2)
+                          OutlinedButton.icon(
+                            onPressed:
+                                _directRajsimsRunning ||
+                                    _directStaffRunning ||
+                                    _directLoginRunning ||
+                                    _directTestRunning ||
+                                    _isLoading
+                                ? null
+                                : _testDirectRajsimsLogin,
+                            icon: const Icon(Icons.info_outline),
+                            label: Text(
+                              _directRajsimsRunning
+                                  ? 'Checking RajSIMS login…'
+                                  : 'Check RajSIMS login',
+                            ),
+                          ),
 
                         if (kDebugMode && !kIsWeb) ...[
                           SizedBox(

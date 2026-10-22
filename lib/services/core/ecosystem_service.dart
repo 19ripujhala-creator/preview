@@ -27,6 +27,89 @@ class EcosystemService {
   static String? get summary =>
       _latest['all_ready'] == true ? null : _latest['message']?.toString();
 
+  /// Only structural diagnostics are exposed; credentials, URLs and HTML
+  /// never become part of the technical details shown in the UI.
+  static Map<String, dynamic> safeLoginDiagnostics(Object? value) {
+    if (value is! Map) return {};
+    final safe = <String, dynamic>{};
+    const textValues = {
+      'phase': {'rajsims_sso_bridge'},
+      'stage': {'bridge_envelope', 'bridge_input'},
+      'page': {'signin', 'dashboard', 'other'},
+    };
+    for (final entry in textValues.entries) {
+      if (entry.value.contains(value[entry.key])) {
+        safe[entry.key] = value[entry.key];
+      }
+    }
+    for (final key in const [
+      'attempt',
+      'http_status',
+      'html_bytes',
+      'form_count',
+      'error_nodes',
+      'nonempty_error_nodes',
+      'tile_count',
+    ]) {
+      if (value[key] is int) safe[key] = value[key];
+    }
+    for (final key in const [
+      'user_control',
+      'password_control',
+      'captcha_control',
+      'logout_control',
+      'javascript_alert_call',
+      'javascript_redirect',
+      'meta_refresh',
+    ]) {
+      if (value[key] is bool) safe[key] = value[key];
+    }
+    final checks = value['checks'];
+    if (checks is Map) {
+      final safeChecks = <String, bool>{};
+      for (final key in const [
+        'source_is_sso',
+        'source_is_rajsims',
+        'source_is_mdm',
+        'action_query_empty',
+        'action_fragment_empty',
+        'method_is_post',
+        'single_form',
+        'single_named_input',
+        'input_is_userdetails',
+        'input_enabled',
+        'input_hidden',
+        'input_nonempty',
+      ]) {
+        if (checks[key] is bool) safeChecks[key] = checks[key] as bool;
+      }
+      if (safeChecks.isNotEmpty) safe['checks'] = safeChecks;
+    }
+    return safe;
+  }
+
+  static Map<String, dynamic> describeLoginResult(
+    Map<String, dynamic> result, {
+    required double durationSeconds,
+  }) {
+    final success = result['success'] == true;
+    final diagnostics = success
+        ? <String, dynamic>{}
+        : safeLoginDiagnostics(result['diagnostics']);
+    return {
+      'state': success ? 'ready' : 'failed',
+      'success': success,
+      'live': success,
+      'stale': false,
+      'code': result['code'],
+      'message': result['message'] ?? '',
+      'duration_s': durationSeconds,
+      if (result['message_source'] != null)
+        'message_source': result['message_source'],
+      if (diagnostics.isNotEmpty) 'diagnostics': diagnostics,
+    };
+  }
+
   static bool portalReady(String name) {
     final portals = _latest['portals'];
     final portal = portals is Map ? portals[name] : null;
@@ -395,6 +478,16 @@ class EcosystemService {
       }
       if (prior is Map && prior['message'] != null)
         row['message'] = prior['message'];
+      if (prior is Map &&
+          prior['state'] == 'failed' &&
+          row['state'] == 'failed' &&
+          row['generation'] == prior['generation']) {
+        if (prior['code'] != null) row['code'] = prior['code'];
+        if (prior['message_source'] != null)
+          row['message_source'] = prior['message_source'];
+        final diagnostics = safeLoginDiagnostics(prior['diagnostics']);
+        if (diagnostics.isNotEmpty) row['diagnostics'] = diagnostics;
+      }
       portals[entry.key] = row;
     }
     return {
@@ -451,16 +544,20 @@ class EcosystemService {
           'code': 'LOGIN_CANCELLED',
           'message': 'Login was cancelled.',
         };
-      portals[name] = {
-        'state': r['success'] == true ? 'ready' : 'failed',
-        'success': r['success'] == true,
-        'live': r['success'] == true,
-        'stale': false,
-        'code': r['code'],
-        'message': r['message'] ?? '',
-        'duration_s': watch.elapsedMilliseconds / 1000,
-        if (r['message_source'] != null) 'message_source': r['message_source'],
-      };
+      portals[name] = describeLoginResult(
+        r,
+        durationSeconds: watch.elapsedMilliseconds / 1000,
+      );
+      // Tie failure details to this session generation so a later recovery
+      // cannot display the earlier login failure as the new result.
+      final coordinator = name == 'rajsims'
+          ? RajsimsDirectRuntime.current?.coordinator
+          : name == 'staff_login'
+          ? StaffDirectRuntime.current?.coordinator
+          : DirectSchoolSession.coordinator;
+      if (coordinator != null) {
+        portals[name]['generation'] = coordinator.status()['generation'];
+      }
       final count = portals.values.where((p) => p['state'] == 'ready').length;
       progress?.call(count / 3, r['message']?.toString() ?? '');
       return r;

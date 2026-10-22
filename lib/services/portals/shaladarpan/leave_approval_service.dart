@@ -1,5 +1,6 @@
 import '../../../experiments/direct_school_session.dart';
 import 'student_service.dart';
+import 'direct/leave_result_messages.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -256,14 +257,14 @@ class LeaveApprovalService {
         if (!identical(session, DirectSchoolSession.leaveApprovals) ||
             (await SecureStorageService.getShaladarpanCreds())['id']?.trim() !=
                 account)
-          return {
+          return LeaveResultMessages.attach({
             'success': false,
             'code': result['submission_attempted'] == true
                 ? 'SAVE_UNCONFIRMED'
                 : 'ACCOUNT_CHANGED',
             'submission_attempted': result['submission_attempted'] == true,
             'message': 'School session changed. Verify leave actions on the portal before retrying.',
-          };
+          }, LeaveResultMessages.portalTexts(result));
       } else {
         final response = await http
             .post(
@@ -274,8 +275,11 @@ class LeaveApprovalService {
             .timeout(const Duration(seconds: 90));
         result = _decode(response);
       }
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('leave_cache_school');
+      // A local cache cleanup failure must not replace the portal result.
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('leave_cache_school');
+      } catch (_) {}
       ShaladarpanService.invalidateStaffSnapshot();
       return result;
     } on TimeoutException {

@@ -8,6 +8,8 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html;
 
 import '../portal_state.dart';
+import 'portal_messages.dart';
+import 'leave_result_messages.dart';
 import '../../../core/direct/async_primitives.dart';
 import 'staff_attendance.dart' show StaffWebForms, StaffAttendanceError;
 
@@ -263,7 +265,6 @@ class LeaveApprovalsWorker {
       'from_date',
       'to_date',
       'days',
-      'status_code',
     ])
       row[k],
   ]);
@@ -279,6 +280,16 @@ class LeaveApprovalsWorker {
     if (summary.link == null)
       _fail('PAGE_NOT_READY', 'School leave details link is missing.');
     page = await _navigate(page, summary.link!, key);
+    // The action selector is not stored leave status. Pending eligibility
+    // comes from fresh pending-summary navigation and matching row identity.
+    // Never accept an All Applications document as the editable pending view.
+    final history = page.soup.getElementById(historyRadio);
+    if (history != null && history.attributes.containsKey('checked')) {
+      _fail(
+        'PAGE_NOT_READY',
+        'All Applications was returned instead of the pending leave list. Fetch again.',
+      );
+    }
     final parsed = _details(page.soup);
     if (parsed.rows.length != summary.count)
       _fail(
@@ -297,7 +308,7 @@ class LeaveApprovalsWorker {
       return {
         'success': false,
         'code': 'SAVE_UNCONFIRMED',
-        'message': 'Mapping Save was submitted but not verified. Fetch mappings before submitting again.',
+        'message': 'Leave action was submitted but not verified. Check All Applications before submitting again.',
         'submission_attempted': true,
         'verified': false,
       };
@@ -540,6 +551,9 @@ class LeaveApprovalsWorker {
     required bool userConfirmed,
   }) async {
     var attempted = false;
+    var portalMessages = <String>[];
+    Map<String, dynamic> finish(Map<String, dynamic> result) =>
+        LeaveResultMessages.attach(result, portalMessages);
     final wanted = <String, Map<String, String>>{};
     final key = sessionKey(), school = schoolId().trim();
     try {
@@ -590,8 +604,9 @@ class LeaveApprovalsWorker {
             'STALE_FORM',
             'Selected leave changed or is no longer pending. Fetch again.',
           );
-        if (row['status_code'] != '0')
-          _fail('STALE_FORM', 'Selected leave is not in its pending state.');
+        // status_code describes the current action dropdown default, not a
+        // saved Pending/Processed/Rejected state. Validate the requested
+        // action against enabled portal options below instead.
         final controls = before.native[item.key]!,
             cb = controls.checkbox,
             status = controls.status;
@@ -688,6 +703,7 @@ class LeaveApprovalsWorker {
           );
       }
       _check(key);
+      final beforeMessages = SchoolPortalMessages.fromDocument(soup).toSet();
       _review = null;
       _reviewKey = null;
       attempted = true;
@@ -699,6 +715,15 @@ class LeaveApprovalsWorker {
         mutation: true,
         timeout: const Duration(seconds: 30),
       );
+      // Capture only new messages from the native mutation response. History
+      // and later GETs must not overwrite them, even after a verification error.
+      if (response.url.scheme == 'https' &&
+          response.url.authority == post.url.authority &&
+          response.url.path.toLowerCase() == post.url.path.toLowerCase()) {
+        portalMessages = SchoolPortalMessages.parse(response.html)
+            .where((message) => !beforeMessages.contains(message))
+            .toList();
+      }
       await _saveResponse(response, key);
       Map<String, dynamic>? after;
       var pendingError = false;
@@ -713,7 +738,7 @@ class LeaveApprovalsWorker {
       }
       final observed = _observed(await _history(readPage, key, school), wanted);
       if (!_verified(observed, wanted))
-        return {
+        return finish({
           'success': false,
           'code': 'SAVE_UNCONFIRMED',
           'submission_attempted': true,
@@ -724,8 +749,8 @@ class LeaveApprovalsWorker {
           'verification_source': 'all_applications',
           'pending_count': after?['pending_count'],
           'refresh_required': after == null,
-        };
-      return {
+        });
+      return finish({
         'success': true,
         'message': 'Leave action statuses verified in All Applications.',
         'data': after,
@@ -734,7 +759,7 @@ class LeaveApprovalsWorker {
         'verification_source': 'all_applications',
         'verified_statuses': observed,
         'refresh_required': pendingError,
-      };
+      });
     } catch (error) {
       if (attempted) {
         try {
@@ -743,7 +768,7 @@ class LeaveApprovalsWorker {
             wanted,
           );
           if (_verified(observed, wanted))
-            return {
+            return finish({
               'success': true,
               'message': 'Leave statuses verified in portal history after an uncertain response.',
               'verified': true,
@@ -752,14 +777,14 @@ class LeaveApprovalsWorker {
               'verified_statuses': observed,
               'data': null,
               'refresh_required': true,
-            };
+            });
         } catch (_) {}
-        return {
+        return finish({
           ...failure(error, true),
           'message': 'Leave submission outcome could not be confirmed. Check All Applications before submitting again.',
-        };
+        });
       }
-      return failure(error);
+      return finish(failure(error));
     }
   }
 }
