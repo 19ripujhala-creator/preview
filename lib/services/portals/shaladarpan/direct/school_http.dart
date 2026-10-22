@@ -6,6 +6,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../../../core/direct/async_primitives.dart';
+import '../../../core/direct/portal_diagnostics.dart';
+import '../../../core/direct/mutation_dispatch.dart';
 
 const schoolHeaders = <String, String>{
   'User-Agent':
@@ -314,8 +316,36 @@ class SchoolHttpClient {
     Map<String, String> headers = const {},
     Duration? timeout,
     bool followRedirects = true,
+    bool allowPostRedirects = true,
+    SchoolCookieJar? cookieJar,
+  }) => PortalDiagnostics.measure(
+    PortalPhase.httpRequest,
+    () => _requestImpl(
+      method,
+      initial,
+      body: body,
+      headers: headers,
+      timeout: timeout,
+      followRedirects: followRedirects,
+      allowPostRedirects: allowPostRedirects,
+      cookieJar: cookieJar,
+    ),
+    method: method,
+    path: initial.path,
+    status: (reply) => reply.statusCode,
+  );
+
+  Future<SchoolHttpReply> _requestImpl(
+    String method,
+    Uri initial, {
+    List<int>? body,
+    Map<String, String> headers = const {},
+    Duration? timeout,
+    bool followRedirects = true,
+    bool allowPostRedirects = true,
     SchoolCookieJar? cookieJar,
   }) async {
+    MutationDispatch.current?.observeNativeTransport();
     if (_closed) throw StateError('School HTTP client is closed.');
     final cancellation = OperationCancellation.current;
     cancellation?.check();
@@ -334,6 +364,7 @@ class SchoolHttpClient {
         cancellation?.check();
         if (!_allowUrl(url))
           throw StateError('Blocked non-portal URL/redirect.');
+        if (verb == 'POST') MutationDispatch.current?.startDispatch();
         final request = await _http.openUrl(verb, url).timeout(limit);
         activeRequest = request;
         cancellation?.check();
@@ -377,7 +408,12 @@ class SchoolHttpClient {
           responseHeaders[key.toLowerCase()] = List.of(values);
         });
         final location = response.headers.value(HttpHeaders.locationHeader);
+        final blockedPostReplay =
+            !allowPostRedirects &&
+            verb == 'POST' &&
+            const [307, 308].contains(response.statusCode);
         if (followRedirects &&
+            !blockedPostReplay &&
             const [301, 302, 303, 307, 308].contains(response.statusCode) &&
             location != null) {
           await response.drain<void>().timeout(limit);

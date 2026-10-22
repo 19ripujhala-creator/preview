@@ -106,15 +106,14 @@ class DirectStudentAttendanceService {
     final coordinator = auth.coordinator;
     if (coordinator == null) return execute();
     final expectedSchool = auth.authenticatedSchoolId;
+    final preMutationCodes = <String>{'BAD_DATE', 'BAD_CLASS', 'NO_CLASSES'};
     try {
       final result = await coordinator.run(
         resource: 'sd.student',
         kind: mutation ? Kind.mutation : Kind.read,
         timeout: timeout ?? (mutation ? 75 : 60),
         maxAttempts: maxAttempts ?? (mutation ? 1 : 3),
-        preMutationCodes: mutation
-            ? {'BAD_DATE', 'BAD_CLASS', 'NO_CLASSES'}
-            : {},
+        preMutationCodes: mutation ? preMutationCodes : {},
         label: mutation ? 'student_save' : 'student_fetch',
         worker: (_) async {
           if (auth.authenticatedSchoolId != expectedSchool ||
@@ -155,7 +154,13 @@ class DirectStudentAttendanceService {
             };
           }
           if (value is AttendanceSaveResult) {
+            // The worker's dispatch tracker proved no Submit reached transport.
+            // Do not let a preflight timeout become a false ambiguous SAVE.
+            if (!value.submissionAttempted && !value.success) {
+              preMutationCodes.add(value.code);
+            }
             return {
+              ...value.response,
               'success': value.success,
               'code': value.code,
               'message': value.message,
@@ -179,6 +184,10 @@ class DirectStudentAttendanceService {
     } on CoordinatorError catch (error) {
       if (mutation) {
         final ambiguous = error.kind == ErrorKind.mutationAmbiguous;
+        final upstream = error.extra['upstream_response'] is Map
+            ? Map<String, dynamic>.from(error.extra['upstream_response'] as Map)
+            : <String, dynamic>{};
+        upstream.remove('_direct_value');
         return AttendanceSaveResult(
           success: false,
           code: ambiguous ? 'SAVE_UNCONFIRMED' : error.kind.code,
@@ -186,6 +195,14 @@ class DirectStudentAttendanceService {
           submissionAttempted: ambiguous,
           verified: false,
           updatedCount: 0,
+          response: {
+            ...error.asDetail(),
+            if (upstream.isNotEmpty) 'upstream_response': upstream,
+            ...upstream,
+            'success': false,
+            'submission_attempted': ambiguous,
+            'attendance_verified': false,
+          },
         ) as T;
       }
       throw AttendancePortalException(error.kind.code, error.message);
@@ -202,9 +219,10 @@ class DirectStudentAttendanceService {
     }
   }
 
-  StudentAttendanceWorker get _worker => StudentAttendanceWorker(
+  late final StudentAttendanceWorker _worker = StudentAttendanceWorker(
     baseUrl: () => _endpoint.resolve('../../'),
     observeUrl: auth.observeAttendanceUrl,
+    sessionIdentity: () => auth.schoolSessionIdentity,
     request: (url, {fields, referer, mutation = false}) {
       if (mutation) {
         return auth.submitStudentAttendanceOnce(
@@ -366,23 +384,80 @@ class DirectStudentAttendanceService {
     String? section,
     required List<Map<String, Object?>> students,
     required bool userConfirmed,
-  }) => _exclusive(() async {
-    final response = await _worker.saveStudentAttendance(
-      classId: classId,
-      attendanceDate: date,
-      section: section,
-      students: students,
-      userConfirmed: userConfirmed,
-    );
-    return AttendanceSaveResult(
-      success: response['success'] == true,
-      code:
-          '${response['code'] ?? (response['action'] == 'unchanged' ? 'UNCHANGED' : 'VERIFIED')}',
-      message: '${response['message'] ?? ''}',
-      submissionAttempted: response['submission_attempted'] == true,
-      verified: response['attendance_verified'] == true,
-      updatedCount: response['updatedCount'] as int? ?? 0,
-      response: response,
-    );
-  }, mutation: true);
+  }) async {
+    final owner = auth.authenticatedSchoolId;
+    final initial = await _exclusive(() async {
+      final response = await _worker.saveStudentAttendance(
+        classId: classId,
+        attendanceDate: date,
+        section: section,
+        students: students,
+        userConfirmed: userConfirmed,
+      );
+      return AttendanceSaveResult(
+        success: response['success'] == true,
+        code:
+            '${response['code'] ?? (response['action'] == 'unchanged' ? 'UNCHANGED' : 'VERIFIED')}',
+        message: '${response['message'] ?? ''}',
+        submissionAttempted: response['submission_attempted'] == true,
+        verified: response['attendance_verified'] == true,
+        updatedCount: response['updatedCount'] as int? ?? 0,
+        response: response,
+      );
+    }, mutation: true);
+    // Recheck only after the mutation owner has settled. This is one READ,
+    // never a second SAVE. A real native portal message remains authoritative.
+    if (initial.success ||
+        !initial.submissionAttempted ||
+        initial.response['pending'] == true ||
+        (initial.response['portal_message']?.toString().isNotEmpty ?? false) ||
+        auth.authenticatedSchoolId != owner)
+      return initial;
+    try {
+      final fresh = await _exclusive(
+        () => _worker.fetchStudentAttendanceList(
+          classId: classId,
+          attendanceDate: date,
+          section: section,
+        ),
+        timeout: 45,
+        maxAttempts: 1,
+      );
+      if (auth.authenticatedSchoolId != owner ||
+          fresh['success'] != true ||
+          fresh['data_verified'] != true ||
+          fresh['attendance_verified'] != true ||
+          fresh['students'] is! List ||
+          !StudentAttendanceWorker.savedStudentsMatch(
+            students,
+            (fresh['students'] as List).cast<Map<String, Object?>>(),
+          ))
+        return initial;
+      const message =
+          'Attendance verified on the portal after the interrupted response.';
+      return AttendanceSaveResult(
+        success: true,
+        code: 'VERIFIED_AFTER_RECHECK',
+        message: message,
+        submissionAttempted: true,
+        verified: true,
+        updatedCount: initial.updatedCount,
+        response: {
+          ...fresh,
+          'success': true,
+          'code': 'VERIFIED_AFTER_RECHECK',
+          'message': message,
+          'message_source': 'verification',
+          'submission_attempted': true,
+          'attendance_verified': true,
+          'verifiedAfterAmbiguity': true,
+          'updatedCount': initial.updatedCount,
+          'updatedCount_known': false,
+          'original_response': initial.response,
+        },
+      );
+    } catch (_) {
+      return initial;
+    }
+  }
 }

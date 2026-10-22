@@ -6,6 +6,11 @@ import 'package:shaladarpan/widgets/adaptive_layout.dart';
 // CircularProgressIndicator.strokeCap (Flutter 3.27+) ki zaroorat nahi.
 
 import 'dart:async';
+
+import 'package:shaladarpan/services/core/direct/portal_diagnostics.dart';
+import 'package:shaladarpan/services/core/direct/latest_read_queue.dart';
+import 'package:shaladarpan/services/core/direct/attendance_read_scope.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
@@ -236,9 +241,11 @@ class _DailyAttendanceSheetScreenState
 
   List<String> _sections = [];
 
-  final Map<String, _Entry> _cache = {};
+  final _cache = AttendanceReadCache<_Entry>();
+  AttendanceReadScope? _loadedScope;
 
   int _currentLoadId = 0;
+  final _classReads = LatestReadQueue();
   bool _isAutoRetrying = false;
 
   final ScrollController _classScroll = ScrollController();
@@ -273,7 +280,8 @@ class _DailyAttendanceSheetScreenState
 
   @override
   void dispose() {
-    _currentLoadId++; // pending retries ko cancel kar do
+    _currentLoadId++; // Discard stale UI completions.
+    _classReads.discardPending();
     _classScroll.dispose();
     _searchCtrl.dispose();
     super.dispose();
@@ -283,8 +291,13 @@ class _DailyAttendanceSheetScreenState
 
   Future<void> _loadCachedPortalClasses() async {
     try {
+      final scope = await StudentService.captureReadScope();
+      if (scope == null) return;
       final prefs = await SharedPreferences.getInstance();
-      final cached = prefs.getStringList('portal_available_classes');
+      final cached = prefs.getStringList(
+        'portal_available_classes/${scope.school}',
+      );
+      if (await StudentService.captureReadScope() != scope) return;
 
       if (cached != null && cached.isNotEmpty && mounted) {
         _classes = cached;
@@ -375,16 +388,43 @@ class _DailyAttendanceSheetScreenState
   Future<void> _loadClassData({
     bool forceRefresh = false,
     int retryAttempt = 0,
-  }) async {
+  }) {
     final loadId = ++_currentLoadId;
+    // Switching classes must not queue every intermediate selection behind
+    // the shared WebForms resource. Clear old editable data immediately.
+    setState(() {
+      _isLoading = true;
+      _portalDataVerified = false;
+      _isPortalVerified = false;
+      _students = [];
+      _loadedScope = null;
+    });
+    return _classReads.request(() async {
+      if (!mounted || loadId != _currentLoadId) return;
+      await _performClassLoad(
+        loadId,
+        forceRefresh: forceRefresh,
+        retryAttempt: retryAttempt,
+      );
+    });
+  }
+
+  Future<void> _performClassLoad(
+    int loadId, {
+    bool forceRefresh = false,
+    int retryAttempt = 0,
+  }) async {
+    final scope = await StudentService.captureReadScope();
+    if (!mounted || loadId != _currentLoadId) return;
     final key = _cacheKey(_activeClass, _activeSection);
 
     // 1. Instant cache render
     // FIX: ab section + sections list bhi restore hoti hai
     // (pehle cache hit par section '' reh jaata tha -> galat section submit ho sakta tha)
-    if (!forceRefresh) {
-      final hit = _cache[key];
+    if (!forceRefresh && scope != null) {
+      final hit = _cache.read(scope, key);
       if (hit != null) {
+        _loadedScope = scope;
         setState(() => _applyEntry(hit));
         return;
       }
@@ -413,12 +453,26 @@ class _DailyAttendanceSheetScreenState
         date: _fmtPortal(_selectedDate),
       );
 
+      final completedScope = await StudentService.captureReadScope();
       if (!mounted || loadId != _currentLoadId) return;
-
       if (result['success'] == true &&
+          (completedScope == null ||
+              (scope != null && scope != completedScope))) {
+        _cache.clear();
+        await _retryOrFail(
+          loadId,
+          retryAttempt,
+          'School session changed. Refresh class data.',
+        );
+        return;
+      }
+
+      if (completedScope != null &&
+          result['success'] == true &&
           result['data_verified'] == true &&
           result['students'] is List &&
-          (result['students'] as List).isNotEmpty) {
+          ((result['students'] as List).isNotEmpty ||
+              StudentService.isVerifiedEmptyClass(result))) {
         final portalVerified = _parsePortalVerification(result);
         final portalSection = (result['section'] ?? '').toString().trim();
         final letter = portalSection.isNotEmpty
@@ -450,7 +504,10 @@ class _DailyAttendanceSheetScreenState
             _classes = parsed;
             SharedPreferences.getInstance()
                 .then(
-                  (p) => p.setStringList('portal_available_classes', parsed),
+                  (p) => p.setStringList(
+                    'portal_available_classes/${completedScope.school}',
+                    parsed,
+                  ),
                 )
                 .catchError((_) => false);
           }
@@ -480,8 +537,9 @@ class _DailyAttendanceSheetScreenState
           held: result['submission_on_hold'] == true,
         );
 
-        _cache[_cacheKey(_activeClass, letter)] = entry;
-        _cache[key] = entry;
+        _cache.write(completedScope, _cacheKey(_activeClass, letter), entry);
+        _cache.write(completedScope, key, entry);
+        _loadedScope = completedScope;
 
         setState(() => _applyEntry(entry));
       } else {
@@ -504,12 +562,8 @@ class _DailyAttendanceSheetScreenState
   Future<void> _retryOrFail(int loadId, int attempt, String message) async {
     if (!mounted || loadId != _currentLoadId) return;
 
-    if (attempt < 2) {
-      await Future.delayed(const Duration(milliseconds: 2200));
-      if (!mounted || loadId != _currentLoadId) return;
-      return _loadClassData(forceRefresh: true, retryAttempt: attempt + 1);
-    }
-
+    // Coordinator owns retry/recovery. Do not repeat its entire request chain
+    // for every failure (including deterministic portal errors and validation).
     // FIX: pehle yahan mounted/loadId check nahi tha -> stale setState
     setState(() {
       _students = [];
@@ -866,6 +920,14 @@ class _DailyAttendanceSheetScreenState
       return;
     }
 
+    final scope = await StudentService.captureReadScope();
+    if (!mounted || _isSaving || _isLoading || _isConfirming) return;
+    if (scope == null || scope != _loadedScope) {
+      _cache.clear();
+      await _loadClassData(forceRefresh: true);
+      return;
+    }
+    final confirmingLoadId = _currentLoadId;
     HapticFeedback.mediumImpact();
     setState(() => _isConfirming = true);
     bool? confirmed;
@@ -888,12 +950,26 @@ class _DailyAttendanceSheetScreenState
     }
     if (confirmed != true ||
         !mounted ||
+        confirmingLoadId != _currentLoadId ||
         _isSaving ||
         _isLoading ||
         _submissionHold ||
         !_portalDataVerified)
       return;
 
+    if (await StudentService.captureReadScope() != scope) {
+      if (!mounted) return;
+      _cache.clear();
+      await _loadClassData(forceRefresh: true);
+      return;
+    }
+    if (!mounted ||
+        _isSaving ||
+        _isLoading ||
+        confirmingLoadId != _currentLoadId ||
+        _submissionHold ||
+        !_portalDataVerified)
+      return;
     setState(() => _isSaving = true);
     final payload = {
       'class_id': _portalSectionLabel.isNotEmpty
@@ -911,8 +987,21 @@ class _DailyAttendanceSheetScreenState
     };
 
     try {
-      final result = await StudentService.saveAttendance(payload);
+      final result = await StudentService.saveAttendance(
+        payload,
+        expectedScope: scope,
+      );
+      final savedScope = await StudentService.captureReadScope();
       if (!mounted) return;
+      _cache.clear();
+      _loadedScope = savedScope;
+      if (savedScope == null ||
+          savedScope.school != scope.school ||
+          !identical(savedScope.session, scope.session) ||
+          savedScope.identity != scope.identity) {
+        await _loadClassData(forceRefresh: true);
+        return;
+      }
 
       if (result['success'] == true && _parsePortalVerification(result)) {
         HapticFeedback.heavyImpact();
@@ -923,15 +1012,12 @@ class _DailyAttendanceSheetScreenState
           for (final s in _students) {
             s.originalStatus = s.attendanceStatus;
           }
-          for (final e in _cache.values) {
-            if (identical(e.students, _students)) {
-              e.marked = true;
-              e.verified = true;
-              e.held = false;
-            }
-          }
         });
-        _snack('Attendance saved and verified on the portal.', success: true);
+        _snack(
+          result['message']?.toString() ??
+              'Attendance saved and verified on the portal.',
+          success: true,
+        );
       } else {
         final attempted = result['submission_attempted'] != false;
         final code = '${result['code'] ?? ''}';
@@ -951,9 +1037,12 @@ class _DailyAttendanceSheetScreenState
         }
         if (!mounted) return;
         _snack(
-          ambiguous
-              ? 'Save outcome is uncertain. Use Verify Previous Save before trying again.'
-              : (result['message']?.toString() ?? 'Submission failed.'),
+          (result['portal_message']?.toString().trim().isNotEmpty == true)
+              ? '${result['portal_message']}\nSave not verified. Use Verify Previous Save.'
+              : (result['message']?.toString() ??
+                    (ambiguous
+                        ? 'Save outcome is uncertain. Use Verify Previous Save before trying again.'
+                        : 'Submission failed.')),
           error: true,
         );
       }
@@ -1169,12 +1258,7 @@ class _DailyAttendanceSheetScreenState
       ),
       actions: [
         PopupMenuButton<String>(
-          enabled:
-              !_isLoading &&
-              !_isSaving &&
-              !_isConfirming &&
-              !_submissionHold &&
-              _students.isNotEmpty,
+          enabled: true,
           icon: const Icon(
             CupertinoIcons.ellipsis_circle,
             color: _C.ink,
@@ -1185,31 +1269,56 @@ class _DailyAttendanceSheetScreenState
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          onSelected: (v) {
+          onSelected: (v) async {
+            if (v == 'D') {
+              await Clipboard.setData(
+                ClipboardData(text: PortalDiagnostics.export()),
+              );
+              if (mounted) _snack('Technical timings copied.');
+              return;
+            }
+            if (_isLoading ||
+                _isSaving ||
+                _isConfirming ||
+                _submissionHold ||
+                _students.isEmpty)
+              return;
             if (v == 'P') _markAll('P');
             if (v == 'A') _markAll('A');
             if (v == 'R') _resetChanges();
           },
           itemBuilder: (_) => [
             _menuItem(
-              'P',
-              CupertinoIcons.checkmark_circle,
-              'Mark all present',
-              _C.green,
+              'D',
+              CupertinoIcons.doc_on_clipboard,
+              'Copy technical timings',
+              _C.slate,
             ),
-            _menuItem(
-              'A',
-              CupertinoIcons.xmark_circle,
-              'Mark all absent',
-              _C.rose,
-            ),
-            if (_dirty)
+            if (!_isLoading &&
+                !_isSaving &&
+                !_isConfirming &&
+                !_submissionHold &&
+                _students.isNotEmpty) ...[
               _menuItem(
-                'R',
-                CupertinoIcons.arrow_counterclockwise,
-                'Undo changes',
-                _C.slate,
+                'P',
+                CupertinoIcons.checkmark_circle,
+                'Mark all present',
+                _C.green,
               ),
+              _menuItem(
+                'A',
+                CupertinoIcons.xmark_circle,
+                'Mark all absent',
+                _C.rose,
+              ),
+              if (_dirty)
+                _menuItem(
+                  'R',
+                  CupertinoIcons.arrow_counterclockwise,
+                  'Undo changes',
+                  _C.slate,
+                ),
+            ],
           ],
         ),
         const SizedBox(width: 4),

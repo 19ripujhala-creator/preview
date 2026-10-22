@@ -4,6 +4,10 @@ import 'package:shaladarpan/services/core/backend_config.dart';
 
 import 'dart:convert';
 
+import '../../../experiments/student_attendance_parity.dart';
+import '../../core/direct/mutation_dispatch.dart';
+import '../../core/direct/attendance_read_scope.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shaladarpan/services/core/secure_storage_service.dart';
 
@@ -24,6 +28,40 @@ class StudentService {
   static int _attendanceEpoch = 0;
   static const Duration _reportTimeout = Duration(seconds: 240);
   static const Duration _saveTimeout = Duration(seconds: 180);
+
+  static final Object _backendReadSession = Object();
+  static final Map<(AttendanceReadScope, String), Future<Map<String, dynamic>>>
+  _attendanceReads = {};
+
+  /// Local identity check only: this never probes the portal or logs in.
+  static Future<AttendanceReadScope?> captureReadScope() async {
+    try {
+      final credentials = await SecureStorageService.getShaladarpanCreds();
+      final school = credentials['id']?.trim() ?? '';
+      if (school.isEmpty || _saving) return null;
+      if (!directAttendanceEnabled) {
+        return AttendanceReadScope(
+          school: school,
+          session: _backendReadSession,
+          identity: baseUrl,
+          revision: _attendanceEpoch,
+        );
+      }
+      final service = DirectSchoolSession.attendance;
+      if (!DirectSchoolSession.ready ||
+          DirectSchoolSession.schoolId != school ||
+          service == null)
+        return null;
+      return AttendanceReadScope(
+        school: school,
+        session: service,
+        identity: service.auth.schoolSessionIdentity,
+        revision: _attendanceEpoch,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 
   static String _dateKey(String raw) {
     final value = raw.trim();
@@ -78,7 +116,7 @@ class StudentService {
     if (data['success'] != true ||
         data['data_verified'] != true ||
         data['students'] is! List ||
-        (data['students'] as List).isEmpty) {
+        ((data['students'] as List).isEmpty && !isVerifiedEmptyClass(data))) {
       return false;
     }
     final requestedNumber = RegExp(r'\d+').firstMatch(classId)?.group(0);
@@ -102,21 +140,18 @@ class StudentService {
       data['attendance_verified'] == true &&
       '${data['attendance_status']}'.toLowerCase() == 'marked';
 
-  static bool _pendingOnPortal(Map<String, dynamic> data) =>
-      data['is_already_marked'] == false &&
-      data['attendance_verified'] != true &&
-      '${data['attendance_status']}'.toLowerCase() == 'pending';
+  static String _studentKey(Map<String, dynamic> row) =>
+      StudentAttendanceParity.identity(row);
 
-  static String _studentKey(Map<String, dynamic> row) {
-    final sr = '${row['srNo'] ?? ''}'.trim();
-    if (sr.isNotEmpty && sr != '-') return 'sr:${sr.toLowerCase()}';
-    final serial = '${row['serialNo'] ?? row['rollNo'] ?? ''}'.trim();
-    final name = '${row['name'] ?? ''}'.trim().toLowerCase().replaceAll(
-      RegExp(r'\s+'),
-      ' ',
-    );
-    return 'row:$serial:$name';
-  }
+  /// Empty roster is valid only when the authoritative summary also says zero.
+  static bool isVerifiedEmptyClass(Map<String, dynamic> data) =>
+      data['success'] == true &&
+      data['data_verified'] == true &&
+      data['students'] is List &&
+      (data['students'] as List).isEmpty &&
+      data['total'] == 0 &&
+      data['summary'] is Map &&
+      (data['summary'] as Map)['total'] == 0;
 
   static String? _status(Map<String, dynamic> row) {
     final raw = '${row['status'] ?? ''}'.toLowerCase().replaceAll(' ', '');
@@ -177,6 +212,40 @@ class StudentService {
   /// Read current class attendance. Never clear a previous uncertain mutation
   /// just because the GET succeeded: data_verified verifies the READ, not SAVE.
   static Future<Map<String, dynamic>> fetchAttendance({
+    required String classId,
+    required String date,
+    String? section,
+  }) async {
+    // Only simultaneous identical READs share work. Completed results are not
+    // retained here, and SAVE/reconciliation calls are never coalesced.
+    final scope = await captureReadScope();
+    if (scope == null) {
+      return _fetchAttendance(classId: classId, date: date, section: section);
+    }
+    final key = (scope, '${_dateKey(date)}/${_classKey(classId, section)}');
+    final flight = _attendanceReads.putIfAbsent(
+      key,
+      () => _fetchAttendance(classId: classId, date: date, section: section),
+    );
+    try {
+      final result = await flight;
+      if (result['success'] == true && await captureReadScope() != scope) {
+        return {
+          'success': false,
+          'code': 'STALE_ATTENDANCE_READ',
+          'message': 'School session changed during fetch. Refresh class data.',
+        };
+      }
+      // Each screen owns its editable copy; sharing a Future must never share
+      // mutable student maps between callers.
+      return Map<String, dynamic>.from(jsonDecode(jsonEncode(result)) as Map);
+    } finally {
+      if (identical(_attendanceReads[key], flight))
+        _attendanceReads.remove(key);
+    }
+  }
+
+  static Future<Map<String, dynamic>> _fetchAttendance({
     required String classId,
     required String date,
     String? section,
@@ -311,7 +380,7 @@ class StudentService {
     }
 
     // Fetch twice: single transient portal response must never release the hold.
-    final first = await fetchAttendance(
+    final first = await _fetchAttendance(
       classId: classId,
       date: date,
       section: section,
@@ -325,7 +394,7 @@ class StudentService {
       };
     }
     await Future<void>.delayed(const Duration(milliseconds: 1000));
-    final second = await fetchAttendance(
+    final second = await _fetchAttendance(
       classId: classId,
       date: date,
       section: section,
@@ -397,8 +466,17 @@ class StudentService {
   /// A Save and an Update share the same one-POST flow.
   /// The hold stores EXPECTED student identities/statuses before any network I/O.
   static Future<Map<String, dynamic>> saveAttendance(
-    Map<String, dynamic> payload,
-  ) async {
+    Map<String, dynamic> payload, {
+    AttendanceReadScope? expectedScope,
+  }) async {
+    if (expectedScope != null && await captureReadScope() != expectedScope) {
+      return {
+        'success': false,
+        'code': 'ACCOUNT_CHANGED',
+        'submission_attempted': false,
+        'message': 'School session changed. Refresh class data before Save.',
+      };
+    }
     if (_saving) {
       return {
         'success': false,
@@ -410,6 +488,9 @@ class StudentService {
     _saving = true;
     _attendanceEpoch++;
     bool requestMayHaveStarted = false;
+    MutationDispatch? directDispatch;
+    SharedPreferences? holdPrefs;
+    String? registeredHoldKey;
     try {
       final credentials = await SecureStorageService.getShaladarpanCreds();
       final school = credentials['id']?.trim() ?? '';
@@ -419,6 +500,27 @@ class StudentService {
           'code': 'ACCOUNT_NOT_READY',
           'submission_attempted': false,
           'message': 'Log in to the school first.',
+        };
+      }
+      if (expectedScope != null &&
+          (school != expectedScope.school ||
+              (directAttendanceEnabled
+                  ? !identical(
+                          expectedScope.session,
+                          DirectSchoolSession.attendance,
+                        ) ||
+                        DirectSchoolSession
+                                .attendance
+                                ?.auth
+                                .schoolSessionIdentity !=
+                            expectedScope.identity
+                  : !identical(expectedScope.session, _backendReadSession) ||
+                        baseUrl != expectedScope.identity))) {
+        return {
+          'success': false,
+          'code': 'ACCOUNT_CHANGED',
+          'submission_attempted': false,
+          'message': 'School session changed. Refresh class data before Save.',
         };
       }
       final date = _dateKey('${payload['date'] ?? ''}');
@@ -460,6 +562,29 @@ class StudentService {
           'message': 'Could not register the submission safety hold. Nothing was sent.',
         };
       }
+      holdPrefs = prefs;
+      registeredHoldKey = key;
+      if (expectedScope != null &&
+          (directAttendanceEnabled
+              ? !identical(
+                      expectedScope.session,
+                      DirectSchoolSession.attendance,
+                    ) ||
+                    DirectSchoolSession
+                            .attendance
+                            ?.auth
+                            .schoolSessionIdentity !=
+                        expectedScope.identity
+              : !identical(expectedScope.session, _backendReadSession) ||
+                    baseUrl != expectedScope.identity)) {
+        await prefs.remove(key);
+        return {
+          'success': false,
+          'code': 'ACCOUNT_CHANGED',
+          'submission_attempted': false,
+          'message': 'School session changed. Refresh class data before Save.',
+        };
+      }
       Map<String, dynamic> result;
       if (directAttendanceEnabled) {
         if (!DirectSchoolSession.available ||
@@ -472,17 +597,20 @@ class StudentService {
             'message': 'Direct school session unavailable. Log in again.',
           };
         }
-        requestMayHaveStarted = true;
+        directDispatch = MutationDispatch();
         final requested = (payload['students'] as List)
             .map((row) => Map<String, Object?>.from(row as Map))
             .toList();
-        final outcome = await DirectSchoolSession.attendance!.save(
-          classId: cls,
-          date: date,
-          section: section,
-          students: requested,
-          userConfirmed: true,
+        final outcome = await directDispatch.run(
+          () => DirectSchoolSession.attendance!.save(
+            classId: cls,
+            date: date,
+            section: section,
+            students: requested,
+            userConfirmed: true,
+          ),
         );
+        requestMayHaveStarted = directDispatch.mayHaveStarted;
         result = outcome.response.isNotEmpty
             ? outcome.response
             : <String, dynamic>{
@@ -534,6 +662,17 @@ class StudentService {
       }
       return {...result, 'submission_on_hold': _hold(prefs, key) != null};
     } catch (_) {
+      requestMayHaveStarted =
+          directDispatch?.mayHaveStarted ?? requestMayHaveStarted;
+      if (!requestMayHaveStarted &&
+          registeredHoldKey != null &&
+          holdPrefs != null) {
+        try {
+          await holdPrefs.remove(registeredHoldKey);
+        } catch (_) {
+          // Storage failure cannot change the factual dispatch state.
+        }
+      }
       return {
         'success': false,
         'code': requestMayHaveStarted

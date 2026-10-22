@@ -2,6 +2,11 @@
 /// The shared authenticated transport is supplied by the existing session.
 import 'dart:async';
 
+import 'portal_messages.dart';
+
+import '../../../core/direct/portal_diagnostics.dart';
+import '../../../core/direct/mutation_dispatch.dart';
+
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html;
 
@@ -131,6 +136,9 @@ class _AttendanceDocument {
   final StudentAttendanceWorker worker;
   late Uri url;
   late dom.Document soup;
+  bool loaded = false;
+  String identity = '';
+  Duration loadedAt = Duration.zero;
 
   Future<void> request(
     Uri target, {
@@ -138,6 +146,7 @@ class _AttendanceDocument {
     Uri? referer,
     bool mutation = false,
   }) async {
+    if (mutation) MutationDispatch.current?.enterRequest();
     final response = await worker.request(
       target,
       fields: fields,
@@ -145,13 +154,24 @@ class _AttendanceDocument {
       mutation: mutation,
     );
     url = response.url;
-    soup = html.parse(response.html);
+    soup = await PortalDiagnostics.measure(
+      PortalPhase.studentParse,
+      () async => html.parse(response.html),
+    );
     if (StudentAttendanceWorker.isLoginRedirect(url) ||
         soup.querySelector('#bodyContent_txtUName, #txtUserId') != null) {
       throw const AttendanceWorkerError(
         'SESSION_EXPIRED',
         'School portal session expired.',
       );
+    }
+    for (final heading in soup.querySelectorAll('h1, h2')) {
+      final message = StudentAttendanceWorker.text(heading);
+      if (StudentAttendanceWorker._staleFormText(message)) {
+        throw AttendanceWorkerError('PORTAL_RESPONSE_ERROR', message, {
+          'form_state_rejected': true,
+        });
+      }
     }
     final title = StudentAttendanceWorker.text(soup.querySelector('title'));
     final heading = StudentAttendanceWorker.text(soup.querySelector('h1'));
@@ -160,6 +180,9 @@ class _AttendanceDocument {
       'runtime error',
       'nullreference',
       'object reference',
+      'validation of viewstate',
+      'invalid postback or callback argument',
+      'the state information is invalid',
     ].any((x) => '$title $heading'.toLowerCase().contains(x))) {
       throw AttendanceWorkerError(
         'PORTAL_RESPONSE_ERROR',
@@ -170,6 +193,9 @@ class _AttendanceDocument {
       throw AttendanceWorkerError('PORTAL_HTTP', 'HTTP ${response.status}');
     }
     await worker.observeUrl?.call(url);
+    loaded = true;
+    identity = worker.sessionIdentity?.call() ?? '';
+    loadedAt = worker._formNow;
   }
 
   Future<void> click(
@@ -216,8 +242,9 @@ class _AttendanceDocument {
     final target = base.resolve(
       'Home/School/${StudentAttendanceWorker.pageName}',
     );
+    final reused = worker._restoreReadForm(this);
     try {
-      await request(target);
+      if (!reused) await request(target);
     } on AttendanceWorkerError catch (error) {
       if (error.code != 'PORTAL_RESPONSE_ERROR') rethrow;
       await request(base.resolve('Home/School/Home_New.aspx'));
@@ -247,7 +274,31 @@ class _AttendanceDocument {
       );
     }
     final selected = date ?? field.attributes['value'];
-    await click(button, overrides: {field.attributes['name']!: selected ?? ''});
+    try {
+      await click(
+        button,
+        overrides: {field.attributes['name']!: selected ?? ''},
+      );
+    } on AttendanceWorkerError catch (error) {
+      // Only a rejected retained WebForms envelope gets a fresh-page fallback.
+      // This is READ navigation, never a retry of Submit/Save or business errors.
+      if (!reused || !StudentAttendanceWorker._staleFormError(error)) rethrow;
+      worker._blockedReadIdentity = worker.sessionIdentity?.call();
+      worker._readForm = null;
+      await request(target);
+      final freshDate = soup.getElementById(StudentAttendanceWorker.dateId);
+      final freshShow = soup.getElementById(StudentAttendanceWorker.showId);
+      if (freshDate?.attributes['name'] == null || freshShow == null) {
+        throw const AttendanceWorkerError(
+          'PAGE_NOT_READY',
+          'Attendance date or Show control missing.',
+        );
+      }
+      await click(
+        freshShow,
+        overrides: {freshDate!.attributes['name']!: selected ?? ''},
+      );
+    }
     checkDate(selected);
     final parsed = StudentAttendanceWorker.parseClassSummary(
       soup,
@@ -262,6 +313,7 @@ class _AttendanceDocument {
         );
       }
     }
+    worker._rememberReadForm(this);
     return parsed;
   }
 
@@ -287,6 +339,9 @@ class StudentAttendanceWorker {
     required this.request,
     required this.baseUrl,
     this.observeUrl,
+    this.sessionIdentity,
+    this.readFormLifetime = const Duration(seconds: 45),
+    this.formElapsed,
     DateTime Function()? indiaNow,
   }) : indiaNow =
            indiaNow ??
@@ -298,6 +353,104 @@ class StudentAttendanceWorker {
   final Uri Function() baseUrl;
   final Future<void> Function(Uri)? observeUrl;
   final DateTime Function() indiaNow;
+  final String Function()? sessionIdentity;
+  final Duration readFormLifetime;
+  final Duration Function()? formElapsed;
+  final Stopwatch _formClock = Stopwatch()..start();
+  ({Uri url, dom.Document soup, String identity, Duration at})? _readForm;
+  Duration get _formNow => formElapsed?.call() ?? _formClock.elapsed;
+  String? _blockedReadIdentity;
+
+  static bool _staleFormText(String message) => [
+    'validation of viewstate',
+    'invalid postback or callback argument',
+    'the state information is invalid',
+  ].any(message.toLowerCase().contains);
+
+  static bool _staleFormError(AttendanceWorkerError error) =>
+      error.code == 'PORTAL_RESPONSE_ERROR' &&
+      (error.extra['form_state_rejected'] == true ||
+          _staleFormText(error.message));
+
+  bool _usableReadForm(Uri url, dom.Document soup) {
+    final target = baseUrl().resolve('Home/School/$pageName');
+    if (url.query.isNotEmpty ||
+        url.scheme != target.scheme ||
+        url.authority != target.authority ||
+        url.path.toLowerCase() != target.path.toLowerCase())
+      return false;
+    final show = soup.getElementById(showId);
+    final date = soup.getElementById(dateId);
+    if (show == null ||
+        date == null ||
+        show.attributes.containsKey('disabled') ||
+        date.attributes.containsKey('disabled') ||
+        date.attributes['name'] == null)
+      return false;
+    final form = AttendanceForm.enclosing(show);
+    if (form == null || !identical(AttendanceForm.enclosing(date), form))
+      return false;
+    for (final name in ['__VIEWSTATE', '__EVENTVALIDATION']) {
+      if (form
+              .querySelector('input[name="$name"]')
+              ?.attributes['value']
+              ?.isNotEmpty !=
+          true)
+        return false;
+    }
+    final action = url.resolve(form.attributes['action'] ?? url.toString());
+    return action.query.isEmpty &&
+        action.scheme == target.scheme &&
+        action.authority == target.authority &&
+        action.path.toLowerCase() == target.path.toLowerCase();
+  }
+
+  bool _freshReadForm(String identity, Duration at) {
+    final current = sessionIdentity?.call() ?? '';
+    final age = _formNow - at;
+    return current.isNotEmpty &&
+        current != _blockedReadIdentity &&
+        current == identity &&
+        !age.isNegative &&
+        age < readFormLifetime;
+  }
+
+  bool _restoreReadForm(_AttendanceDocument doc) {
+    // Reuse only the navigation envelope, never its roster or marked status.
+    // Every invocation still sends Show and opens the requested class afresh.
+    final cached = _readForm;
+    _readForm = null; // Consume once: a rejected form is not silently retried.
+    if (doc.loaded &&
+        _freshReadForm(doc.identity, doc.loadedAt) &&
+        _usableReadForm(doc.url, doc.soup))
+      return true;
+    if (cached == null ||
+        !_freshReadForm(cached.identity, cached.at) ||
+        !_usableReadForm(cached.url, cached.soup))
+      return false;
+    doc.url = cached.url;
+    doc.soup = cached.soup;
+    doc.loaded = true;
+    doc.identity = cached.identity;
+    doc.loadedAt = cached.at;
+    return true;
+  }
+
+  void _rememberReadForm(_AttendanceDocument doc) {
+    if (doc.loaded &&
+        _freshReadForm(doc.identity, doc.loadedAt) &&
+        _usableReadForm(doc.url, doc.soup)) {
+      _readForm = (
+        url: doc.url,
+        soup: doc.soup,
+        identity: doc.identity,
+        at: doc.loadedAt,
+      );
+    } else {
+      _readForm = null;
+    }
+  }
+
   static const pageName = 'StudentdailyAttendanceStatus_Web_NewVersion.aspx';
   static const gridId = 'ContentPlaceHolder1_grd_Student';
   static const dateId = 'ContentPlaceHolder1_txtdate';
@@ -456,6 +609,14 @@ class StudentAttendanceWorker {
     return parent;
   }
 
+  static Map<String, dom.Element> _labels(dom.Document soup) {
+    final result = <String, dom.Element>{};
+    for (final label in soup.querySelectorAll('label[for]')) {
+      result.putIfAbsent(label.attributes['for']!, () => label);
+    }
+    return result;
+  }
+
   static ({Map<String, dynamic> built, List<dom.Element> rows}) studentRows(
     dom.Document soup,
   ) {
@@ -494,11 +655,13 @@ class StudentAttendanceWorker {
         'Student attendance table missing.',
       );
     }
+    final studentSet = rows.toSet();
+    final labels = _labels(soup);
     var headers = <String>[];
     var encounteredStudent = false;
     for (final tr in best.querySelectorAll('tr')) {
       if (_nearestTable(tr) != best) continue;
-      if (rows.contains(tr)) {
+      if (studentSet.contains(tr)) {
         encounteredStudent = true;
         continue;
       }
@@ -545,12 +708,7 @@ class StudentAttendanceWorker {
       var label = '';
       if (index >= 0) {
         final radio = radios[index];
-        final element = radio.id.isEmpty
-            ? null
-            : soup
-                  .querySelectorAll('label')
-                  .where((l) => l.attributes['for'] == radio.id)
-                  .firstOrNull;
+        final element = radio.id.isEmpty ? null : labels[radio.id];
         label = element == null
             ? radio.attributes['value'] ?? ''
             : text(element);
@@ -742,6 +900,7 @@ class StudentAttendanceWorker {
             : '',
       };
     } catch (error) {
+      _readForm = null;
       return failure(error);
     }
   }
@@ -760,6 +919,7 @@ class StudentAttendanceWorker {
       );
       return fetched.result;
     } catch (error) {
+      _readForm = null;
       return {...failure(error), 'students': []};
     }
   }
@@ -798,6 +958,7 @@ class StudentAttendanceWorker {
     final seen = <String>{};
     var changed = 0;
     final current = (result['students'] as List).cast<Map<String, dynamic>>();
+    final labels = _labels(soup);
     for (var i = 0; i < current.length; i++) {
       final key = StudentAttendanceParity.identity(current[i]);
       final update = updates[key];
@@ -811,12 +972,7 @@ class StudentAttendanceWorker {
       dom.Element? target;
       for (var index = 0; index < radios.length; index++) {
         final radio = radios[index];
-        final label = radio.id.isEmpty
-            ? null
-            : soup
-                  .querySelectorAll('label')
-                  .where((l) => l.attributes['for'] == radio.id)
-                  .firstOrNull;
+        final label = radio.id.isEmpty ? null : labels[radio.id];
         if (StudentAttendanceParity.normalizeStatus(text(label), index) ==
             update['status']) {
           target = radio;
@@ -903,11 +1059,15 @@ class StudentAttendanceWorker {
         'submission_attempted': false,
       };
     }
-    var submitted = false;
+    final dispatch = MutationDispatch.current ?? MutationDispatch();
+    var portalMessages = <String>[];
     try {
       final date = validDate(attendanceDate);
       final doc = _AttendanceDocument(this);
-      final fetched = await _fetchList(doc, classId, date, section);
+      final fetched = await PortalDiagnostics.measure(
+        PortalPhase.studentPreflight,
+        () => _fetchList(doc, classId, date, section),
+      );
       final result = fetched.result;
       if (result['data_verified'] != true) {
         throw const AttendanceWorkerError(
@@ -922,7 +1082,9 @@ class StudentAttendanceWorker {
         required bool unchanged,
       }) => {
         'success': true,
-        'message': unchanged
+        'message': portalMessages.isNotEmpty
+            ? portalMessages.join('\n')
+            : unchanged
             ? 'Attendance already matches the portal. No changes submitted.'
             : wasMarked
             ? 'Student attendance updated and verified on Shala Darpan portal.'
@@ -936,7 +1098,11 @@ class StudentAttendanceWorker {
         'verified': true,
         'summary': confirmation['summary'],
         'updatedCount': unchanged ? 0 : updates.changed,
-        'portalMessages': [],
+        'portalMessages': portalMessages,
+        if (portalMessages.isNotEmpty) ...{
+          'portal_message': portalMessages.join('\n'),
+          'message_source': 'portal',
+        },
         'submission_attempted': !unchanged,
         'action': unchanged
             ? 'unchanged'
@@ -983,15 +1149,28 @@ class StudentAttendanceWorker {
           'Save form missing or disabled.',
         );
       }
+      final beforeMessages = SchoolPortalMessages.fromDocument(doc.soup)
+          .toSet();
+      _readForm = null; // Never carry a pre-SAVE form into verification.
       // Once this starts, neither this worker nor the transport replays it.
-      submitted = true;
-      await doc.click(button, overrides: updates.overrides, mutation: true);
+      await dispatch.run(
+        () => PortalDiagnostics.measure(
+          PortalPhase.studentSubmit,
+          () => doc.click(button, overrides: updates.overrides, mutation: true),
+        ),
+      );
+      portalMessages = SchoolPortalMessages.fromDocument(doc.soup)
+          .where((message) => !beforeMessages.contains(message))
+          .toList();
       for (var attempt = 0; attempt < 2; attempt++) {
-        final fresh = await _fetchList(
-          doc,
-          '${result['classId']}',
-          result['date'] as String?,
-          result['section'] as String?,
+        final fresh = await PortalDiagnostics.measure(
+          PortalPhase.studentVerify,
+          () => _fetchList(
+            doc,
+            '${result['classId']}',
+            result['date'] as String?,
+            result['section'] as String?,
+          ),
         );
         if (fresh.result['attendance_verified'] == true &&
             savedStudentsMatch(
@@ -1002,22 +1181,41 @@ class StudentAttendanceWorker {
         if (attempt == 0)
           await Future<void>.delayed(const Duration(milliseconds: 500));
       }
+      _readForm = null;
       return {
         'success': false,
         'code': 'SAVE_UNCONFIRMED',
-        'message': 'Save was submitted but not verified. Refresh before submitting again.',
+        'message': portalMessages.isNotEmpty ? portalMessages.join('\n') : 'Save was submitted but not verified. Refresh before submitting again.',
+        if (portalMessages.isNotEmpty) ...{
+          'portal_message': portalMessages.join('\n'),
+          'portalMessages': portalMessages,
+          'message_source': 'portal',
+          'verification_message': 'Save was submitted but not verified. Refresh before submitting again.',
+        },
         'attendance_verified': false,
         'submission_attempted': true,
       };
     } catch (error) {
-      if (submitted) {
+      _readForm = null;
+      if (dispatch.mayHaveStarted) {
         return {
           'success': false,
           'code': 'SAVE_UNCONFIRMED',
-          'message': 'Submission outcome is uncertain. Refresh before submitting again.',
+          'message': portalMessages.isNotEmpty ? portalMessages.join('\n') : 'Submission outcome is uncertain. Refresh before submitting again.',
+          if (portalMessages.isNotEmpty) ...{
+            'portal_message': portalMessages.join('\n'),
+            'portalMessages': portalMessages,
+            'message_source': 'portal',
+            'verification_message': 'Submission outcome is uncertain. Refresh before submitting again.',
+          },
           'attendance_verified': false,
           'submission_attempted': true,
           'detail': error.toString(),
+          if (error is AttendanceWorkerError) 'failure_code': error.code,
+          if (portalMessages.isEmpty &&
+              error is AttendanceWorkerError &&
+              error.code == 'PORTAL_RESPONSE_ERROR')
+            'portal_message': error.message,
         };
       }
       return {...failure(error), 'submission_attempted': false};

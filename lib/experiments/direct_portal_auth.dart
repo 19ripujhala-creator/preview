@@ -1,6 +1,9 @@
 // Compatibility adapter for existing direct-login/attendance signatures.
 // Automatic login uses the shared native School runtime; manual diagnostics remain available.
 import 'dart:async';
+
+import '../services/core/direct/mutation_dispatch.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -885,6 +888,7 @@ class DirectPortalAuth {
     required Uri referer,
     required bool userConfirmed,
   }) async {
+    MutationDispatch.current?.observeNativeTransport();
     if (!isVerified || !userConfirmed) {
       throw StateError(
         'Verified session and explicit user confirmation required',
@@ -945,6 +949,7 @@ class DirectPortalAuth {
     final response = await _send(
       url,
       method: 'POST',
+      allowPostRedirects: false,
       body: utf8.encode(payload),
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -1038,6 +1043,7 @@ class DirectPortalAuth {
     Map<String, String> headers = const {},
     Duration? timeout,
     bool followRedirects = true,
+    bool allowPostRedirects = true,
     SchoolCookieJar? cookieJar,
   }) async {
     final runtime = _runtime;
@@ -1050,6 +1056,7 @@ class DirectPortalAuth {
           headers: headers,
           timeout: timeout,
           followRedirects: followRedirects,
+          allowPostRedirects: allowPostRedirects,
           cookieJar: cookieJar,
         ),
       );
@@ -1067,6 +1074,7 @@ class DirectPortalAuth {
     var data = body;
     for (var hops = 0; hops <= 5; hops++) {
       if (!_allowed(url)) throw StateError('Blocked non-portal URL/redirect');
+      if (verb == 'POST') MutationDispatch.current?.startDispatch();
       final req = await _http
           .openUrl(verb, url)
           .timeout(timeout ?? const Duration(seconds: 12));
@@ -1093,7 +1101,12 @@ class DirectPortalAuth {
       );
       _storeCookies(res, url);
       cookieJar?.receive(res.cookies, url);
+      final blockedPostReplay =
+          !allowPostRedirects &&
+          verb == 'POST' &&
+          [307, 308].contains(res.statusCode);
       if (followRedirects &&
+          !blockedPostReplay &&
           [301, 302, 303, 307, 308].contains(res.statusCode)) {
         final location = res.headers.value(HttpHeaders.locationHeader);
         await res.drain<void>();

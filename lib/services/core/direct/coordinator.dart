@@ -6,6 +6,7 @@ import 'dart:math';
 import 'async_primitives.dart';
 import 'coordinator_config.dart';
 import 'errors.dart';
+import 'portal_diagnostics.dart';
 
 enum Health {
   idle,
@@ -334,7 +335,10 @@ class PortalCoordinator {
     Probe verdict;
     final cancellation = OperationCancellation();
     final request = runZoned(
-      () => backend.probe(context),
+      () => PortalDiagnostics.measure(
+        PortalPhase.sessionProbe,
+        () => backend.probe(context),
+      ),
       zoneValues: {OperationCancellation.zoneKey: cancellation},
     );
     try {

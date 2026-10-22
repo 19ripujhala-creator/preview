@@ -755,25 +755,58 @@ RajssoAction rajssoDocumentLaunchAction(String text, Uri url) {
         target.path != '/SSOIntegration/SSOLogin')
       continue;
     rajssoTrustedLaunch(target);
+    final bridgeChecks = <String, Object?>{
+      'source_is_sso': url.host == 'sso.rajasthan.gov.in',
+      'source_is_rajsims': url.host == 'rajsims.rajasthan.gov.in',
+      'source_is_mdm': url.host == 'rajsims-mdm.rajasthan.gov.in',
+      'action_query_empty': target.query.isEmpty,
+      'action_fragment_empty': target.fragment.isEmpty,
+      'method_is_post':
+          (form.attributes['method'] ?? 'get').toLowerCase() == 'post',
+      'single_form': forms.length == 1,
+    };
+    Map<String, Object?> diagnostic(String stage) => {
+      'phase': 'rajsims_sso_bridge',
+      'stage': stage,
+      'checks': bridgeChecks,
+    };
     if (url.host != 'sso.rajasthan.gov.in' ||
         target.query.isNotEmpty ||
         target.fragment.isNotEmpty ||
         (form.attributes['method'] ?? 'get').toLowerCase() != 'post') {
-      throw const RajssoError(
+      throw RajssoError(
         'PORTAL_LAUNCH_CHANGED',
         'Official RajSIMS SSO bridge contract changed.',
+        diagnostics: diagnostic('bridge_envelope'),
       );
     }
     final inputs = form.querySelectorAll('input[name]');
+    bridgeChecks.addAll({
+      'single_named_input': inputs.length == 1,
+      'input_is_userdetails':
+          inputs.length == 1 &&
+          inputs.single.attributes['name'] == 'userdetails',
+      'input_enabled':
+          inputs.length == 1 &&
+          !inputs.single.attributes.containsKey('disabled'),
+      'input_hidden':
+          inputs.length == 1 &&
+          (inputs.single.attributes['type'] ?? 'text').toLowerCase() ==
+              'hidden',
+      'input_nonempty':
+          inputs.length == 1 &&
+          (inputs.single.attributes['value'] ?? '').isNotEmpty,
+    });
     if (inputs.length != 1 ||
         inputs.single.attributes['name'] != 'userdetails' ||
         inputs.single.attributes.containsKey('disabled') ||
         (inputs.single.attributes['type'] ?? 'text').toLowerCase() !=
             'hidden' ||
         (inputs.single.attributes['value'] ?? '').isEmpty) {
-      throw const RajssoError(
+      throw RajssoError(
         'PORTAL_LAUNCH_CHANGED',
         'Official RajSIMS userdetails field changed or is empty.',
+        diagnostics: diagnostic('bridge_input'),
       );
     }
     bridges.add(
