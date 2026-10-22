@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "message": "Student attendance saved and verified on Shala Darpan portal.",
+  "classId": "1",
+  "date": "10/10/2026",
+  "section": "1A",
+  "attendance_status": "marked",
+  "is_already_marked": true,
+  "attendance_verified": true,
+  "verified": true,
+  "summary": {
+    "rowIndex": 0,
+    "classId": "1",
+    "section": "1A",
+    "total": 2,
+    "present": 1,
+    "absent": 1,
+    "status": "Done",
+    "done": true,
+    "entrySource": "Web",
+    "entryLinkId": "ContentPlaceHolder1_grd_Student_btn_Entry_0"
+  },
+  "updatedCount": 0,
+  "action": "marked",
+  "portalMessages": [],
+  "submission_attempted": true
+}

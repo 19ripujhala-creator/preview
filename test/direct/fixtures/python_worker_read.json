@@ -1,0 +1,64 @@
+{
+  "success": true,
+  "date": "10/10/2026",
+  "classId": "1",
+  "section": "1A",
+  "summary": {
+    "rowIndex": 0,
+    "classId": "1",
+    "section": "1A",
+    "total": 2,
+    "present": 1,
+    "absent": 1,
+    "status": "Pending",
+    "done": false,
+    "entrySource": "Web",
+    "entryLinkId": "ContentPlaceHolder1_grd_Student_btn_Entry_0"
+  },
+  "attendance_status": "pending",
+  "is_already_marked": false,
+  "attendance_verified": false,
+  "students": [
+    {
+      "serialNo": 1,
+      "srNo": "00101",
+      "rollNo": "1",
+      "nicCode": "N1",
+      "name": "Alice",
+      "fullName": "Alice ( Father A )",
+      "fatherName": "Father A",
+      "motherName": "Mother 1",
+      "gender": "Girl",
+      "status": "Present",
+      "present": true
+    },
+    {
+      "serialNo": 2,
+      "srNo": "102",
+      "rollNo": "2",
+      "nicCode": "N2",
+      "name": "Bob",
+      "fullName": "Bob",
+      "fatherName": "Father B",
+      "motherName": "Mother 2",
+      "gender": "Boy",
+      "status": "Absent",
+      "present": false
+    }
+  ],
+  "total": 2,
+  "presentCount": 1,
+  "absentCount": 1,
+  "leaveCount": 0,
+  "medicalCount": 0,
+  "classes": [
+    "Class 1"
+  ],
+  "sections": [
+    "1A"
+  ],
+  "data_verified": true,
+  "verified": false,
+  "warning": null,
+  "columnsMapped": true
+}

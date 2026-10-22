@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "found": true,
+  "date": "10/10/2026",
+  "classes": [
+    {
+      "rowIndex": 0,
+      "classId": "1",
+      "section": "1A",
+      "total": 2,
+      "present": 1,
+      "absent": 1,
+      "status": "Pending",
+      "done": false,
+      "entrySource": "Web",
+      "entryLinkId": "ContentPlaceHolder1_grd_Student_btn_Entry_0"
+    }
+  ],
+  "totals": {
+    "total": 2,
+    "present": 1,
+    "absent": 1
+  },
+  "message": ""
+}
