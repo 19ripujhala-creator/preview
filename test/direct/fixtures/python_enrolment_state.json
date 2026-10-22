@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "complete": false,
+  "code": "ENROLMENT_REPORT_INCOMPLETE",
+  "message": "ASP.NET form state is unavailable."
+}

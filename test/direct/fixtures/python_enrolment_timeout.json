@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "complete": false,
+  "code": "PORTAL_SLOW",
+  "message": "Enrolment report request timed out."
+}

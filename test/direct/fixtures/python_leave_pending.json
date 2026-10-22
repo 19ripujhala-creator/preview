@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "pending_count": 2,
+  "applications": [
+    {
+      "sno": "1",
+      "leave_id": "501",
+      "name": "Teacher A",
+      "reason": "Personal",
+      "leave_type": "CL",
+      "from_date": "10/10/2026",
+      "to_date": "10/10/2026",
+      "days": "1",
+      "status_code": "0",
+      "checkbox_id": "ContentPlaceHolder1_grdLeaveDetails_chkBox_0"
+    },
+    {
+      "sno": "2",
+      "leave_id": "502",
+      "name": "Teacher B",
+      "reason": "Personal",
+      "leave_type": "PL",
+      "from_date": "10/10/2026",
+      "to_date": "10/10/2026",
+      "days": "1",
+      "status_code": "0",
+      "checkbox_id": "ContentPlaceHolder1_grdLeaveDetails_chkBox_1"
+    }
+  ]
+}

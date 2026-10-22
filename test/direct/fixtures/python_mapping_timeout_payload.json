@@ -1,0 +1,23 @@
+{
+  "__VIEWSTATE": "MAPPING_STATE",
+  "__EVENTVALIDATION": "MAPPING_VALID",
+  "__EVENTTARGET": "",
+  "duplicate": [
+    "a",
+    "b"
+  ],
+  "notes": "Read only notes",
+  "check": "on",
+  "ctl00$ContentPlaceHolder1$grdList$ctl02$hdnClassID": "1",
+  "ctl00$ContentPlaceHolder1$grdList$ctl02$hdnClassSectionId": "10",
+  "ctl00$ContentPlaceHolder1$grdList$ctl02$hdnTeacherProfile_ID": "101",
+  "ctl00$ContentPlaceHolder1$grdList$ctl02$ddlClassTeacher": "102",
+  "ctl00$ContentPlaceHolder1$grdList$ctl03$hdnClassID": "2",
+  "ctl00$ContentPlaceHolder1$grdList$ctl03$hdnClassSectionId": "11",
+  "ctl00$ContentPlaceHolder1$grdList$ctl03$hdnTeacherProfile_ID": "102",
+  "ctl00$ContentPlaceHolder1$grdList$ctl03$ddlClassTeacher": [
+    "102"
+  ],
+  "__EVENTARGUMENT": "",
+  "ctl00$ContentPlaceHolder1$btnSave": "Save"
+}

@@ -1,0 +1,2761 @@
+[
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Full",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 1.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Full",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "15-10-2026",
+        "total_days": 3.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Full",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Full",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Half",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Half",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Half",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Half",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Full",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Full",
+      "to_duration": null,
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 1.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Full",
+      "to_duration": null,
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "15-10-2026",
+        "total_days": 3.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Full",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Full",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Full",
+      "to_duration": null,
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Full",
+      "to_duration": null,
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Full",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Full",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Full",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Full",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Full",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Full",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Half",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Half",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "For one date, use matching durations and the same half-day period."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "15-10-2026",
+        "total_days": 2.0,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": null,
+        "from_day_type": "Afternoon",
+        "to_day_type": "Forenoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Half",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 0.5,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": "Forenoon",
+        "from_day_type": "Forenoon",
+        "to_day_type": "Forenoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Half",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "A multi-day half-day start must be After Noon."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 0.5,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": "Afternoon",
+        "from_day_type": "Afternoon",
+        "to_day_type": "Afternoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Half",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "A multi-day half-day end must be Before Noon."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Half",
+      "to_duration": null,
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Half",
+      "to_duration": null,
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Half",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "For one date, use matching durations and the same half-day period."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Half",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "15-10-2026",
+        "total_days": 2.0,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": null,
+        "from_day_type": "Afternoon",
+        "to_day_type": "Forenoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Half",
+      "to_duration": null,
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 0.5,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": "Forenoon",
+        "from_day_type": "Forenoon",
+        "to_day_type": "Forenoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Half",
+      "to_duration": null,
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "A multi-day half-day start must be After Noon."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "Half",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 0.5,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": "Afternoon",
+        "from_day_type": "Afternoon",
+        "to_day_type": "Afternoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "Half",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "A multi-day half-day end must be Before Noon."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "1",
+      "to_duration": "Full",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 1.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "1",
+      "to_duration": "Full",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "15-10-2026",
+        "total_days": 3.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "1",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "1",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "1",
+      "to_duration": "Full",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "1",
+      "to_duration": "Full",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "1",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "1",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "1",
+      "to_duration": "Half",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "1",
+      "to_duration": "Half",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "1",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "1",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "1",
+      "to_duration": "Half",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "1",
+      "to_duration": "Half",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "1",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "1",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "1",
+      "to_duration": null,
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 1.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "1",
+      "to_duration": null,
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "15-10-2026",
+        "total_days": 3.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "1",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "1",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "1",
+      "to_duration": null,
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "1",
+      "to_duration": null,
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "1",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "1",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "2",
+      "to_duration": "Full",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "2",
+      "to_duration": "Full",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "2",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "2",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "2",
+      "to_duration": "Full",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "2",
+      "to_duration": "Full",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "2",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "2",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "2",
+      "to_duration": "Half",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "2",
+      "to_duration": "Half",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "2",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "For one date, use matching durations and the same half-day period."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "2",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "15-10-2026",
+        "total_days": 2.0,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": null,
+        "from_day_type": "Afternoon",
+        "to_day_type": "Forenoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "2",
+      "to_duration": "Half",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 0.5,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": "Forenoon",
+        "from_day_type": "Forenoon",
+        "to_day_type": "Forenoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "2",
+      "to_duration": "Half",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "A multi-day half-day start must be After Noon."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "2",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 0.5,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": "Afternoon",
+        "from_day_type": "Afternoon",
+        "to_day_type": "Afternoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "2",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "A multi-day half-day end must be Before Noon."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "2",
+      "to_duration": null,
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "2",
+      "to_duration": null,
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "2",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "For one date, use matching durations and the same half-day period."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "2",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "15-10-2026",
+        "total_days": 2.0,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": null,
+        "from_day_type": "Afternoon",
+        "to_day_type": "Forenoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "2",
+      "to_duration": null,
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 0.5,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": "Forenoon",
+        "from_day_type": "Forenoon",
+        "to_day_type": "Forenoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "2",
+      "to_duration": null,
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "A multi-day half-day start must be After Noon."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "2",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 0.5,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": "Afternoon",
+        "from_day_type": "Afternoon",
+        "to_day_type": "Afternoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "2",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "A multi-day half-day end must be Before Noon."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": null,
+      "to_duration": "Full",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 1.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": null,
+      "to_duration": "Full",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "15-10-2026",
+        "total_days": 3.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": null,
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": null,
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": null,
+      "to_duration": "Full",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": null,
+      "to_duration": "Full",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": null,
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": null,
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": null,
+      "to_duration": "Half",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": null,
+      "to_duration": "Half",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Select Before Noon or After Noon for each half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": null,
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": null,
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": null,
+      "to_duration": "Half",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": null,
+      "to_duration": "Half",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": null,
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": null,
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": null,
+      "to_duration": null,
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 1.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": null,
+      "to_duration": null,
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "15-10-2026",
+        "total_days": 3.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": null,
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": null,
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": null,
+      "to_duration": null,
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": null,
+      "to_duration": null,
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": null,
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": null,
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Day type applies only to a half-day endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Full",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Full",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Full",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Full",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Full",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Half",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Half",
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Half",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Half",
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "invalid",
+      "to_duration": "Half",
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "invalid",
+      "to_duration": null,
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "invalid",
+      "to_duration": null,
+      "from_day_type": null,
+      "to_day_type": null,
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "invalid",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "invalid",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "invalid",
+      "to_duration": null,
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "invalid",
+      "to_duration": null,
+      "from_day_type": "Forenoon",
+      "to_day_type": "Forenoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "13/10/2026",
+      "from_duration": "invalid",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {
+      "from_date": "13/10/2026",
+      "to_date": "15/10/2026",
+      "from_duration": "invalid",
+      "to_duration": null,
+      "from_day_type": "Afternoon",
+      "to_day_type": "Afternoon",
+      "leave_type_id": "1"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DURATION",
+      "message": "Duration must be Full or Half for each endpoint."
+    }
+  },
+  {
+    "input": {},
+    "expected": {
+      "success": false,
+      "message": "From and To dates are required."
+    }
+  },
+  {
+    "input": {
+      "from_date": "2026-02-29",
+      "to_date": "2026-03-01"
+    },
+    "expected": {
+      "success": false,
+      "message": "Invalid date format. Use DD-MM-YYYY."
+    }
+  },
+  {
+    "input": {
+      "from_date": "2024-02-29",
+      "to_date": "2024-03-01"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "29-02-2024",
+        "to_date": "01-03-2024",
+        "total_days": 2.0,
+        "from_duration": "Full",
+        "to_duration": "Full",
+        "day_type": null,
+        "from_day_type": null,
+        "to_day_type": null,
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "2026-10-13",
+      "to_date": "2026-10-12"
+    },
+    "expected": {
+      "success": false,
+      "message": "To date cannot be earlier than From date."
+    }
+  },
+  {
+    "input": {
+      "from_date": "2026-10-13",
+      "leave_type_id": "12",
+      "day_type": "fn"
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "12",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 0.5,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": "Forenoon",
+        "from_day_type": "Forenoon",
+        "to_day_type": "Forenoon",
+        "station_leave": "N",
+        "address": "At Home",
+        "remark": "Leave Application"
+      }
+    }
+  },
+  {
+    "input": {
+      "from_date": "2026-10-13",
+      "to_date": "2026-10-14",
+      "leave_type_id": "12",
+      "day_type": "fn"
+    },
+    "expected": {
+      "success": false,
+      "code": "BAD_DATE",
+      "message": "HCL must use one date. Select CL for a multi-day request."
+    }
+  },
+  {
+    "input": {
+      "from_date": "2026-10-13T12:00:00",
+      "dayType": "fn",
+      "from_duration": "Half",
+      "station_leave": true,
+      "address": null
+    },
+    "expected": {
+      "success": true,
+      "message": "Leave verification ready",
+      "preview": {
+        "reason_id": "1",
+        "leave_type_id": "1",
+        "from_date": "13-10-2026",
+        "to_date": "13-10-2026",
+        "total_days": 0.5,
+        "from_duration": "Half",
+        "to_duration": "Half",
+        "day_type": "Forenoon",
+        "from_day_type": "Forenoon",
+        "to_day_type": "Forenoon",
+        "station_leave": "Y",
+        "address": null,
+        "remark": "Leave Application"
+      }
+    }
+  }
+]

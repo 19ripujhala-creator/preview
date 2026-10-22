@@ -1,0 +1,49 @@
+{
+  "success": true,
+  "message": "Incharge updated successfully.",
+  "message_source": "portal",
+  "portal_message": "Incharge updated successfully.",
+  "data": {
+    "success": true,
+    "roles": [
+      {
+        "value": "1",
+        "label": "MDM"
+      },
+      {
+        "value": "2",
+        "label": "Library"
+      }
+    ],
+    "teachers": [
+      {
+        "value": "101",
+        "label": "Teacher A (101)"
+      },
+      {
+        "value": "102",
+        "label": "Teacher B (102)"
+      }
+    ],
+    "current_list": [
+      {
+        "sr_no": "1",
+        "role": "Library",
+        "name": "Teacher B",
+        "employee_id": "102",
+        "status": "Deactive",
+        "button_id": ""
+      },
+      {
+        "sr_no": "2",
+        "role": "Library",
+        "name": "Teacher B",
+        "employee_id": "102",
+        "status": "Deactive",
+        "button_id": ""
+      }
+    ]
+  },
+  "verified": true,
+  "submission_attempted": true
+}

@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "code": "STALE_FORM",
+  "message": "VIFFS table headers changed.",
+  "field_errors": {}
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "source": "return confirm(\"निश्चित?\");",
+    "message": "निश्चित?"
+  },
+  {
+    "source": "return window.confirm('Don\\'t delete?');",
+    "message": "Don't delete?"
+  },
+  {
+    "source": "confirm(message);",
+    "message": null
+  },
+  {
+    "source": "confirm(\"One\"); confirm(\"Two\");",
+    "message": null
+  },
+  {
+    "source": "confirm(\"\\u0928\\nLine\");",
+    "message": "न\nLine"
+  },
+  {
+    "source": "confirm(\"\\x41\");",
+    "message": "A"
+  }
+]

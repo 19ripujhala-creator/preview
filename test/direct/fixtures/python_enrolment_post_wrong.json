@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "complete": false,
+  "code": "ENROLMENT_REPORT_INCOMPLETE",
+  "message": "Report academic session is missing or does not match the request."
+}

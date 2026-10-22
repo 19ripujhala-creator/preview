@@ -1,0 +1,433 @@
+[
+  {
+    "name": "read_success",
+    "responses": [
+      {
+        "status": 200,
+        "data": {
+          "IsSuccess": true,
+          "CustomObject": [
+            {
+              "x": 1
+            }
+          ]
+        }
+      }
+    ],
+    "payload": {
+      "ApiKey": "GetAllChartData",
+      "OrgId": 123,
+      "ApiParams": {}
+    },
+    "mode": "enabled",
+    "safe": true,
+    "expected": [
+      true,
+      {
+        "IsSuccess": true,
+        "CustomObject": [
+          {
+            "x": 1
+          }
+        ]
+      },
+      200,
+      ""
+    ],
+    "requests": [
+      {
+        "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Gateway_PostAuthAdminService/GetData",
+        "payload": {
+          "ApiKey": "GetAllChartData",
+          "OrgId": 123,
+          "ApiParams": {}
+        },
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json",
+          "authid": "offline-id",
+          "authkey": "offline-key"
+        }
+      }
+    ]
+  },
+  {
+    "name": "retry_read",
+    "responses": [
+      {
+        "status": 500,
+        "data": {
+          "Message": "Native temporary error"
+        }
+      },
+      {
+        "status": 200,
+        "data": {
+          "IsSuccess": true
+        }
+      }
+    ],
+    "payload": {
+      "ApiKey": "GetAllChartData",
+      "OrgId": 123,
+      "ApiParams": {}
+    },
+    "mode": "enabled",
+    "safe": true,
+    "expected": [
+      true,
+      {
+        "IsSuccess": true
+      },
+      200,
+      ""
+    ],
+    "requests": [
+      {
+        "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Gateway_PostAuthAdminService/GetData",
+        "payload": {
+          "ApiKey": "GetAllChartData",
+          "OrgId": 123,
+          "ApiParams": {}
+        },
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json",
+          "authid": "offline-id",
+          "authkey": "offline-key"
+        }
+      },
+      {
+        "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Gateway_PostAuthAdminService/GetData",
+        "payload": {
+          "ApiKey": "GetAllChartData",
+          "OrgId": 123,
+          "ApiParams": {}
+        },
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json",
+          "authid": "offline-id",
+          "authkey": "offline-key"
+        }
+      }
+    ]
+  },
+  {
+    "name": "expired_body",
+    "responses": [
+      {
+        "status": 200,
+        "data": {
+          "Status": 401,
+          "Message": "Native session expired"
+        }
+      }
+    ],
+    "payload": {
+      "ApiKey": "GetAllChartData",
+      "OrgId": 123,
+      "ApiParams": {}
+    },
+    "mode": "enabled",
+    "safe": true,
+    "expected": [
+      false,
+      {
+        "Status": 401,
+        "Message": "Native session expired"
+      },
+      401,
+      "Native session expired"
+    ],
+    "requests": [
+      {
+        "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Gateway_PostAuthAdminService/GetData",
+        "payload": {
+          "ApiKey": "GetAllChartData",
+          "OrgId": 123,
+          "ApiParams": {}
+        },
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json",
+          "authid": "offline-id",
+          "authkey": "offline-key"
+        }
+      }
+    ]
+  },
+  {
+    "name": "native_rejection",
+    "responses": [
+      {
+        "status": 200,
+        "data": {
+          "IsSuccess": false,
+          "Message": "मूल पोर्टल संदेश"
+        }
+      }
+    ],
+    "payload": {
+      "ApiKey": "GetAllChartData",
+      "OrgId": 123,
+      "ApiParams": {}
+    },
+    "mode": "enabled",
+    "safe": true,
+    "expected": [
+      false,
+      {
+        "IsSuccess": false,
+        "Message": "मूल पोर्टल संदेश"
+      },
+      200,
+      "मूल पोर्टल संदेश"
+    ],
+    "requests": [
+      {
+        "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Gateway_PostAuthAdminService/GetData",
+        "payload": {
+          "ApiKey": "GetAllChartData",
+          "OrgId": 123,
+          "ApiParams": {}
+        },
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json",
+          "authid": "offline-id",
+          "authkey": "offline-key"
+        }
+      }
+    ]
+  },
+  {
+    "name": "invalid_json",
+    "responses": [
+      {
+        "status": 200,
+        "text": "<html>not JSON</html>"
+      }
+    ],
+    "payload": {
+      "ApiKey": "GetAllChartData",
+      "OrgId": 123,
+      "ApiParams": {}
+    },
+    "mode": "enabled",
+    "safe": true,
+    "expected": [
+      false,
+      null,
+      200,
+      "RajSIMS Gateway returned invalid/non-JSON data."
+    ],
+    "requests": [
+      {
+        "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Gateway_PostAuthAdminService/GetData",
+        "payload": {
+          "ApiKey": "GetAllChartData",
+          "OrgId": 123,
+          "ApiParams": {}
+        },
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json",
+          "authid": "offline-id",
+          "authkey": "offline-key"
+        }
+      }
+    ]
+  },
+  {
+    "name": "profile_bootstrap",
+    "responses": [
+      {
+        "status": 200,
+        "data": {
+          "IsSuccess": true,
+          "CustomObject": {}
+        }
+      }
+    ],
+    "payload": {
+      "ApiKey": "ValidateTokenAndGetUserDetail",
+      "OrgId": 123,
+      "ApiParams": {
+        "AuthId": "offline-id",
+        "AuthKey": "offline-key"
+      }
+    },
+    "mode": "enabled",
+    "safe": true,
+    "expected": [
+      true,
+      {
+        "IsSuccess": true,
+        "CustomObject": {}
+      },
+      200,
+      ""
+    ],
+    "requests": [
+      {
+        "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Authenticate/GetSSOlogin",
+        "payload": {
+          "ApiKey": "ValidateTokenAndGetUserDetail",
+          "OrgId": 123,
+          "ApiParams": {
+            "AuthId": "offline-id",
+            "AuthKey": "offline-key"
+          }
+        },
+        "headers": {
+          "accept": "application/json, text/plain, */*",
+          "content-type": "application/json",
+          "origin": "https://rajsims-mdm.rajasthan.gov.in",
+          "referer": "https://rajsims-mdm.rajasthan.gov.in/"
+        }
+      }
+    ]
+  },
+  {
+    "name": "write_success",
+    "responses": [
+      {
+        "status": 200,
+        "data": {
+          "IsSuccess": true,
+          "Message": "Native saved"
+        }
+      }
+    ],
+    "payload": {
+      "ApiKey": "SaveEditBeneficiaryDistribution",
+      "OrgId": 123,
+      "ApiParams": {}
+    },
+    "mode": "enabled",
+    "safe": true,
+    "expected": [
+      true,
+      {
+        "IsSuccess": true,
+        "Message": "Native saved"
+      },
+      200,
+      ""
+    ],
+    "requests": [
+      {
+        "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Gateway_PostAuthAdminService/GetData",
+        "payload": {
+          "ApiKey": "SaveEditBeneficiaryDistribution",
+          "OrgId": 123,
+          "ApiParams": {}
+        },
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json",
+          "authid": "offline-id",
+          "authkey": "offline-key"
+        }
+      }
+    ]
+  },
+  {
+    "name": "write_server_error",
+    "responses": [
+      {
+        "status": 500,
+        "data": {
+          "Message": "Native failure"
+        }
+      }
+    ],
+    "payload": {
+      "ApiKey": "SaveEditBeneficiaryDistribution",
+      "OrgId": 123,
+      "ApiParams": {}
+    },
+    "mode": "enabled",
+    "safe": true,
+    "expected": [
+      false,
+      {
+        "Message": "Native failure"
+      },
+      500,
+      "Native failure"
+    ],
+    "requests": [
+      {
+        "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Gateway_PostAuthAdminService/GetData",
+        "payload": {
+          "ApiKey": "SaveEditBeneficiaryDistribution",
+          "OrgId": 123,
+          "ApiParams": {}
+        },
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json",
+          "authid": "offline-id",
+          "authkey": "offline-key"
+        }
+      }
+    ]
+  },
+  {
+    "name": "write_timeout",
+    "responses": [
+      {
+        "timeout": true
+      }
+    ],
+    "payload": {
+      "ApiKey": "SaveEditBeneficiaryDistribution",
+      "OrgId": 123,
+      "ApiParams": {}
+    },
+    "mode": "enabled",
+    "safe": true,
+    "expected": [
+      false,
+      null,
+      null,
+      "RajSIMS save result unknown. Check status/history before retrying."
+    ],
+    "requests": [
+      {
+        "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Gateway_PostAuthAdminService/GetData",
+        "payload": {
+          "ApiKey": "SaveEditBeneficiaryDistribution",
+          "OrgId": 123,
+          "ApiParams": {}
+        },
+        "headers": {
+          "accept": "*/*",
+          "content-type": "application/json",
+          "authid": "offline-id",
+          "authkey": "offline-key"
+        }
+      }
+    ]
+  },
+  {
+    "name": "write_disabled",
+    "responses": [],
+    "payload": {
+      "ApiKey": "SaveEditBeneficiaryDistribution",
+      "OrgId": 123,
+      "ApiParams": {}
+    },
+    "mode": "disabled",
+    "safe": true,
+    "expected": [
+      false,
+      null,
+      403,
+      "Final saving is disabled on this test backend."
+    ],
+    "requests": []
+  }
+]

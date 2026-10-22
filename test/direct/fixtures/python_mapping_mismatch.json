@@ -1,0 +1,7 @@
+{
+  "success": false,
+  "code": "SAVE_UNCONFIRMED",
+  "message": "Mapping Save was submitted but not verified. Fetch mappings before submitting again.",
+  "submission_attempted": true,
+  "verified": false
+}

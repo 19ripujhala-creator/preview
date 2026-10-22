@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "code": "STALE_FORM",
+  "message": "VIFFS field mapping changed. Refresh before submitting.",
+  "field_errors": {}
+}

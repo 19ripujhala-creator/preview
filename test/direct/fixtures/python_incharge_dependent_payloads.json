@@ -1,0 +1,30 @@
+[
+  {
+    "__VIEWSTATE": "STATE1",
+    "__EVENTVALIDATION": "VALID",
+    "__EVENTTARGET": "ctl00$ContentPlaceHolder1$ddlrole",
+    "__EVENTARGUMENT": "",
+    "duplicate": "last",
+    "ctl00$ContentPlaceHolder1$ddlrole": "1",
+    "ctl00$ContentPlaceHolder1$ddlTeacher": "-1"
+  },
+  {
+    "__VIEWSTATE": "STATE2",
+    "__EVENTVALIDATION": "VALID",
+    "__EVENTTARGET": "ctl00$ContentPlaceHolder1$ddlTeacher",
+    "__EVENTARGUMENT": "",
+    "duplicate": "last",
+    "ctl00$ContentPlaceHolder1$ddlrole": "1",
+    "ctl00$ContentPlaceHolder1$ddlTeacher": "101"
+  },
+  {
+    "__VIEWSTATE": "STATE3",
+    "__EVENTVALIDATION": "VALID",
+    "__EVENTTARGET": "",
+    "__EVENTARGUMENT": "",
+    "duplicate": "last",
+    "ctl00$ContentPlaceHolder1$btnAdd": "Add",
+    "ctl00$ContentPlaceHolder1$ddlrole": "1",
+    "ctl00$ContentPlaceHolder1$ddlTeacher": "101"
+  }
+]

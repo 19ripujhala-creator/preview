@@ -1,0 +1,443 @@
+{
+  "success": true,
+  "complete": true,
+  "school_id": "123456",
+  "udise": "08123456789",
+  "school_name": "GOVT SCHOOL (ANNEX)",
+  "session": "2025-26",
+  "classes": [
+    {
+      "class_name": "Nursery",
+      "group": "pre_primary",
+      "categories": {
+        "general": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "st": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "sc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "obc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "sbc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "total": {
+          "boys": 5,
+          "girls": 5,
+          "total": 10
+        },
+        "minority": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        }
+      }
+    },
+    {
+      "class_name": "LKG",
+      "group": "pre_primary",
+      "categories": {
+        "general": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "st": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "sc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "obc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "sbc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "total": {
+          "boys": 5,
+          "girls": 5,
+          "total": 10
+        },
+        "minority": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        }
+      }
+    },
+    {
+      "class_name": "UKG",
+      "group": "pre_primary",
+      "categories": {
+        "general": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "st": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "sc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "obc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "sbc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "total": {
+          "boys": 5,
+          "girls": 5,
+          "total": 10
+        },
+        "minority": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        }
+      }
+    },
+    {
+      "class_name": "1",
+      "group": "primary",
+      "categories": {
+        "general": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "st": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "sc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "obc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "sbc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "total": {
+          "boys": 5,
+          "girls": 5,
+          "total": 10
+        },
+        "minority": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        }
+      }
+    },
+    {
+      "class_name": "6",
+      "group": "upper_primary",
+      "categories": {
+        "general": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "st": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "sc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "obc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "sbc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "total": {
+          "boys": 5,
+          "girls": 5,
+          "total": 10
+        },
+        "minority": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        }
+      }
+    },
+    {
+      "class_name": "9",
+      "group": "secondary",
+      "categories": {
+        "general": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "st": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "sc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "obc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "sbc": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        },
+        "total": {
+          "boys": 5,
+          "girls": 5,
+          "total": 10
+        },
+        "minority": {
+          "boys": 1,
+          "girls": 1,
+          "total": 2
+        }
+      }
+    }
+  ],
+  "groups": {
+    "pre_primary": {
+      "general": {
+        "boys": 3,
+        "girls": 3,
+        "total": 6
+      },
+      "st": {
+        "boys": 3,
+        "girls": 3,
+        "total": 6
+      },
+      "sc": {
+        "boys": 3,
+        "girls": 3,
+        "total": 6
+      },
+      "obc": {
+        "boys": 3,
+        "girls": 3,
+        "total": 6
+      },
+      "sbc": {
+        "boys": 3,
+        "girls": 3,
+        "total": 6
+      },
+      "total": {
+        "boys": 15,
+        "girls": 15,
+        "total": 30
+      },
+      "minority": {
+        "boys": 3,
+        "girls": 3,
+        "total": 6
+      }
+    },
+    "primary": {
+      "general": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "st": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "sc": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "obc": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "sbc": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "total": {
+        "boys": 5,
+        "girls": 5,
+        "total": 10
+      },
+      "minority": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      }
+    },
+    "upper_primary": {
+      "general": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "st": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "sc": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "obc": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "sbc": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "total": {
+        "boys": 5,
+        "girls": 5,
+        "total": 10
+      },
+      "minority": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      }
+    },
+    "secondary": {
+      "general": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "st": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "sc": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "obc": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "sbc": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      },
+      "total": {
+        "boys": 5,
+        "girls": 5,
+        "total": 10
+      },
+      "minority": {
+        "boys": 1,
+        "girls": 1,
+        "total": 2
+      }
+    }
+  },
+  "totals": {
+    "general": {
+      "boys": 6,
+      "girls": 6,
+      "total": 12
+    },
+    "st": {
+      "boys": 6,
+      "girls": 6,
+      "total": 12
+    },
+    "sc": {
+      "boys": 6,
+      "girls": 6,
+      "total": 12
+    },
+    "obc": {
+      "boys": 6,
+      "girls": 6,
+      "total": 12
+    },
+    "sbc": {
+      "boys": 6,
+      "girls": 6,
+      "total": 12
+    },
+    "total": {
+      "boys": 30,
+      "girls": 30,
+      "total": 60
+    },
+    "minority": {
+      "boys": 6,
+      "girls": 6,
+      "total": 12
+    }
+  }
+}

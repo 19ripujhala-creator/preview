@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "date": "10/10/2026",
+  "schoolName": "SYNTHETIC SCHOOL",
+  "village": "SYNTHETIC VILLAGE",
+  "udise": "12345678901",
+  "nic": "480481",
+  "officeId": "12345",
+  "leftLogoBase64": "AQID",
+  "rightLogoBase64": "AQID",
+  "rows": [
+    {
+      "className": "1",
+      "section": "A",
+      "label": "1A",
+      "boys": 0,
+      "girls": 1,
+      "absent": 1,
+      "leave": 0,
+      "total": 2,
+      "enrolled": 2,
+      "presentUnknown": 0
+    }
+  ],
+  "attendance_status": "marked",
+  "attendance_verified": true,
+  "pendingSections": [],
+  "submittedSections": [
+    "1A"
+  ],
+  "unknownPresent": 0,
+  "failedSections": [],
+  "message": ""
+}

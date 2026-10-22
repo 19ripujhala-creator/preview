@@ -1,0 +1,553 @@
+{
+  "profiles": [
+    {
+      "name": "direct",
+      "data": {
+        "OfficeId": 11,
+        "OrgId": 13,
+        "OfficeTypeId": 17,
+        "SchemeId": 19,
+        "GroupId": 23,
+        "OfficeName": " School ",
+        "GroupName": " Group ",
+        "PersonalDetails": {
+          "Name": " User ",
+          "MobileNumber": "90000-00000"
+        }
+      },
+      "initial": {},
+      "stale": false,
+      "success": true,
+      "user": {
+        "name": "User",
+        "mobile": 9000000000,
+        "office_name": "School",
+        "office_id": 11,
+        "org_id": 13,
+        "scheme_id": 19,
+        "office_type_id": 17,
+        "group_id": 23,
+        "group_name": "Group"
+      }
+    },
+    {
+      "name": "nested",
+      "data": {
+        "CustomObject": [
+          {
+            "Data": "{\"OfficeId\": 11, \"OrgId\": 13, \"OfficeTypeId\": 17, \"SchemeId\": 19, \"GroupId\": 23, \"OfficeName\": \" School \", \"GroupName\": \" Group \", \"PersonalDetails\": {\"Name\": \" User \", \"MobileNumber\": \"90000-00000\"}}"
+          }
+        ]
+      },
+      "initial": {},
+      "stale": false,
+      "success": true,
+      "user": {
+        "name": "User",
+        "mobile": 9000000000,
+        "office_name": "School",
+        "office_id": 11,
+        "org_id": 13,
+        "scheme_id": 19,
+        "office_type_id": 17,
+        "group_id": 23,
+        "group_name": "Group"
+      }
+    },
+    {
+      "name": "split_identity",
+      "data": {
+        "OfficeId": 11,
+        "Data": {
+          "OrgId": 13
+        }
+      },
+      "initial": {},
+      "stale": false,
+      "success": false,
+      "user": {
+        "name": null,
+        "mobile": null,
+        "office_name": null,
+        "office_id": null,
+        "org_id": null,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    },
+    {
+      "name": "conflict",
+      "data": {
+        "Data": [
+          {
+            "OfficeId": 11,
+            "OrgId": 13,
+            "OfficeTypeId": 17,
+            "SchemeId": 19,
+            "GroupId": 23,
+            "OfficeName": " School ",
+            "GroupName": " Group ",
+            "PersonalDetails": {
+              "Name": " User ",
+              "MobileNumber": "90000-00000"
+            }
+          },
+          {
+            "OfficeId": 12,
+            "OrgId": 13
+          }
+        ]
+      },
+      "initial": {},
+      "stale": false,
+      "success": false,
+      "user": {
+        "name": null,
+        "mobile": null,
+        "office_name": null,
+        "office_id": null,
+        "org_id": null,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    },
+    {
+      "name": "same_pair_repeated",
+      "data": {
+        "Data": [
+          {
+            "OfficeId": 11,
+            "OrgId": 13,
+            "OfficeTypeId": 17,
+            "SchemeId": 19,
+            "GroupId": 23,
+            "OfficeName": " School ",
+            "GroupName": " Group ",
+            "PersonalDetails": {
+              "Name": " User ",
+              "MobileNumber": "90000-00000"
+            }
+          },
+          {
+            "OfficeId": 11,
+            "OrgId": 13
+          }
+        ]
+      },
+      "initial": {},
+      "stale": false,
+      "success": true,
+      "user": {
+        "name": "User",
+        "mobile": 9000000000,
+        "office_name": "School",
+        "office_id": 11,
+        "org_id": 13,
+        "scheme_id": 19,
+        "office_type_id": 17,
+        "group_id": 23,
+        "group_name": "Group"
+      }
+    },
+    {
+      "name": "boolean_identity",
+      "data": {
+        "OfficeId": true,
+        "OrgId": 13
+      },
+      "initial": {},
+      "stale": false,
+      "success": false,
+      "user": {
+        "name": null,
+        "mobile": null,
+        "office_name": null,
+        "office_id": null,
+        "org_id": null,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    },
+    {
+      "name": "fractional",
+      "data": {
+        "OfficeId": "11.5",
+        "OrgId": 13
+      },
+      "initial": {},
+      "stale": false,
+      "success": false,
+      "user": {
+        "name": null,
+        "mobile": null,
+        "office_name": null,
+        "office_id": null,
+        "org_id": null,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    },
+    {
+      "name": "integer_float",
+      "data": {
+        "OfficeId": "11.0",
+        "OrgId": "13"
+      },
+      "initial": {},
+      "stale": false,
+      "success": true,
+      "user": {
+        "name": null,
+        "mobile": null,
+        "office_name": null,
+        "office_id": 11,
+        "org_id": 13,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    },
+    {
+      "name": "zero",
+      "data": {
+        "OfficeId": 0,
+        "OrgId": 13
+      },
+      "initial": {},
+      "stale": false,
+      "success": false,
+      "user": {
+        "name": null,
+        "mobile": null,
+        "office_name": null,
+        "office_id": null,
+        "org_id": null,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    },
+    {
+      "name": "negative",
+      "data": {
+        "OfficeId": -11,
+        "OrgId": 13
+      },
+      "initial": {},
+      "stale": false,
+      "success": false,
+      "user": {
+        "name": null,
+        "mobile": null,
+        "office_name": null,
+        "office_id": null,
+        "org_id": null,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    },
+    {
+      "name": "invalid_json",
+      "data": "not-json",
+      "initial": {},
+      "stale": false,
+      "success": false,
+      "user": {
+        "name": null,
+        "mobile": null,
+        "office_name": null,
+        "office_id": null,
+        "org_id": null,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    },
+    {
+      "name": "personal_fallback",
+      "data": {
+        "Data": {
+          "OfficeId": 11,
+          "OrgId": 13
+        },
+        "PersonalDetails": "{\"FullName\": \"Fallback\", \"MobileNo\": \"9000000000\"}"
+      },
+      "initial": {},
+      "stale": false,
+      "success": true,
+      "user": {
+        "name": "Fallback",
+        "mobile": 9000000000,
+        "office_name": null,
+        "office_id": 11,
+        "org_id": 13,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    },
+    {
+      "name": "first_same_pair_wins",
+      "data": {
+        "Data": [
+          {
+            "OfficeId": 11,
+            "OrgId": 13,
+            "OfficeName": "first"
+          },
+          {
+            "OfficeId": 11,
+            "OrgId": 13,
+            "OfficeTypeId": 17,
+            "SchemeId": 19,
+            "GroupId": 23,
+            "OfficeName": " School ",
+            "GroupName": " Group ",
+            "PersonalDetails": {
+              "Name": " User ",
+              "MobileNumber": "90000-00000"
+            }
+          }
+        ]
+      },
+      "initial": {},
+      "stale": false,
+      "success": true,
+      "user": {
+        "name": "User",
+        "mobile": 9000000000,
+        "office_name": "first",
+        "office_id": 11,
+        "org_id": 13,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    },
+    {
+      "name": "short_mobile",
+      "data": {
+        "OfficeId": 11,
+        "OrgId": 13,
+        "OfficeTypeId": 17,
+        "SchemeId": 19,
+        "GroupId": 23,
+        "OfficeName": " School ",
+        "GroupName": " Group ",
+        "PersonalDetails": {
+          "Mobile": "123"
+        }
+      },
+      "initial": {},
+      "stale": false,
+      "success": true,
+      "user": {
+        "name": null,
+        "mobile": null,
+        "office_name": "School",
+        "office_id": 11,
+        "org_id": 13,
+        "scheme_id": 19,
+        "office_type_id": 17,
+        "group_id": 23,
+        "group_name": "Group"
+      }
+    },
+    {
+      "name": "unicode_mobile",
+      "data": {
+        "OfficeId": 11,
+        "OrgId": 13,
+        "OfficeTypeId": 17,
+        "SchemeId": 19,
+        "GroupId": 23,
+        "OfficeName": " School ",
+        "GroupName": " Group ",
+        "PersonalDetails": {
+          "Mobile": "९०००००००००"
+        }
+      },
+      "initial": {},
+      "stale": false,
+      "success": true,
+      "user": {
+        "name": null,
+        "mobile": 9000000000,
+        "office_name": "School",
+        "office_id": 11,
+        "org_id": 13,
+        "scheme_id": 19,
+        "office_type_id": 17,
+        "group_id": 23,
+        "group_name": "Group"
+      }
+    },
+    {
+      "name": "too_deep",
+      "data": {
+        "wrapper": {
+          "wrapper": {
+            "wrapper": {
+              "wrapper": {
+                "wrapper": {
+                  "wrapper": {
+                    "wrapper": {
+                      "wrapper": {
+                        "wrapper": {
+                          "OfficeId": 11,
+                          "OrgId": 13,
+                          "OfficeTypeId": 17,
+                          "SchemeId": 19,
+                          "GroupId": 23,
+                          "OfficeName": " School ",
+                          "GroupName": " Group ",
+                          "PersonalDetails": {
+                            "Name": " User ",
+                            "MobileNumber": "90000-00000"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "initial": {},
+      "stale": false,
+      "success": false,
+      "user": {
+        "name": null,
+        "mobile": null,
+        "office_name": null,
+        "office_id": null,
+        "org_id": null,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    },
+    {
+      "name": "old_identity",
+      "data": {
+        "OfficeId": 12,
+        "OrgId": 13
+      },
+      "initial": {
+        "office_id": 11,
+        "org_id": 13
+      },
+      "stale": false,
+      "success": false,
+      "user": {
+        "name": null,
+        "mobile": null,
+        "office_name": null,
+        "office_id": 11,
+        "org_id": 13,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    },
+    {
+      "name": "stale_context",
+      "data": {
+        "OfficeId": 11,
+        "OrgId": 13,
+        "OfficeTypeId": 17,
+        "SchemeId": 19,
+        "GroupId": 23,
+        "OfficeName": " School ",
+        "GroupName": " Group ",
+        "PersonalDetails": {
+          "Name": " User ",
+          "MobileNumber": "90000-00000"
+        }
+      },
+      "initial": {},
+      "stale": true,
+      "success": false,
+      "user": {
+        "name": null,
+        "mobile": null,
+        "office_name": null,
+        "office_id": null,
+        "org_id": null,
+        "scheme_id": null,
+        "office_type_id": null,
+        "group_id": null,
+        "group_name": null
+      }
+    }
+  ],
+  "ocr": [
+    {
+      "input": "123456",
+      "output": "123456"
+    },
+    {
+      "input": "OILZSB",
+      "output": "011258"
+    },
+    {
+      "input": "QDJGTB",
+      "output": "001678"
+    },
+    {
+      "input": "12345",
+      "output": ""
+    },
+    {
+      "input": "1234567",
+      "output": ""
+    },
+    {
+      "input": "123a456",
+      "output": ""
+    },
+    {
+      "input": " 123456",
+      "output": ""
+    },
+    {
+      "input": "123456\n",
+      "output": ""
+    },
+    {
+      "input": "१२३४५६",
+      "output": ""
+    },
+    {
+      "input": "oizsgb",
+      "output": "012568"
+    },
+    {
+      "input": "",
+      "output": ""
+    },
+    {
+      "input": "123-456",
+      "output": ""
+    }
+  ]
+}

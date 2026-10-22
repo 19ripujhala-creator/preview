@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "complete": false,
+  "code": "PORTAL_RESPONSE_ERROR",
+  "message": "Enrolment report HTTP status 500."
+}

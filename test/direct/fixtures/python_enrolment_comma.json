@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "complete": false,
+  "code": "ENROLMENT_REPORT_INCOMPLETE",
+  "message": "Missing/invalid enrolment count: ContentPlaceHolder1_rptSchoolReport_lblTotalGeneralBoys_0."
+}

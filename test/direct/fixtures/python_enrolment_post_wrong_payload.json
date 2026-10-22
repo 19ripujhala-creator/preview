@@ -1,0 +1,17 @@
+{
+  "__VIEWSTATE": "ENROL_STATE",
+  "__EVENTVALIDATION": "VALID",
+  "ctl00$ScriptManager1": "keep-native",
+  "duplicate": [
+    "a",
+    "b"
+  ],
+  "tick": "on",
+  "notes": "Keep me",
+  "other": [
+    "a"
+  ],
+  "actualSessionField": "2025-26",
+  "__EVENTTARGET": "actualSessionField",
+  "__EVENTARGUMENT": ""
+}

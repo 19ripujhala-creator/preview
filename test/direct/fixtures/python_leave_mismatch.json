@@ -1,0 +1,19 @@
+{
+  "success": false,
+  "code": "SAVE_UNCONFIRMED",
+  "submission_attempted": true,
+  "verified": false,
+  "message": "Leave action was submitted, but the exact status was not verified in All Applications. Review the portal before any resubmission.",
+  "data": {
+    "success": true,
+    "pending_count": 0,
+    "applications": []
+  },
+  "observed_statuses": {
+    "501": "Pending",
+    "502": "Rejected"
+  },
+  "verification_source": "all_applications",
+  "pending_count": 0,
+  "refresh_required": false
+}

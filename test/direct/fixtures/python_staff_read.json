@@ -1,0 +1,662 @@
+{
+  "source": "Original Staff_HTTPX_Auth_Final Python helpers and complete History worker; synthetic portal data",
+  "cases": [
+    {
+      "name": "all-two-pages",
+      "filter": "all",
+      "responses": [
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr><tr class=\"GridPager\"><td colspan=\"6\"><span>1</span><a href=\"javascript:__doPostBack('ctl00$ContentPlaceHolder1$grdLeaveDetails','Page$2')\">2</a></td></tr></table></div></form></html>",
+          "headers": {}
+        },
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-2\"><input name=\"__EVENTVALIDATION\" value=\"ev-2\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>2</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>स्वीकृत</td></tr><tr class=\"GridPager\"><td colspan=\"6\"><span>2</span><a href=\"javascript:__doPostBack('ctl00$ContentPlaceHolder1$grdLeaveDetails','Page$1')\">1</a></td></tr></table></div></form></html>",
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "success": true,
+        "records": [
+          {
+            "sNo": "1",
+            "type": "CL",
+            "from_date": "01-10-2026",
+            "to_date": "02-10-2026",
+            "reason": "Reason",
+            "status": "Unprocessed"
+          },
+          {
+            "sNo": "2",
+            "type": "CL",
+            "from_date": "01-10-2026",
+            "to_date": "02-10-2026",
+            "reason": "Reason",
+            "status": "Approved"
+          }
+        ],
+        "total": 2
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        },
+        {
+          "method": "POST",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20,
+          "content": "__VIEWSTATE=view-1&__EVENTVALIDATION=ev-1&dup=1&dup=2&memo=two+%26+words+%21%28%29%2A%27~+%E0%A4%B9%E0%A4%BF%E0%A4%82%E0%A4%A6%E0%A5%80&choice=first&ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType=all&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24grdLeaveDetails&__EVENTARGUMENT=Page%242",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx"
+          }
+        }
+      ]
+    },
+    {
+      "name": "pending-filter",
+      "filter": "pending",
+      "responses": [
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr></table></div></form></html>",
+          "headers": {}
+        },
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr></table></div></form></html>",
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "success": true,
+        "records": [
+          {
+            "sNo": "1",
+            "type": "CL",
+            "from_date": "01-10-2026",
+            "to_date": "02-10-2026",
+            "reason": "Reason",
+            "status": "Unprocessed"
+          }
+        ],
+        "total": 1
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        },
+        {
+          "method": "POST",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20,
+          "content": "__VIEWSTATE=view-1&__EVENTVALIDATION=ev-1&dup=1&dup=2&memo=two+%26+words+%21%28%29%2A%27~+%E0%A4%B9%E0%A4%BF%E0%A4%82%E0%A4%A6%E0%A5%80&choice=first&ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType=pending&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType%240&__EVENTARGUMENT=",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx"
+          }
+        }
+      ]
+    },
+    {
+      "name": "all-empty",
+      "filter": "all",
+      "responses": [
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td colspan=\"6\">No Record Found</td></tr></table></div></form></html>",
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "success": true,
+        "records": [],
+        "total": 0,
+        "message": "No leave history found."
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        }
+      ]
+    },
+    {
+      "name": "ajax-pages",
+      "filter": "all",
+      "responses": [
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr><tr class=\"GridPager\"><td colspan=\"6\"><span>1</span><a href=\"javascript:__doPostBack('ctl00$ContentPlaceHolder1$grdLeaveDetails','Page$2')\">2</a></td></tr></table></div><script>PageRequestManager._initialize('ctl00$ScriptManager1', 'form1', ['tctl00$ContentPlaceHolder1$UpdatePanel1', 'ContentPlaceHolder1_UpdatePanel1'], [], [], 90, '');</script></form></html>",
+          "headers": {}
+        },
+        {
+          "status": 200,
+          "text": "769|updatePanel|ContentPlaceHolder1_UpdatePanel1|<input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\" type=\"radio\" value=\"pending\"/><input checked=\"\" id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\" type=\"radio\" value=\"all\"/><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>2</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>स्वीकृत</td></tr><tr class=\"GridPager\"><td colspan=\"6\"><span>2</span><a href=\"javascript:__doPostBack('ctl00$ContentPlaceHolder1$grdLeaveDetails','Page$1')\">1</a></td></tr></table>|6|hiddenField|__VIEWSTATE|view-2|4|hiddenField|__EVENTVALIDATION|ev-2|",
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "success": true,
+        "records": [
+          {
+            "sNo": "1",
+            "type": "CL",
+            "from_date": "01-10-2026",
+            "to_date": "02-10-2026",
+            "reason": "Reason",
+            "status": "Unprocessed"
+          },
+          {
+            "sNo": "2",
+            "type": "CL",
+            "from_date": "01-10-2026",
+            "to_date": "02-10-2026",
+            "reason": "Reason",
+            "status": "Approved"
+          }
+        ],
+        "total": 2
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        },
+        {
+          "method": "POST",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20,
+          "content": "__VIEWSTATE=view-1&__EVENTVALIDATION=ev-1&dup=1&dup=2&memo=two+%26+words+%21%28%29%2A%27~+%E0%A4%B9%E0%A4%BF%E0%A4%82%E0%A4%A6%E0%A5%80&choice=first&ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType=all&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24grdLeaveDetails&__EVENTARGUMENT=Page%242&ctl00%24ScriptManager1=ctl00%24ContentPlaceHolder1%24UpdatePanel1%7Cctl00%24ContentPlaceHolder1%24grdLeaveDetails&__ASYNCPOST=true",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+            "X-MicrosoftAjax": "Delta=true",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ajax-filter",
+      "filter": "pending",
+      "responses": [
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr></table></div><script>PageRequestManager._initialize('ctl00$ScriptManager1', 'form1', ['tctl00$ContentPlaceHolder1$UpdatePanel1', 'ContentPlaceHolder1_UpdatePanel1'], [], [], 90, '');</script></form></html>",
+          "headers": {}
+        },
+        {
+          "status": 200,
+          "text": "618|updatePanel|ContentPlaceHolder1_UpdatePanel1|<input checked=\"\" id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\" type=\"radio\" value=\"pending\"/><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\" type=\"radio\" value=\"all\"/><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr></table>|6|hiddenField|__VIEWSTATE|view-1|4|hiddenField|__EVENTVALIDATION|ev-1|",
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "success": true,
+        "records": [
+          {
+            "sNo": "1",
+            "type": "CL",
+            "from_date": "01-10-2026",
+            "to_date": "02-10-2026",
+            "reason": "Reason",
+            "status": "Unprocessed"
+          }
+        ],
+        "total": 1
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        },
+        {
+          "method": "POST",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20,
+          "content": "__VIEWSTATE=view-1&__EVENTVALIDATION=ev-1&dup=1&dup=2&memo=two+%26+words+%21%28%29%2A%27~+%E0%A4%B9%E0%A4%BF%E0%A4%82%E0%A4%A6%E0%A5%80&choice=first&ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType=pending&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType%240&__EVENTARGUMENT=&ctl00%24ScriptManager1=ctl00%24ContentPlaceHolder1%24UpdatePanel1%7Cctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType%240&__ASYNCPOST=true",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+            "X-MicrosoftAjax": "Delta=true",
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        }
+      ]
+    },
+    {
+      "name": "resume-page-one",
+      "filter": "all",
+      "responses": [
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-2\"><input name=\"__EVENTVALIDATION\" value=\"ev-2\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>2</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>स्वीकृत</td></tr><tr class=\"GridPager\"><td colspan=\"6\"><span>2</span><a href=\"javascript:__doPostBack('ctl00$ContentPlaceHolder1$grdLeaveDetails','Page$1')\">1</a></td></tr></table></div></form></html>",
+          "headers": {}
+        },
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr><tr class=\"GridPager\"><td colspan=\"6\"><span>1</span><a href=\"javascript:__doPostBack('ctl00$ContentPlaceHolder1$grdLeaveDetails','Page$2')\">2</a></td></tr></table></div></form></html>",
+          "headers": {}
+        },
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-2\"><input name=\"__EVENTVALIDATION\" value=\"ev-2\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>2</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>स्वीकृत</td></tr><tr class=\"GridPager\"><td colspan=\"6\"><span>2</span><a href=\"javascript:__doPostBack('ctl00$ContentPlaceHolder1$grdLeaveDetails','Page$1')\">1</a></td></tr></table></div></form></html>",
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "success": true,
+        "records": [
+          {
+            "sNo": "1",
+            "type": "CL",
+            "from_date": "01-10-2026",
+            "to_date": "02-10-2026",
+            "reason": "Reason",
+            "status": "Unprocessed"
+          },
+          {
+            "sNo": "2",
+            "type": "CL",
+            "from_date": "01-10-2026",
+            "to_date": "02-10-2026",
+            "reason": "Reason",
+            "status": "Approved"
+          }
+        ],
+        "total": 2
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        },
+        {
+          "method": "POST",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20,
+          "content": "__VIEWSTATE=view-2&__EVENTVALIDATION=ev-2&dup=1&dup=2&memo=two+%26+words+%21%28%29%2A%27~+%E0%A4%B9%E0%A4%BF%E0%A4%82%E0%A4%A6%E0%A5%80&choice=first&ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType=all&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24grdLeaveDetails&__EVENTARGUMENT=Page%241",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20,
+          "content": "__VIEWSTATE=view-1&__EVENTVALIDATION=ev-1&dup=1&dup=2&memo=two+%26+words+%21%28%29%2A%27~+%E0%A4%B9%E0%A4%BF%E0%A4%82%E0%A4%A6%E0%A5%80&choice=first&ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType=all&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24grdLeaveDetails&__EVENTARGUMENT=Page%242",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx"
+          }
+        }
+      ]
+    },
+    {
+      "name": "paging-expired",
+      "filter": "all",
+      "responses": [
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr><tr class=\"GridPager\"><td colspan=\"6\"><span>1</span><a href=\"javascript:__doPostBack('ctl00$ContentPlaceHolder1$grdLeaveDetails','Page$2')\">2</a></td></tr></table></div></form></html>",
+          "headers": {}
+        },
+        {
+          "status": 302,
+          "text": "",
+          "headers": {
+            "location": "stafflogin.aspx"
+          }
+        }
+      ],
+      "expected": {
+        "success": false,
+        "code": "SESSION_EXPIRED",
+        "message": "Session expired while paging history.",
+        "records": [
+          {
+            "sNo": "1",
+            "type": "CL",
+            "from_date": "01-10-2026",
+            "to_date": "02-10-2026",
+            "reason": "Reason",
+            "status": "Unprocessed"
+          }
+        ],
+        "partial": true,
+        "failed_page": 2
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        },
+        {
+          "method": "POST",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20,
+          "content": "__VIEWSTATE=view-1&__EVENTVALIDATION=ev-1&dup=1&dup=2&memo=two+%26+words+%21%28%29%2A%27~+%E0%A4%B9%E0%A4%BF%E0%A4%82%E0%A4%A6%E0%A5%80&choice=first&ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType=all&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24grdLeaveDetails&__EVENTARGUMENT=Page%242",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx"
+          }
+        }
+      ]
+    },
+    {
+      "name": "wrong-page",
+      "filter": "all",
+      "responses": [
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr><tr class=\"GridPager\"><td colspan=\"6\"><span>1</span><a href=\"javascript:__doPostBack('ctl00$ContentPlaceHolder1$grdLeaveDetails','Page$2')\">2</a></td></tr></table></div></form></html>",
+          "headers": {}
+        },
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-2\"><input name=\"__EVENTVALIDATION\" value=\"ev-2\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>2</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>स्वीकृत</td></tr></table></div></form></html>",
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "success": false,
+        "code": "PAGE_NOT_READY",
+        "message": "Portal did not confirm the requested history page.",
+        "records": [
+          {
+            "sNo": "1",
+            "type": "CL",
+            "from_date": "01-10-2026",
+            "to_date": "02-10-2026",
+            "reason": "Reason",
+            "status": "Unprocessed"
+          }
+        ],
+        "partial": true,
+        "failed_page": 2
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        },
+        {
+          "method": "POST",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20,
+          "content": "__VIEWSTATE=view-1&__EVENTVALIDATION=ev-1&dup=1&dup=2&memo=two+%26+words+%21%28%29%2A%27~+%E0%A4%B9%E0%A4%BF%E0%A4%82%E0%A4%A6%E0%A5%80&choice=first&ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType=all&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24grdLeaveDetails&__EVENTARGUMENT=Page%242",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx"
+          }
+        }
+      ]
+    },
+    {
+      "name": "invalid-grid",
+      "filter": "all",
+      "responses": [
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_other\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr><tr class=\"GridPager\"><td colspan=\"6\"><span>1</span><a href=\"javascript:__doPostBack('ctl00$ContentPlaceHolder1$other','Page$2')\">2</a></td></tr></table></div></form></html>",
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "success": false,
+        "code": "INVALID_RESULT",
+        "message": "Portal leave-history grid was not found.",
+        "records": []
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        }
+      ]
+    },
+    {
+      "name": "one-home-hop",
+      "filter": "all",
+      "responses": [
+        {
+          "status": 500,
+          "text": "maintenance",
+          "headers": {}
+        },
+        {
+          "status": 200,
+          "text": "<form><a id=\"logout\"></a></form>",
+          "headers": {}
+        },
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr></table></div></form></html>",
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "success": true,
+        "records": [
+          {
+            "sNo": "1",
+            "type": "CL",
+            "from_date": "01-10-2026",
+            "to_date": "02-10-2026",
+            "reason": "Reason",
+            "status": "Unprocessed"
+          }
+        ],
+        "total": 1
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        },
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/StaffHome.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        },
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        }
+      ]
+    },
+    {
+      "name": "no-post-retry",
+      "filter": "all",
+      "responses": [
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr><tr class=\"GridPager\"><td colspan=\"6\"><span>1</span><a href=\"javascript:__doPostBack('ctl00$ContentPlaceHolder1$grdLeaveDetails','Page$2')\">2</a></td></tr></table></div></form></html>",
+          "headers": {}
+        },
+        {
+          "status": 500,
+          "text": "error",
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "success": false,
+        "code": "PAGE_NOT_READY",
+        "message": "The Staff portal page is unavailable or rejected the postback.",
+        "records": [
+          {
+            "sNo": "1",
+            "type": "CL",
+            "from_date": "01-10-2026",
+            "to_date": "02-10-2026",
+            "reason": "Reason",
+            "status": "Unprocessed"
+          }
+        ],
+        "partial": true,
+        "failed_page": 2
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        },
+        {
+          "method": "POST",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20,
+          "content": "__VIEWSTATE=view-1&__EVENTVALIDATION=ev-1&dup=1&dup=2&memo=two+%26+words+%21%28%29%2A%27~+%E0%A4%B9%E0%A4%BF%E0%A4%82%E0%A4%A6%E0%A5%80&choice=first&ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType=all&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24grdLeaveDetails&__EVENTARGUMENT=Page%242",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx"
+          }
+        }
+      ]
+    },
+    {
+      "name": "filter-not-retained",
+      "filter": "pending",
+      "responses": [
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr></table></div></form></html>",
+          "headers": {}
+        },
+        {
+          "status": 200,
+          "text": "<html><form method=\"post\" action=\"Staff_LeaveApplication_Applied.aspx\"><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"view-1\"><input name=\"__EVENTVALIDATION\" value=\"ev-1\"><input name=\"dup\" value=\"1\"><input name=\"dup\" value=\"2\"><input name=\"disabled\" disabled value=\"NO\"><fieldset disabled><input name=\"disabled-field\" value=\"NO\"></fieldset><input type=\"submit\" name=\"apply\" value=\"NO\"><textarea name=\"memo\">two &amp; words !()*'~ हिंदी</textarea><select name=\"choice\"><option value=\"first\">F</option></select><div id=\"ContentPlaceHolder1_UpdatePanel1\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_0\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"pending\"  onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$0','')\"><input id=\"ContentPlaceHolder1_rdoLeaveApplicationType_1\" name=\"ctl00$ContentPlaceHolder1$rdoLeaveApplicationType\" type=\"radio\" value=\"all\" checked onclick=\"__doPostBack('ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$1','')\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>1</td><td>CL</td><td>01/10/2026</td><td>02/10/2026</td><td>Reason</td><td>Unprocessed</td></tr></table></div></form></html>",
+          "headers": {}
+        }
+      ],
+      "expected": {
+        "success": false,
+        "code": "PAGE_NOT_READY",
+        "message": "The Staff portal did not retain the requested leave history filter.",
+        "records": []
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20
+        },
+        {
+          "method": "POST",
+          "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+          "follow_redirects": false,
+          "timeout": 20,
+          "content": "__VIEWSTATE=view-1&__EVENTVALIDATION=ev-1&dup=1&dup=2&memo=two+%26+words+%21%28%29%2A%27~+%E0%A4%B9%E0%A4%BF%E0%A4%82%E0%A4%A6%E0%A5%80&choice=first&ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType=pending&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24rdoLeaveApplicationType%240&__EVENTARGUMENT=",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx"
+          }
+        }
+      ]
+    }
+  ],
+  "profiles": [
+    {
+      "html": "<div class=\"widget-heading\">A <b>B</b></div><div class=\"widget-subheading\">Teacher</div><span id=\"grd_NMMSApplicationFilled_lblName1\">A (12345)</span>",
+      "user": "99",
+      "expected": {
+        "name": "A B",
+        "designation": "Teacher",
+        "nicId": "12345",
+        "staffLoginId": "99"
+      }
+    },
+    {
+      "html": "<span id=\"ContentPlaceHolder1_lblStaffName\">Second</span>",
+      "user": "99",
+      "expected": {
+        "name": "Second",
+        "designation": "Unknown",
+        "nicId": "99",
+        "staffLoginId": "99"
+      }
+    },
+    {
+      "html": "<div class=\"widget-heading\"> </div><span id=\"ContentPlaceHolder1_lblStaffName\">Second</span>",
+      "user": "99",
+      "expected": {
+        "code": "INVALID_RESULT",
+        "message": "Staff profile name could not be read."
+      }
+    }
+  ],
+  "p10": [
+    {
+      "html": "",
+      "expected": {
+        "p10Status": "Unknown",
+        "isLocked": "false",
+        "p10StatusKnown": "false"
+      }
+    },
+    {
+      "html": "<span id=\"spn_StatusPercen\">100%</span>",
+      "expected": {
+        "p10Status": "Active / Locked",
+        "isLocked": "true",
+        "p10StatusKnown": "true"
+      }
+    },
+    {
+      "html": "<span id=\"spn_StatusPercen\">75%</span>",
+      "expected": {
+        "p10Status": "Pending (75%)",
+        "isLocked": "false",
+        "p10StatusKnown": "true"
+      }
+    },
+    {
+      "html": "<span id=\"spn_StatusPercen\"></span>",
+      "expected": {
+        "p10Status": "Pending ()",
+        "isLocked": "false",
+        "p10StatusKnown": "true"
+      }
+    }
+  ]
+}

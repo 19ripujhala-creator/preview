@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "complete": false,
+  "code": "ENROLMENT_REPORT_INCOMPLETE",
+  "message": "Duplicate class rows in enrolment report."
+}

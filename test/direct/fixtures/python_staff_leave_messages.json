@@ -1,0 +1,30 @@
+[
+  {
+    "html": "<div id=\"msgDiv\">Leave Request Applied <button>Close</button></div>",
+    "expected": "Leave Request Applied"
+  },
+  {
+    "html": "<div id=\"msg_Success\">Not updated successfully</div>",
+    "expected": "Not updated successfully"
+  },
+  {
+    "html": "<div id=\"MsgPopup\"><span>Already</span><b>applied</b></div>",
+    "expected": "Already applied"
+  },
+  {
+    "html": "<div id=\"AlreadyApplyPopup\">A duplicate request <button>Close</button></div>",
+    "expected": "A duplicate request Close"
+  },
+  {
+    "html": "<p>Leave Request Modified</p>",
+    "expected": "Leave Request Modified"
+  },
+  {
+    "html": "<p>Leave Request <b>Applied</b></p>",
+    "expected": null
+  },
+  {
+    "html": "<html></html>",
+    "expected": null
+  }
+]

@@ -1,0 +1,60 @@
+[
+  {
+    "__VIEWSTATE": "LEAVE_STATE",
+    "__EVENTVALIDATION": "LEAVE_VALID",
+    "__EVENTTARGET": "ctl00$ContentPlaceHolder1$grdSchoolList$ctl02$lnkSchoolName",
+    "__EVENTARGUMENT": ""
+  },
+  {
+    "__VIEWSTATE": "LEAVE_STATE",
+    "__EVENTVALIDATION": "LEAVE_VALID",
+    "__EVENTTARGET": "ctl00$ContentPlaceHolder1$grdSchoolList$ctl02$lnkSchoolName",
+    "__EVENTARGUMENT": ""
+  },
+  {
+    "__VIEWSTATE": "LEAVE_STATE",
+    "__EVENTVALIDATION": "LEAVE_VALID",
+    "__EVENTTARGET": "",
+    "__EVENTARGUMENT": "",
+    "g$0$hdn_Id": "501",
+    "g$0$chkBox": "on",
+    "g$0$txtFromDateApproved": "10/10/2026",
+    "g$0$txtToDateApproved": "10/10/2026",
+    "g$0$txtTotalDaysApproved": "1",
+    "g$0$txtRemark": "Reviewed",
+    "g$1$hdn_Id": "502",
+    "g$1$chkBox": "on",
+    "g$1$txtFromDateApproved": "10/10/2026",
+    "g$1$txtToDateApproved": "10/10/2026",
+    "g$1$txtTotalDaysApproved": "1",
+    "g$1$txtRemark": "",
+    "ctl00$ContentPlaceHolder1$btnApprove": "Process",
+    "g$0$ddlLLeaveStatus": "1",
+    "g$1$ddlLLeaveStatus": "2"
+  },
+  {
+    "__VIEWSTATE": "LEAVE_STATE",
+    "__EVENTVALIDATION": "LEAVE_VALID",
+    "__EVENTTARGET": "ctl00$ContentPlaceHolder1$grdSchoolList$ctl02$lnkSchoolName",
+    "__EVENTARGUMENT": ""
+  },
+  {
+    "__VIEWSTATE": "LEAVE_STATE",
+    "__EVENTVALIDATION": "LEAVE_VALID",
+    "__EVENTTARGET": "ctl00$ContentPlaceHolder1$rdoLeaveApplicationType$4",
+    "__EVENTARGUMENT": "",
+    "g$0$hdn_Id": "501",
+    "g$0$txtFromDateApproved": "10/10/2026",
+    "g$0$txtToDateApproved": "10/10/2026",
+    "g$0$txtTotalDaysApproved": "1",
+    "g$0$ddlLLeaveStatus": "0",
+    "g$0$txtRemark": "",
+    "g$1$hdn_Id": "502",
+    "g$1$txtFromDateApproved": "10/10/2026",
+    "g$1$txtToDateApproved": "10/10/2026",
+    "g$1$txtTotalDaysApproved": "1",
+    "g$1$ddlLLeaveStatus": "0",
+    "g$1$txtRemark": "",
+    "ctl00$ContentPlaceHolder1$rdoLeaveApplicationType": "9"
+  }
+]

@@ -1,0 +1,234 @@
+{
+  "form": {
+    "grid_id": "ContentPlaceHolder1_grd_Add",
+    "sections": [
+      {
+        "title": "1",
+        "teacher": "Teacher 1",
+        "fields": [
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblBoys_0",
+            "label": "Boys · Strength",
+            "value": "10",
+            "options": [],
+            "required": false,
+            "readonly": true,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblBoys_Tablet_0",
+            "label": "Boys · 4+",
+            "value": "6",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false,
+            "required_message": "कृपया विद्यार्थियों की संख्या भरें"
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblBoys_TabletLessThen4_0",
+            "label": "Boys · Under 4",
+            "value": "2",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false,
+            "required_message": "कृपया विद्यार्थियों की संख्या भरें"
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblBoys_TabletNoConsumption_0",
+            "label": "Boys · No consumption",
+            "value": "2",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false,
+            "required_message": "कृपया विद्यार्थियों की संख्या भरें"
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblGirls_0",
+            "label": "Girls · Strength",
+            "value": "10",
+            "options": [],
+            "required": false,
+            "readonly": true,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblGirls_Tablet_0",
+            "label": "Girls · 4+",
+            "value": "6",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false,
+            "required_message": "कृपया विद्यार्थियों की संख्या भरें"
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblGirls_TabletLessThen4_0",
+            "label": "Girls · Under 4",
+            "value": "2",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false,
+            "required_message": "कृपया विद्यार्थियों की संख्या भरें"
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblGirls_TabletNoConsumption_0",
+            "label": "Girls · No consumption",
+            "value": "2",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false,
+            "required_message": "कृपया विद्यार्थियों की संख्या भरें"
+          }
+        ],
+        "identity": {
+          "ContentPlaceHolder1_grd_Add_hdnClassID_0": "1"
+        }
+      },
+      {
+        "title": "2",
+        "teacher": "Teacher 2",
+        "fields": [
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblBoys_1",
+            "label": "Boys · Strength",
+            "value": "10",
+            "options": [],
+            "required": false,
+            "readonly": true,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblBoys_Tablet_1",
+            "label": "Boys · 4+",
+            "value": "6",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false,
+            "required_message": "कृपया विद्यार्थियों की संख्या भरें"
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblBoys_TabletLessThen4_1",
+            "label": "Boys · Under 4",
+            "value": "2",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false,
+            "required_message": "कृपया विद्यार्थियों की संख्या भरें"
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblBoys_TabletNoConsumption_1",
+            "label": "Boys · No consumption",
+            "value": "2",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false,
+            "required_message": "कृपया विद्यार्थियों की संख्या भरें"
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblGirls_1",
+            "label": "Girls · Strength",
+            "value": "10",
+            "options": [],
+            "required": false,
+            "readonly": true,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblGirls_Tablet_1",
+            "label": "Girls · 4+",
+            "value": "6",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false,
+            "required_message": "कृपया विद्यार्थियों की संख्या भरें"
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblGirls_TabletLessThen4_1",
+            "label": "Girls · Under 4",
+            "value": "2",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false,
+            "required_message": "कृपया विद्यार्थियों की संख्या भरें"
+          },
+          {
+            "id": "ContentPlaceHolder1_grd_Add_lblGirls_TabletNoConsumption_1",
+            "label": "Girls · No consumption",
+            "value": "2",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 0,
+            "date": false,
+            "required_message": "कृपया विद्यार्थियों की संख्या भरें"
+          }
+        ],
+        "identity": {
+          "ContentPlaceHolder1_grd_Add_hdnClassID_1": "2"
+        }
+      }
+    ],
+    "school_id": "123456",
+    "selection": {
+      "period": "9"
+    }
+  },
+  "values": {
+    "ContentPlaceHolder1_grd_Add_lblBoys_Tablet_0": "6",
+    "ContentPlaceHolder1_grd_Add_lblBoys_TabletLessThen4_0": "2",
+    "ContentPlaceHolder1_grd_Add_lblBoys_TabletNoConsumption_0": "2",
+    "ContentPlaceHolder1_grd_Add_lblGirls_Tablet_0": "6",
+    "ContentPlaceHolder1_grd_Add_lblGirls_TabletLessThen4_0": "2",
+    "ContentPlaceHolder1_grd_Add_lblGirls_TabletNoConsumption_0": "2",
+    "ContentPlaceHolder1_grd_Add_lblBoys_Tablet_1": "6",
+    "ContentPlaceHolder1_grd_Add_lblBoys_TabletLessThen4_1": "2",
+    "ContentPlaceHolder1_grd_Add_lblBoys_TabletNoConsumption_1": "2",
+    "ContentPlaceHolder1_grd_Add_lblGirls_Tablet_1": "6",
+    "ContentPlaceHolder1_grd_Add_lblGirls_TabletLessThen4_1": "2",
+    "ContentPlaceHolder1_grd_Add_lblGirls_TabletNoConsumption_1": "2"
+  },
+  "result": {
+    "success": true
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "success": true,
+  "message": "Class mapping fetched successfully",
+  "data": [
+    {
+      "index": 0,
+      "class_id": "1",
+      "class_section_id": "10",
+      "teacher_profile_id": "101",
+      "session": "2026-27",
+      "class": "1",
+      "section": "A",
+      "selected_teacher_id": "101",
+      "teachers_list": [
+        {
+          "id": "0",
+          "name": "Select Teacher"
+        },
+        {
+          "id": "101",
+          "name": "Teacher A"
+        },
+        {
+          "id": "102",
+          "name": "Teacher B"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "class_id": "2",
+      "class_section_id": "11",
+      "teacher_profile_id": "102",
+      "session": "2026-27",
+      "class": "2",
+      "section": "A",
+      "selected_teacher_id": "102",
+      "teachers_list": [
+        {
+          "id": "0",
+          "name": "Select Teacher"
+        },
+        {
+          "id": "101",
+          "name": "Teacher A"
+        },
+        {
+          "id": "102",
+          "name": "Teacher B"
+        }
+      ]
+    }
+  ]
+}

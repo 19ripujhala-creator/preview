@@ -1,0 +1,1081 @@
+[
+  {
+    "mode": "valid",
+    "form": {
+      "task": "ranking",
+      "selectors": [
+        {
+          "id": "ContentPlaceHolder1_ddlMonth1",
+          "label": "Month",
+          "value": "9",
+          "options": [
+            {
+              "value": "0",
+              "label": "0"
+            },
+            {
+              "value": "9",
+              "label": "9"
+            },
+            {
+              "value": "8",
+              "label": "8"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        },
+        {
+          "id": "ContentPlaceHolder1_ddlyear",
+          "label": "Year",
+          "value": "2026",
+          "options": [
+            {
+              "value": "2026",
+              "label": "2026"
+            },
+            {
+              "value": "2025",
+              "label": "2025"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        }
+      ],
+      "sections": [
+        {
+          "title": "District Entry Data Ranking",
+          "fields": [
+            {
+              "id": "ContentPlaceHolder1_txtaward",
+              "label": "txtaward",
+              "value": "1",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या अवार्ड एंट्री की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtlibbooks",
+              "label": "txtlibbooks",
+              "value": "2",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या वितरित पुस्तकों की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtsports",
+              "label": "txtsports",
+              "value": "3",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "Sports participation is required"
+            },
+            {
+              "id": "ContentPlaceHolder1_TextBox1",
+              "label": "TextBox1",
+              "value": "01-09-2026",
+              "options": [],
+              "required": false,
+              "readonly": false,
+              "numeric": false,
+              "maxlength": 0,
+              "date": true
+            }
+          ],
+          "identity": {}
+        }
+      ],
+      "history": [],
+      "can_submit": true,
+      "can_lock": false,
+      "locked": false,
+      "lock_date": null,
+      "completed": false,
+      "no_records": false,
+      "message": "",
+      "selection": {
+        "ContentPlaceHolder1_ddlMonth1": "9",
+        "ContentPlaceHolder1_ddlyear": "2026"
+      },
+      "history_complete": true,
+      "editing": false,
+      "can_edit": false,
+      "can_delete": false
+    },
+    "values": {
+      "ContentPlaceHolder1_txtaward": "1",
+      "ContentPlaceHolder1_txtlibbooks": "2",
+      "ContentPlaceHolder1_txtsports": "3",
+      "ContentPlaceHolder1_TextBox1": "01-09-2026"
+    },
+    "result": {
+      "success": true
+    }
+  },
+  {
+    "mode": "required",
+    "form": {
+      "task": "ranking",
+      "selectors": [
+        {
+          "id": "ContentPlaceHolder1_ddlMonth1",
+          "label": "Month",
+          "value": "9",
+          "options": [
+            {
+              "value": "0",
+              "label": "0"
+            },
+            {
+              "value": "9",
+              "label": "9"
+            },
+            {
+              "value": "8",
+              "label": "8"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        },
+        {
+          "id": "ContentPlaceHolder1_ddlyear",
+          "label": "Year",
+          "value": "2026",
+          "options": [
+            {
+              "value": "2026",
+              "label": "2026"
+            },
+            {
+              "value": "2025",
+              "label": "2025"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        }
+      ],
+      "sections": [
+        {
+          "title": "District Entry Data Ranking",
+          "fields": [
+            {
+              "id": "ContentPlaceHolder1_txtaward",
+              "label": "txtaward",
+              "value": "1",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या अवार्ड एंट्री की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtlibbooks",
+              "label": "txtlibbooks",
+              "value": "2",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या वितरित पुस्तकों की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtsports",
+              "label": "txtsports",
+              "value": "3",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "Sports participation is required"
+            },
+            {
+              "id": "ContentPlaceHolder1_TextBox1",
+              "label": "TextBox1",
+              "value": "01-09-2026",
+              "options": [],
+              "required": false,
+              "readonly": false,
+              "numeric": false,
+              "maxlength": 0,
+              "date": true
+            }
+          ],
+          "identity": {}
+        }
+      ],
+      "history": [],
+      "can_submit": true,
+      "can_lock": false,
+      "locked": false,
+      "lock_date": null,
+      "completed": false,
+      "no_records": false,
+      "message": "",
+      "selection": {
+        "ContentPlaceHolder1_ddlMonth1": "9",
+        "ContentPlaceHolder1_ddlyear": "2026"
+      },
+      "history_complete": true,
+      "editing": false,
+      "can_edit": false,
+      "can_delete": false
+    },
+    "values": {
+      "ContentPlaceHolder1_txtaward": "",
+      "ContentPlaceHolder1_txtlibbooks": "2",
+      "ContentPlaceHolder1_txtsports": "3",
+      "ContentPlaceHolder1_TextBox1": "01-09-2026"
+    },
+    "result": {
+      "success": false,
+      "code": "INVALID_PAYLOAD",
+      "message": "कृप्या अवार्ड एंट्री की प्रविष्ठी करें",
+      "field_errors": {
+        "ContentPlaceHolder1_txtaward": "कृप्या अवार्ड एंट्री की प्रविष्ठी करें"
+      }
+    }
+  },
+  {
+    "mode": "numeric",
+    "form": {
+      "task": "ranking",
+      "selectors": [
+        {
+          "id": "ContentPlaceHolder1_ddlMonth1",
+          "label": "Month",
+          "value": "9",
+          "options": [
+            {
+              "value": "0",
+              "label": "0"
+            },
+            {
+              "value": "9",
+              "label": "9"
+            },
+            {
+              "value": "8",
+              "label": "8"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        },
+        {
+          "id": "ContentPlaceHolder1_ddlyear",
+          "label": "Year",
+          "value": "2026",
+          "options": [
+            {
+              "value": "2026",
+              "label": "2026"
+            },
+            {
+              "value": "2025",
+              "label": "2025"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        }
+      ],
+      "sections": [
+        {
+          "title": "District Entry Data Ranking",
+          "fields": [
+            {
+              "id": "ContentPlaceHolder1_txtaward",
+              "label": "txtaward",
+              "value": "1",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या अवार्ड एंट्री की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtlibbooks",
+              "label": "txtlibbooks",
+              "value": "2",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या वितरित पुस्तकों की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtsports",
+              "label": "txtsports",
+              "value": "3",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "Sports participation is required"
+            },
+            {
+              "id": "ContentPlaceHolder1_TextBox1",
+              "label": "TextBox1",
+              "value": "01-09-2026",
+              "options": [],
+              "required": false,
+              "readonly": false,
+              "numeric": false,
+              "maxlength": 0,
+              "date": true
+            }
+          ],
+          "identity": {}
+        }
+      ],
+      "history": [],
+      "can_submit": true,
+      "can_lock": false,
+      "locked": false,
+      "lock_date": null,
+      "completed": false,
+      "no_records": false,
+      "message": "",
+      "selection": {
+        "ContentPlaceHolder1_ddlMonth1": "9",
+        "ContentPlaceHolder1_ddlyear": "2026"
+      },
+      "history_complete": true,
+      "editing": false,
+      "can_edit": false,
+      "can_delete": false
+    },
+    "values": {
+      "ContentPlaceHolder1_txtaward": "-1",
+      "ContentPlaceHolder1_txtlibbooks": "2",
+      "ContentPlaceHolder1_txtsports": "3",
+      "ContentPlaceHolder1_TextBox1": "01-09-2026"
+    },
+    "result": {
+      "success": false,
+      "code": "INVALID_PAYLOAD",
+      "message": "txtaward: enter a non-negative whole number.",
+      "field_errors": {
+        "ContentPlaceHolder1_txtaward": "Enter a non-negative whole number."
+      }
+    }
+  },
+  {
+    "mode": "unicode",
+    "form": {
+      "task": "ranking",
+      "selectors": [
+        {
+          "id": "ContentPlaceHolder1_ddlMonth1",
+          "label": "Month",
+          "value": "9",
+          "options": [
+            {
+              "value": "0",
+              "label": "0"
+            },
+            {
+              "value": "9",
+              "label": "9"
+            },
+            {
+              "value": "8",
+              "label": "8"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        },
+        {
+          "id": "ContentPlaceHolder1_ddlyear",
+          "label": "Year",
+          "value": "2026",
+          "options": [
+            {
+              "value": "2026",
+              "label": "2026"
+            },
+            {
+              "value": "2025",
+              "label": "2025"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        }
+      ],
+      "sections": [
+        {
+          "title": "District Entry Data Ranking",
+          "fields": [
+            {
+              "id": "ContentPlaceHolder1_txtaward",
+              "label": "txtaward",
+              "value": "1",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या अवार्ड एंट्री की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtlibbooks",
+              "label": "txtlibbooks",
+              "value": "2",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या वितरित पुस्तकों की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtsports",
+              "label": "txtsports",
+              "value": "3",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "Sports participation is required"
+            },
+            {
+              "id": "ContentPlaceHolder1_TextBox1",
+              "label": "TextBox1",
+              "value": "01-09-2026",
+              "options": [],
+              "required": false,
+              "readonly": false,
+              "numeric": false,
+              "maxlength": 0,
+              "date": true
+            }
+          ],
+          "identity": {}
+        }
+      ],
+      "history": [],
+      "can_submit": true,
+      "can_lock": false,
+      "locked": false,
+      "lock_date": null,
+      "completed": false,
+      "no_records": false,
+      "message": "",
+      "selection": {
+        "ContentPlaceHolder1_ddlMonth1": "9",
+        "ContentPlaceHolder1_ddlyear": "2026"
+      },
+      "history_complete": true,
+      "editing": false,
+      "can_edit": false,
+      "can_delete": false
+    },
+    "values": {
+      "ContentPlaceHolder1_txtaward": "१२",
+      "ContentPlaceHolder1_txtlibbooks": "2",
+      "ContentPlaceHolder1_txtsports": "3",
+      "ContentPlaceHolder1_TextBox1": "01-09-2026"
+    },
+    "result": {
+      "success": true
+    }
+  },
+  {
+    "mode": "length",
+    "form": {
+      "task": "ranking",
+      "selectors": [
+        {
+          "id": "ContentPlaceHolder1_ddlMonth1",
+          "label": "Month",
+          "value": "9",
+          "options": [
+            {
+              "value": "0",
+              "label": "0"
+            },
+            {
+              "value": "9",
+              "label": "9"
+            },
+            {
+              "value": "8",
+              "label": "8"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        },
+        {
+          "id": "ContentPlaceHolder1_ddlyear",
+          "label": "Year",
+          "value": "2026",
+          "options": [
+            {
+              "value": "2026",
+              "label": "2026"
+            },
+            {
+              "value": "2025",
+              "label": "2025"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        }
+      ],
+      "sections": [
+        {
+          "title": "District Entry Data Ranking",
+          "fields": [
+            {
+              "id": "ContentPlaceHolder1_txtaward",
+              "label": "txtaward",
+              "value": "1",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या अवार्ड एंट्री की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtlibbooks",
+              "label": "txtlibbooks",
+              "value": "2",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या वितरित पुस्तकों की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtsports",
+              "label": "txtsports",
+              "value": "3",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "Sports participation is required"
+            },
+            {
+              "id": "ContentPlaceHolder1_TextBox1",
+              "label": "TextBox1",
+              "value": "01-09-2026",
+              "options": [],
+              "required": false,
+              "readonly": false,
+              "numeric": false,
+              "maxlength": 0,
+              "date": true
+            }
+          ],
+          "identity": {}
+        }
+      ],
+      "history": [],
+      "can_submit": true,
+      "can_lock": false,
+      "locked": false,
+      "lock_date": null,
+      "completed": false,
+      "no_records": false,
+      "message": "",
+      "selection": {
+        "ContentPlaceHolder1_ddlMonth1": "9",
+        "ContentPlaceHolder1_ddlyear": "2026"
+      },
+      "history_complete": true,
+      "editing": false,
+      "can_edit": false,
+      "can_delete": false
+    },
+    "values": {
+      "ContentPlaceHolder1_txtaward": "123456789",
+      "ContentPlaceHolder1_txtlibbooks": "2",
+      "ContentPlaceHolder1_txtsports": "3",
+      "ContentPlaceHolder1_TextBox1": "01-09-2026"
+    },
+    "result": {
+      "success": false,
+      "code": "INVALID_PAYLOAD",
+      "message": "txtaward: maximum 8 characters.",
+      "field_errors": {
+        "ContentPlaceHolder1_txtaward": "Maximum 8 characters."
+      }
+    }
+  },
+  {
+    "mode": "date",
+    "form": {
+      "task": "ranking",
+      "selectors": [
+        {
+          "id": "ContentPlaceHolder1_ddlMonth1",
+          "label": "Month",
+          "value": "9",
+          "options": [
+            {
+              "value": "0",
+              "label": "0"
+            },
+            {
+              "value": "9",
+              "label": "9"
+            },
+            {
+              "value": "8",
+              "label": "8"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        },
+        {
+          "id": "ContentPlaceHolder1_ddlyear",
+          "label": "Year",
+          "value": "2026",
+          "options": [
+            {
+              "value": "2026",
+              "label": "2026"
+            },
+            {
+              "value": "2025",
+              "label": "2025"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        }
+      ],
+      "sections": [
+        {
+          "title": "District Entry Data Ranking",
+          "fields": [
+            {
+              "id": "ContentPlaceHolder1_txtaward",
+              "label": "txtaward",
+              "value": "1",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या अवार्ड एंट्री की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtlibbooks",
+              "label": "txtlibbooks",
+              "value": "2",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या वितरित पुस्तकों की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtsports",
+              "label": "txtsports",
+              "value": "3",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "Sports participation is required"
+            },
+            {
+              "id": "ContentPlaceHolder1_TextBox1",
+              "label": "TextBox1",
+              "value": "01-09-2026",
+              "options": [],
+              "required": false,
+              "readonly": false,
+              "numeric": false,
+              "maxlength": 0,
+              "date": true
+            }
+          ],
+          "identity": {}
+        }
+      ],
+      "history": [],
+      "can_submit": true,
+      "can_lock": false,
+      "locked": false,
+      "lock_date": null,
+      "completed": false,
+      "no_records": false,
+      "message": "",
+      "selection": {
+        "ContentPlaceHolder1_ddlMonth1": "9",
+        "ContentPlaceHolder1_ddlyear": "2026"
+      },
+      "history_complete": true,
+      "editing": false,
+      "can_edit": false,
+      "can_delete": false
+    },
+    "values": {
+      "ContentPlaceHolder1_txtaward": "1",
+      "ContentPlaceHolder1_txtlibbooks": "2",
+      "ContentPlaceHolder1_txtsports": "3",
+      "ContentPlaceHolder1_TextBox1": "31-02-2026"
+    },
+    "result": {
+      "success": false,
+      "code": "INVALID_PAYLOAD",
+      "message": "Use a valid date in DD-MM-YYYY format.",
+      "field_errors": {}
+    }
+  },
+  {
+    "mode": "range",
+    "form": {
+      "task": "ranking",
+      "selectors": [
+        {
+          "id": "ContentPlaceHolder1_ddlMonth1",
+          "label": "Month",
+          "value": "9",
+          "options": [
+            {
+              "value": "0",
+              "label": "0"
+            },
+            {
+              "value": "9",
+              "label": "9"
+            },
+            {
+              "value": "8",
+              "label": "8"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        },
+        {
+          "id": "ContentPlaceHolder1_ddlyear",
+          "label": "Year",
+          "value": "2026",
+          "options": [
+            {
+              "value": "2026",
+              "label": "2026"
+            },
+            {
+              "value": "2025",
+              "label": "2025"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        }
+      ],
+      "sections": [
+        {
+          "title": "District Entry Data Ranking",
+          "fields": [
+            {
+              "id": "ContentPlaceHolder1_txtaward",
+              "label": "txtaward",
+              "value": "1",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या अवार्ड एंट्री की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtlibbooks",
+              "label": "txtlibbooks",
+              "value": "2",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या वितरित पुस्तकों की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtsports",
+              "label": "txtsports",
+              "value": "3",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "Sports participation is required"
+            },
+            {
+              "id": "ContentPlaceHolder1_TextBox1",
+              "label": "TextBox1",
+              "value": "01-09-2026",
+              "options": [],
+              "required": false,
+              "readonly": false,
+              "numeric": false,
+              "maxlength": 0,
+              "date": true
+            }
+          ],
+          "identity": {}
+        }
+      ],
+      "history": [],
+      "can_submit": true,
+      "can_lock": false,
+      "locked": false,
+      "lock_date": null,
+      "completed": false,
+      "no_records": false,
+      "message": "",
+      "selection": {
+        "ContentPlaceHolder1_ddlMonth1": "9",
+        "ContentPlaceHolder1_ddlyear": "2026"
+      },
+      "history_complete": true,
+      "editing": false,
+      "can_edit": false,
+      "can_delete": false
+    },
+    "values": {
+      "ContentPlaceHolder1_txtaward": "1",
+      "ContentPlaceHolder1_txtlibbooks": "2",
+      "ContentPlaceHolder1_txtsports": "3",
+      "ContentPlaceHolder1_TextBox1": "01-01-2023"
+    },
+    "result": {
+      "success": false,
+      "code": "INVALID_PAYLOAD",
+      "message": "Meeting date is outside the portal date range.",
+      "field_errors": {}
+    }
+  },
+  {
+    "mode": "stale",
+    "form": {
+      "task": "ranking",
+      "selectors": [
+        {
+          "id": "ContentPlaceHolder1_ddlMonth1",
+          "label": "Month",
+          "value": "9",
+          "options": [
+            {
+              "value": "0",
+              "label": "0"
+            },
+            {
+              "value": "9",
+              "label": "9"
+            },
+            {
+              "value": "8",
+              "label": "8"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        },
+        {
+          "id": "ContentPlaceHolder1_ddlyear",
+          "label": "Year",
+          "value": "2026",
+          "options": [
+            {
+              "value": "2026",
+              "label": "2026"
+            },
+            {
+              "value": "2025",
+              "label": "2025"
+            }
+          ],
+          "required": false,
+          "readonly": false,
+          "numeric": false,
+          "maxlength": 0,
+          "date": false
+        }
+      ],
+      "sections": [
+        {
+          "title": "District Entry Data Ranking",
+          "fields": [
+            {
+              "id": "ContentPlaceHolder1_txtaward",
+              "label": "txtaward",
+              "value": "1",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या अवार्ड एंट्री की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtlibbooks",
+              "label": "txtlibbooks",
+              "value": "2",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "कृप्या वितरित पुस्तकों की प्रविष्ठी करें"
+            },
+            {
+              "id": "ContentPlaceHolder1_txtsports",
+              "label": "txtsports",
+              "value": "3",
+              "options": [],
+              "required": true,
+              "readonly": false,
+              "numeric": true,
+              "maxlength": 8,
+              "date": false,
+              "required_message": "Sports participation is required"
+            },
+            {
+              "id": "ContentPlaceHolder1_TextBox1",
+              "label": "TextBox1",
+              "value": "01-09-2026",
+              "options": [],
+              "required": false,
+              "readonly": false,
+              "numeric": false,
+              "maxlength": 0,
+              "date": true
+            }
+          ],
+          "identity": {}
+        }
+      ],
+      "history": [],
+      "can_submit": true,
+      "can_lock": false,
+      "locked": false,
+      "lock_date": null,
+      "completed": false,
+      "no_records": false,
+      "message": "",
+      "selection": {
+        "ContentPlaceHolder1_ddlMonth1": "9",
+        "ContentPlaceHolder1_ddlyear": "2026"
+      },
+      "history_complete": true,
+      "editing": false,
+      "can_edit": false,
+      "can_delete": false
+    },
+    "values": {
+      "ContentPlaceHolder1_txtlibbooks": "2",
+      "ContentPlaceHolder1_txtsports": "3",
+      "ContentPlaceHolder1_TextBox1": "01-09-2026"
+    },
+    "result": {
+      "success": false,
+      "code": "STALE_FORM",
+      "message": "Form fields changed. Reload before submitting.",
+      "field_errors": {}
+    }
+  }
+]

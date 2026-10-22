@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "complete": false,
+  "code": "ENROLMENT_REPORT_INCOMPLETE",
+  "message": "Portal enrolment Boys/Girls/Total do not reconcile."
+}

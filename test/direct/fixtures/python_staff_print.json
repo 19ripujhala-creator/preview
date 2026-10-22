@@ -1,0 +1,117 @@
+{
+  "source": "leave_apply_worker(5).py print section; Format-10 markers from format10_worker.py",
+  "dates": [
+    {
+      "input": "",
+      "expected": ""
+    },
+    {
+      "input": "2026-10-01",
+      "expected": "01-10-2026"
+    },
+    {
+      "input": "2026-10-01T12:00:00",
+      "expected": "01-10-2026"
+    },
+    {
+      "input": "01/10/2026",
+      "expected": "01-10-2026"
+    },
+    {
+      "input": "01-10-2026 extra",
+      "expected": "01-10-2026"
+    },
+    {
+      "input": "01-10-2026suffix",
+      "expected": "01-10-2026"
+    },
+    {
+      "input": "2026-10-01suffix",
+      "expected": "01-10-2026"
+    },
+    {
+      "input": "1/10/2026",
+      "expected": "1/10/2026"
+    },
+    {
+      "input": "invalid",
+      "expected": "invalid"
+    }
+  ],
+  "html": "<table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>3</td><td>ML</td><td>01-10-2026</td><td>03-10-2026</td><td><input id=\"ContentPlaceHolder1_grdLeaveDetails_ImgView_2\"></td></tr></table>",
+  "rows": [
+    {
+      "args": {
+        "s_no": "3",
+        "from_date": "01-10-2026",
+        "to_date": "03-10-2026",
+        "leave_type": "Maternity Leave / मातृत्व अवकाश (ML)"
+      },
+      "expected": "ContentPlaceHolder1_grdLeaveDetails_ImgView_2"
+    },
+    {
+      "args": {
+        "s_no": null,
+        "from_date": "01-10-2026",
+        "to_date": "03-10-2026",
+        "leave_type": "Maternity Leave"
+      },
+      "expected": "ContentPlaceHolder1_grdLeaveDetails_ImgView_2"
+    },
+    {
+      "args": {
+        "s_no": "4",
+        "from_date": "01-10-2026",
+        "to_date": "03-10-2026",
+        "leave_type": "ML"
+      },
+      "expected": null
+    },
+    {
+      "args": {
+        "s_no": "3",
+        "from_date": "02-10-2026",
+        "to_date": "03-10-2026",
+        "leave_type": "ML"
+      },
+      "expected": null
+    },
+    {
+      "args": {
+        "s_no": null,
+        "from_date": "01-10-2026",
+        "to_date": null,
+        "leave_type": "Other Leave"
+      },
+      "expected": null
+    },
+    {
+      "args": {
+        "s_no": null,
+        "from_date": null,
+        "to_date": null,
+        "leave_type": "ML"
+      },
+      "expected": null
+    }
+  ],
+  "required": {
+    "divCLLeaveApplication": [
+      "स्कूल शिक्षा विभाग",
+      "आकस्मिक अवकाश के लिए आवेदन प्रपत्र",
+      "आवेदक का नाम",
+      "पद नाम"
+    ],
+    "divAllLeaveApplication": [
+      "स्कूल शिक्षा विभाग",
+      "राजस्थान सेवा नियमों के अन्तर्गत अवकाश के लिए आवेदन प्रपत्र",
+      "आवेदक का नाम",
+      "पद नाम"
+    ],
+    "divCCLApplication": [
+      "APPLICATION FOR CHILD CARE LEAVE",
+      "Name of the Applicant",
+      "Designation"
+    ]
+  }
+}

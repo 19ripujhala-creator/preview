@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "complete": false,
+  "code": "SESSION_EXPIRED",
+  "message": "School portal session expired."
+}

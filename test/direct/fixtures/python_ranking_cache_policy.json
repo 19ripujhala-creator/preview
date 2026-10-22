@@ -1,0 +1,95 @@
+[
+  {
+    "date": "2027-01-01T00:00:00",
+    "cached": null,
+    "due": {
+      "year": 2026,
+      "month": 12
+    },
+    "check": true
+  },
+  {
+    "date": "2027-01-01T00:00:00",
+    "cached": {
+      "completed": true
+    },
+    "due": {
+      "year": 2026,
+      "month": 12
+    },
+    "check": false
+  },
+  {
+    "date": "2027-01-01T00:00:00",
+    "cached": {
+      "completed": false
+    },
+    "due": {
+      "year": 2026,
+      "month": 12
+    },
+    "check": true
+  },
+  {
+    "date": "2026-10-05T00:00:00",
+    "cached": null,
+    "due": {
+      "year": 2026,
+      "month": 9
+    },
+    "check": true
+  },
+  {
+    "date": "2026-10-05T00:00:00",
+    "cached": {
+      "completed": true
+    },
+    "due": {
+      "year": 2026,
+      "month": 9
+    },
+    "check": false
+  },
+  {
+    "date": "2026-10-05T00:00:00",
+    "cached": {
+      "completed": false
+    },
+    "due": {
+      "year": 2026,
+      "month": 9
+    },
+    "check": true
+  },
+  {
+    "date": "2026-10-06T00:00:00",
+    "cached": null,
+    "due": {
+      "year": 2026,
+      "month": 9
+    },
+    "check": false
+  },
+  {
+    "date": "2026-10-06T00:00:00",
+    "cached": {
+      "completed": true
+    },
+    "due": {
+      "year": 2026,
+      "month": 9
+    },
+    "check": false
+  },
+  {
+    "date": "2026-10-06T00:00:00",
+    "cached": {
+      "completed": false
+    },
+    "due": {
+      "year": 2026,
+      "month": 9
+    },
+    "check": false
+  }
+]

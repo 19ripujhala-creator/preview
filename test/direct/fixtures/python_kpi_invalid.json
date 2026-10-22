@@ -1,0 +1,5 @@
+{
+  "success": false,
+  "code": "INVALID_RESULT",
+  "message": "A student attendance count is missing or invalid."
+}

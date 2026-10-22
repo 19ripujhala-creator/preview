@@ -1,0 +1,4345 @@
+{
+  "profile": {
+    "office_id": 11,
+    "org_id": 13,
+    "office_type_id": 224,
+    "group_id": 81,
+    "group_name": "Primary School",
+    "name": "Offline User",
+    "mobile": 9876543210,
+    "office_name": "Offline School"
+  },
+  "master": [
+    {
+      "BeneficiaryGroupId": 81,
+      "BeneficiaryGroupName": "Primary School",
+      "EnrolmentCount": 32,
+      "ProductId": 101,
+      "ProductName": "Wheat",
+      "PackingId": 201,
+      "CriteriaId": 5,
+      "CriteriaName": "Class Range",
+      "ProductGroupId": 110,
+      "ProductGroupName": "Food Grain",
+      "ProductUomId": 1,
+      "ProductUomName": "Kilogram",
+      "PackingName": "Kilogram",
+      "BatchNo": "Wheat001",
+      "Quantity": 0.1
+    },
+    {
+      "BeneficiaryGroupId": 81,
+      "BeneficiaryGroupName": "Primary School",
+      "EnrolmentCount": 32,
+      "ProductId": 102,
+      "ProductName": "Rice",
+      "PackingId": 202,
+      "CriteriaId": 5,
+      "CriteriaName": "Class Range",
+      "ProductGroupId": 110,
+      "ProductGroupName": "Food Grain",
+      "ProductUomId": 1,
+      "ProductUomName": "Kilogram",
+      "PackingName": "Kilogram",
+      "BatchNo": "Rice001",
+      "Quantity": 0.1
+    }
+  ],
+  "record": {
+    "TransactionId": 77,
+    "DistributionNo": "D77",
+    "DistributionDate": "14-Oct-2026",
+    "NoOfBeneficiary": 26,
+    "ProductName": "Wheat",
+    "StatusName": "Approved",
+    "CustomerType": "School"
+  },
+  "detail": {
+    "CustomObject": {
+      "MasterDetails": {
+        "DistributionNo": "D77",
+        "DistributionDate": "13-Oct-2026"
+      },
+      "Transactions": [
+        {
+          "DetailId": 7,
+          "TransactionId": 77,
+          "ProductId": 101,
+          "ProductName": "Wheat",
+          "NoOfBeneficiary": 26,
+          "IssueQuantity": 2.6,
+          "PackagingId": 201,
+          "PackagingName": "Kilogram",
+          "BenefciaryGroupId": 81,
+          "BenefciaryGroupName": "Primary School",
+          "EnrolmentCount": 32
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "name": "stock",
+      "operation": "stock",
+      "payload": null,
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "stock": {
+          "wheat": 14.0,
+          "rice": 8.0,
+          "total_avail": 22.0
+        },
+        "stock_fields_found": {
+          "wheat": true,
+          "rice": true
+        }
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetAllChartData",
+            "ApiParams": {
+              "FilterParams": {
+                "widgetdetailid": 12,
+                "paraunitid": 1
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "NAME": "Wheat",
+                  "TOTAL": "12.4"
+                },
+                {
+                  "NAME": "Rice",
+                  "TOTAL": 8
+                },
+                {
+                  "NAME": "Wheat (गेहूँ)",
+                  "TOTAL": 1.6
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status",
+      "operation": "status",
+      "payload": null,
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "today_entry_exists": true,
+        "beneficiary_count": 26,
+        "transaction_id": "77",
+        "distribution_no": "D77",
+        "school_name": "Offline School",
+        "incharge_name": "Offline User"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "Approved",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 1
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "history",
+      "operation": "history",
+      "payload": null,
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "records": [
+          {
+            "sNo": "1",
+            "transactionId": "77",
+            "distNo": "D77",
+            "date": "14-Oct-2026",
+            "type": "School",
+            "status": "Approved",
+            "beneficiary": 26,
+            "product": "Wheat"
+          }
+        ],
+        "total_records": 1,
+        "legacy": false,
+        "pages_fetched": 1
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "Approved",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 1
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "entry",
+      "operation": "entry",
+      "payload": null,
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "master": {
+          "DistributionNo": "D77",
+          "DistributionDate": "13-Oct-2026"
+        },
+        "items": [
+          {
+            "detailId": 7,
+            "transactionId": 77,
+            "distNo": "D77",
+            "distributionDate": "13-Oct-2026",
+            "productId": 101,
+            "product": "Wheat",
+            "beneficiary": 26,
+            "quantity": 2.6,
+            "packingId": 201,
+            "packingName": "Kilogram",
+            "groupId": 81,
+            "groupName": "Primary School",
+            "enrolment": 32
+          }
+        ],
+        "raw": {
+          "MasterDetails": {
+            "DistributionNo": "D77",
+            "DistributionDate": "13-Oct-2026"
+          },
+          "Transactions": [
+            {
+              "DetailId": 7,
+              "TransactionId": 77,
+              "ProductId": 101,
+              "ProductName": "Wheat",
+              "NoOfBeneficiary": 26,
+              "IssueQuantity": 2.6,
+              "PackagingId": 201,
+              "PackagingName": "Kilogram",
+              "BenefciaryGroupId": 81,
+              "BenefciaryGroupName": "Primary School",
+              "EnrolmentCount": 32
+            }
+          ]
+        }
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "Approved",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 1
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionDetailById",
+            "ApiParams": {
+              "TransactionId": 77
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": {
+                "MasterDetails": {
+                  "DistributionNo": "D77",
+                  "DistributionDate": "13-Oct-2026"
+                },
+                "Transactions": [
+                  {
+                    "DetailId": 7,
+                    "TransactionId": 77,
+                    "ProductId": 101,
+                    "ProductName": "Wheat",
+                    "NoOfBeneficiary": 26,
+                    "IssueQuantity": 2.6,
+                    "PackagingId": 201,
+                    "PackagingName": "Kilogram",
+                    "BenefciaryGroupId": 81,
+                    "BenefciaryGroupName": "Primary School",
+                    "EnrolmentCount": 32
+                  }
+                ]
+              }
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "profile",
+      "operation": "profile",
+      "payload": null,
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "complete": true,
+        "profile_available": true,
+        "incharge_name": "Offline User",
+        "incharge_mobile": "9876543210",
+        "office_id": 11,
+        "source": "authenticated_user_profile",
+        "editable": true
+      },
+      "calls": []
+    },
+    {
+      "name": "monthly",
+      "operation": "monthly",
+      "payload": null,
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "complete": true,
+        "year": 2026,
+        "month": 9,
+        "financial_year": 20262027,
+        "office_id": 11,
+        "stock": [
+          {
+            "product_id": 101,
+            "product_name": "Wheat",
+            "packing_id": 201,
+            "unit": "Kilogram",
+            "opening": 100.0,
+            "received": 10.2,
+            "outward": 2.6,
+            "closing": 107.6
+          },
+          {
+            "product_id": 102,
+            "product_name": "Rice",
+            "packing_id": 202,
+            "unit": "Kilogram",
+            "opening": 100.0,
+            "received": 10.2,
+            "outward": 1.2,
+            "closing": 109.0
+          }
+        ],
+        "distribution_entries": 1,
+        "approved_entries": 1,
+        "excluded_unapproved_entries": 0,
+        "total_meals": 38,
+        "served_days": 1,
+        "groups": [
+          {
+            "group_id": 81,
+            "group_name": "Primary School",
+            "total_meals": 38,
+            "served_days": 1
+          }
+        ],
+        "daily": [
+          {
+            "transaction_id": null,
+            "date": "2026-09-01",
+            "groups": [
+              {
+                "group_id": 81,
+                "group_name": "Primary School",
+                "meals": 38
+              }
+            ],
+            "grain": {
+              "wheat": 2.6,
+              "rice": 1.2,
+              "total": 3.8
+            }
+          }
+        ],
+        "food_grain": {
+          "wheat_kg": 2.6,
+          "rice_kg": 1.2,
+          "total_kg": 3.8,
+          "kg_per_beneficiary": 0.1
+        },
+        "source": "stock_summary_monthly_ledger"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetSummaryReport",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 0,
+              "OfficeTypeId": 224,
+              "FromDate": null,
+              "ToDate": null
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 101,
+                  "PackingId": 201,
+                  "ProductName": "Wheat",
+                  "OpeningBalance": "100",
+                  "UnitOfMesurement": "Kilogram"
+                },
+                {
+                  "ProductId": 102,
+                  "PackingId": 202,
+                  "ProductName": "Rice",
+                  "OpeningBalance": "100",
+                  "UnitOfMesurement": "Kilogram"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetStockSummaryReportMonthWise",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 101,
+              "PackingId": 201
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 101,
+                  "MonthId": 9,
+                  "InWardQty": "10.2",
+                  "OutWardQty": "2.6"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetStockSummaryReportMonthly",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 101,
+              "PackingId": 201,
+              "Month": 9
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 101,
+                  "REFDATE": "01-Sep-2026",
+                  "OutWardQty": "2.6"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetStockSummaryReportMonthWise",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 102,
+              "PackingId": 202
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 102,
+                  "MonthId": 9,
+                  "InWardQty": "10.2",
+                  "OutWardQty": "1.2"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetStockSummaryReportMonthly",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 102,
+              "PackingId": 202,
+              "Month": 9
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 102,
+                  "REFDATE": "01-Sep-2026",
+                  "OutWardQty": "1.2"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "history_empty",
+      "operation": "history",
+      "payload": null,
+      "variant": "empty",
+      "expected": {
+        "success": true,
+        "records": [],
+        "total_records": 0,
+        "legacy": false,
+        "pages_fetched": 0
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [],
+              "FilteredRecordCount": 0
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "history_invalid",
+      "operation": "history",
+      "payload": null,
+      "variant": "invalid",
+      "expected": {
+        "success": false,
+        "code": "INVALID_RESULT",
+        "message": "RajSIMS returned an unrecognized distribution-list response.",
+        "records": [],
+        "legacy": false
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "foo": []
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "history_partial",
+      "operation": "history",
+      "payload": null,
+      "variant": "partial",
+      "expected": {
+        "success": false,
+        "code": "PARTIAL_REPORT",
+        "message": "RajSIMS history page was incomplete for the reported record count.",
+        "failed_page": 1
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "Approved",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 11
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "history_legacy",
+      "operation": "history",
+      "payload": null,
+      "variant": "legacy",
+      "expected": {
+        "success": true,
+        "records": [
+          {
+            "sNo": "1",
+            "transactionId": "77",
+            "distNo": "D77",
+            "date": "14-Oct-2026",
+            "type": "School",
+            "status": "pending",
+            "beneficiary": 26,
+            "product": "Wheat"
+          }
+        ],
+        "total_records": 1,
+        "legacy": true,
+        "pages_fetched": 1
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetLegacyBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null,
+                "StatusName": "unsettled"
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "pending",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 1
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status_empty",
+      "operation": "status",
+      "payload": null,
+      "variant": "empty",
+      "expected": {
+        "success": true,
+        "today_entry_exists": false,
+        "beneficiary_count": 0,
+        "transaction_id": "",
+        "distribution_no": "",
+        "school_name": "Offline School",
+        "incharge_name": "Offline User"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [],
+              "FilteredRecordCount": 0
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status_invalid",
+      "operation": "status",
+      "payload": null,
+      "variant": "invalid",
+      "expected": {
+        "success": false,
+        "code": "INVALID_RESULT",
+        "message": "RajSIMS returned an unrecognized distribution-list response."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "foo": []
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status_partial",
+      "operation": "status",
+      "payload": null,
+      "variant": "partial",
+      "expected": {
+        "success": true,
+        "today_entry_exists": true,
+        "beneficiary_count": 26,
+        "transaction_id": "77",
+        "distribution_no": "D77",
+        "school_name": "Offline School",
+        "incharge_name": "Offline User"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "Approved",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 11
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_13",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "message": "मूल पोर्टल संदेश",
+        "transaction_id": 78,
+        "distribution_no": "D78"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "SaveEditBeneficiaryDistribution",
+            "OrgId": 13,
+            "ApiParams": {
+              "TransactionId": 0,
+              "TransactionType": 59,
+              "CustomerType": 56,
+              "IdentificationNumber": "9876543210",
+              "AthitiMataCount": null,
+              "Customer": {
+                "CustomerId": 0,
+                "Name": "Offline User",
+                "MobileNo": 9876543210
+              },
+              "DistributionDate": "14-Oct-2026",
+              "DistributionNo": "",
+              "IsActive": 1,
+              "IsAthitiMata": 0,
+              "OfficeId": 11,
+              "OfficeTypeId": 224,
+              "OrgId": 13,
+              "ReasonId": 0,
+              "SchemeId": 43,
+              "Status": "Approved",
+              "StatusId": 5,
+              "StatusName": "Approved",
+              "Transactions": [
+                {
+                  "DetailId": 0,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "AvailableQuantity": 0,
+                  "BatchNo": "Wheat001",
+                  "BenefciaryGroupId": 81,
+                  "BenefciaryGroupName": "Primary School",
+                  "BenefitMonth": "14-Oct-2026",
+                  "CateriaId": 5,
+                  "CateriaName": "Class Range",
+                  "DistributionFrequency": "Daily",
+                  "DistributionFrequencyId": null,
+                  "ExpiryDate": "",
+                  "IssueQuantity": 2.6,
+                  "NoOfBeneficiary": 26,
+                  "PackagingId": 201,
+                  "PackagingName": "Kilogram",
+                  "PackingQtyPerPack": 1,
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "RequiredQuantity": 2.6
+                }
+              ]
+            }
+          },
+          "allow_auth_retry": false,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "IsSuccess": true,
+              "Message": "मूल पोर्टल संदेश",
+              "CustomObject": {
+                "TransactionId": 78,
+                "DistributionNo": "D78"
+              }
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_14",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Rice",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "message": "मूल पोर्टल संदेश",
+        "transaction_id": 78,
+        "distribution_no": "D78"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "SaveEditBeneficiaryDistribution",
+            "OrgId": 13,
+            "ApiParams": {
+              "TransactionId": 0,
+              "TransactionType": 59,
+              "CustomerType": 56,
+              "IdentificationNumber": "9876543210",
+              "AthitiMataCount": null,
+              "Customer": {
+                "CustomerId": 0,
+                "Name": "Offline User",
+                "MobileNo": 9876543210
+              },
+              "DistributionDate": "14-Oct-2026",
+              "DistributionNo": "",
+              "IsActive": 1,
+              "IsAthitiMata": 0,
+              "OfficeId": 11,
+              "OfficeTypeId": 224,
+              "OrgId": 13,
+              "ReasonId": 0,
+              "SchemeId": 43,
+              "Status": "Approved",
+              "StatusId": 5,
+              "StatusName": "Approved",
+              "Transactions": [
+                {
+                  "DetailId": 0,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "AvailableQuantity": 0,
+                  "BatchNo": "Rice001",
+                  "BenefciaryGroupId": 81,
+                  "BenefciaryGroupName": "Primary School",
+                  "BenefitMonth": "14-Oct-2026",
+                  "CateriaId": 5,
+                  "CateriaName": "Class Range",
+                  "DistributionFrequency": "Daily",
+                  "DistributionFrequencyId": null,
+                  "ExpiryDate": "",
+                  "IssueQuantity": 2.6,
+                  "NoOfBeneficiary": 26,
+                  "PackagingId": 202,
+                  "PackagingName": "Kilogram",
+                  "PackingQtyPerPack": 1,
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "RequiredQuantity": 2.6
+                }
+              ]
+            }
+          },
+          "allow_auth_retry": false,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "IsSuccess": true,
+              "Message": "मूल पोर्टल संदेश",
+              "CustomObject": {
+                "TransactionId": 78,
+                "DistributionNo": "D78"
+              }
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_15",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1,
+        "legacy": true,
+        "legacy_date": "13-Oct-2026"
+      },
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "message": "मूल पोर्टल संदेश",
+        "transaction_id": 78,
+        "distribution_no": "D78"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "SaveEditlegancyBenefiDistribution",
+            "OrgId": 13,
+            "ApiParams": [
+              {
+                "BenefciaryGroupId": 81,
+                "BenefciaryGroupName": "Primary School",
+                "BenefitMonth": "13-Oct-2026",
+                "CateriaId": 5,
+                "CateriaName": "Class Range",
+                "CustomerType": 56,
+                "DistributionDate": "13-Oct-2026",
+                "MobileNo": 9876543210,
+                "NoOfBeneficiary": 26,
+                "OfficeId": 11,
+                "OfficeTypeId": 224,
+                "OrgId": 13,
+                "PackagingId": 201,
+                "PackagingName": "Kilogram",
+                "PackingQtyPerPack": 1,
+                "ProductGroupId": 110,
+                "ProductGroupName": "Food Grain",
+                "ProductId": 101,
+                "ProductName": "Wheat",
+                "ProductUomId": 1,
+                "ProductUomName": "Kilogram",
+                "Quantity": 2.6,
+                "ReasonId": 0,
+                "SchemeId": 43,
+                "StatusId": 1,
+                "StatusName": "Draft",
+                "TransactionType": 59
+              },
+              {
+                "BenefciaryGroupId": 81,
+                "BenefciaryGroupName": "Primary School",
+                "BenefitMonth": "13-Oct-2026",
+                "CateriaId": 5,
+                "CateriaName": "Class Range",
+                "CustomerType": 56,
+                "DistributionDate": "13-Oct-2026",
+                "MobileNo": 9876543210,
+                "NoOfBeneficiary": 0,
+                "OfficeId": 11,
+                "OfficeTypeId": 224,
+                "OrgId": 13,
+                "PackagingId": 202,
+                "PackagingName": "Kilogram",
+                "PackingQtyPerPack": 1,
+                "ProductGroupId": 110,
+                "ProductGroupName": "Food Grain",
+                "ProductId": 102,
+                "ProductName": "Rice",
+                "ProductUomId": 1,
+                "ProductUomName": "Kilogram",
+                "Quantity": 0.0,
+                "ReasonId": 0,
+                "SchemeId": 43,
+                "StatusId": 1,
+                "StatusName": "Draft",
+                "TransactionType": 59
+              }
+            ]
+          },
+          "allow_auth_retry": false,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "IsSuccess": true,
+              "Message": "मूल पोर्टल संदेश",
+              "CustomObject": {
+                "TransactionId": 78,
+                "DistributionNo": "D78"
+              }
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_16",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1,
+        "legacy": true,
+        "legacy_date": "14-Oct-2026"
+      },
+      "variant": "normal",
+      "expected": {
+        "success": false,
+        "message": "Legacy distribution date must be before today."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_17",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1,
+        "legacy": true
+      },
+      "variant": "normal",
+      "expected": {
+        "success": false,
+        "message": "Legacy distribution date is required."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_18",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 33,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": false,
+        "message": "Beneficiary count cannot exceed enrolled students (32)."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_19",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": -1,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": false,
+        "message": "Beneficiary count cannot be negative."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_20",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 0,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": false,
+        "message": "Beneficiary count must be greater than 0."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_21",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 0,
+        "is_zero_consumption": true,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "message": "मूल पोर्टल संदेश",
+        "transaction_id": 78,
+        "distribution_no": "D78"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "SaveEditBeneficiaryDistribution",
+            "OrgId": 13,
+            "ApiParams": {
+              "TransactionId": 0,
+              "TransactionType": 59,
+              "CustomerType": 56,
+              "IdentificationNumber": "9876543210",
+              "AthitiMataCount": null,
+              "Customer": {
+                "CustomerId": 0,
+                "Name": "Offline User",
+                "MobileNo": 9876543210
+              },
+              "DistributionDate": "14-Oct-2026",
+              "DistributionNo": "",
+              "IsActive": 1,
+              "IsAthitiMata": 0,
+              "OfficeId": 11,
+              "OfficeTypeId": 224,
+              "OrgId": 13,
+              "ReasonId": 184,
+              "SchemeId": 43,
+              "Status": "Approved",
+              "StatusId": 5,
+              "StatusName": "Approved",
+              "Transactions": [
+                {
+                  "DetailId": 0,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "AvailableQuantity": 0,
+                  "BatchNo": "Wheat001",
+                  "BenefciaryGroupId": 81,
+                  "BenefciaryGroupName": "Primary School",
+                  "BenefitMonth": "14-Oct-2026",
+                  "CateriaId": 5,
+                  "CateriaName": "Class Range",
+                  "DistributionFrequency": "Daily",
+                  "DistributionFrequencyId": null,
+                  "ExpiryDate": "",
+                  "IssueQuantity": 0.0,
+                  "NoOfBeneficiary": 0,
+                  "PackagingId": 201,
+                  "PackagingName": "Kilogram",
+                  "PackingQtyPerPack": 1,
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "RequiredQuantity": 0.0
+                }
+              ]
+            }
+          },
+          "allow_auth_retry": false,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "IsSuccess": true,
+              "Message": "मूल पोर्टल संदेश",
+              "CustomObject": {
+                "TransactionId": 78,
+                "DistributionNo": "D78"
+              }
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_22",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "1",
+        "atithi_mata_count": 2
+      },
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "message": "मूल पोर्टल संदेश",
+        "transaction_id": 78,
+        "distribution_no": "D78"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "SaveEditBeneficiaryDistribution",
+            "OrgId": 13,
+            "ApiParams": {
+              "TransactionId": 0,
+              "TransactionType": 59,
+              "CustomerType": 56,
+              "IdentificationNumber": "9876543210",
+              "AthitiMataCount": 2,
+              "Customer": {
+                "CustomerId": 0,
+                "Name": "Offline User",
+                "MobileNo": 9876543210
+              },
+              "DistributionDate": "14-Oct-2026",
+              "DistributionNo": "",
+              "IsActive": 1,
+              "IsAthitiMata": 1,
+              "OfficeId": 11,
+              "OfficeTypeId": 224,
+              "OrgId": 13,
+              "ReasonId": 0,
+              "SchemeId": 43,
+              "Status": "Approved",
+              "StatusId": 5,
+              "StatusName": "Approved",
+              "Transactions": [
+                {
+                  "DetailId": 0,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "AvailableQuantity": 0,
+                  "BatchNo": "Wheat001",
+                  "BenefciaryGroupId": 81,
+                  "BenefciaryGroupName": "Primary School",
+                  "BenefitMonth": "14-Oct-2026",
+                  "CateriaId": 5,
+                  "CateriaName": "Class Range",
+                  "DistributionFrequency": "Daily",
+                  "DistributionFrequencyId": null,
+                  "ExpiryDate": "",
+                  "IssueQuantity": 2.6,
+                  "NoOfBeneficiary": 26,
+                  "PackagingId": 201,
+                  "PackagingName": "Kilogram",
+                  "PackingQtyPerPack": 1,
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "RequiredQuantity": 2.6
+                }
+              ]
+            }
+          },
+          "allow_auth_retry": false,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "IsSuccess": true,
+              "Message": "मूल पोर्टल संदेश",
+              "CustomObject": {
+                "TransactionId": 78,
+                "DistributionNo": "D78"
+              }
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_23",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "1",
+        "atithi_mata_count": 0
+      },
+      "variant": "normal",
+      "expected": {
+        "success": false,
+        "message": "Atithi Mata count must be greater than 0."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_24",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "2",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": false,
+        "message": "Invalid Atithi Mata selection."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_25",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Unknown",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": false,
+        "message": "Invalid product 'Unknown'. Available: Wheat, Rice."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_26",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1,
+        "legacy_date": "bad"
+      },
+      "variant": "normal",
+      "expected": {
+        "success": false,
+        "message": "Invalid distribution date."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "submit_27",
+      "operation": "submit",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1,
+        "legacy_date": "13-Oct-2026",
+        "transaction_id": 77,
+        "dist_no": "D77"
+      },
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "message": "मूल पोर्टल संदेश",
+        "transaction_id": 78,
+        "distribution_no": "D78"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "SaveEditlegancyBenefiDistribution",
+            "OrgId": 13,
+            "ApiParams": [
+              {
+                "BenefciaryGroupId": 81,
+                "BenefciaryGroupName": "Primary School",
+                "BenefitMonth": "13-Oct-2026",
+                "CateriaId": 5,
+                "CateriaName": "Class Range",
+                "CustomerType": 56,
+                "DistributionDate": "13-Oct-2026",
+                "MobileNo": 9876543210,
+                "NoOfBeneficiary": 26,
+                "OfficeId": 11,
+                "OfficeTypeId": 224,
+                "OrgId": 13,
+                "PackagingId": 201,
+                "PackagingName": "Kilogram",
+                "PackingQtyPerPack": 1,
+                "ProductGroupId": 110,
+                "ProductGroupName": "Food Grain",
+                "ProductId": 101,
+                "ProductName": "Wheat",
+                "ProductUomId": 1,
+                "ProductUomName": "Kilogram",
+                "Quantity": 2.6,
+                "ReasonId": 0,
+                "SchemeId": 43,
+                "StatusId": 1,
+                "StatusName": "Draft",
+                "TransactionType": 59,
+                "TransactionId": 77,
+                "DistributionNo": "D77"
+              },
+              {
+                "BenefciaryGroupId": 81,
+                "BenefciaryGroupName": "Primary School",
+                "BenefitMonth": "13-Oct-2026",
+                "CateriaId": 5,
+                "CateriaName": "Class Range",
+                "CustomerType": 56,
+                "DistributionDate": "13-Oct-2026",
+                "MobileNo": 9876543210,
+                "NoOfBeneficiary": 0,
+                "OfficeId": 11,
+                "OfficeTypeId": 224,
+                "OrgId": 13,
+                "PackagingId": 202,
+                "PackagingName": "Kilogram",
+                "PackingQtyPerPack": 1,
+                "ProductGroupId": 110,
+                "ProductGroupName": "Food Grain",
+                "ProductId": 102,
+                "ProductName": "Rice",
+                "ProductUomId": 1,
+                "ProductUomName": "Kilogram",
+                "Quantity": 0.0,
+                "ReasonId": 0,
+                "SchemeId": 43,
+                "StatusId": 1,
+                "StatusName": "Draft",
+                "TransactionType": 59
+              }
+            ]
+          },
+          "allow_auth_retry": false,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "IsSuccess": true,
+              "Message": "मूल पोर्टल संदेश",
+              "CustomObject": {
+                "TransactionId": 78,
+                "DistributionNo": "D78"
+              }
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update_28",
+      "operation": "update",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 25,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "message": "मूल पोर्टल संदेश",
+        "transaction_id": 77,
+        "distribution_no": "D77"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "Approved",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 1
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionDetailById",
+            "ApiParams": {
+              "TransactionId": 77
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": {
+                "MasterDetails": {
+                  "DistributionNo": "D77",
+                  "DistributionDate": "13-Oct-2026"
+                },
+                "Transactions": [
+                  {
+                    "DetailId": 7,
+                    "TransactionId": 77,
+                    "ProductId": 101,
+                    "ProductName": "Wheat",
+                    "NoOfBeneficiary": 26,
+                    "IssueQuantity": 2.6,
+                    "PackagingId": 201,
+                    "PackagingName": "Kilogram",
+                    "BenefciaryGroupId": 81,
+                    "BenefciaryGroupName": "Primary School",
+                    "EnrolmentCount": 32
+                  }
+                ]
+              }
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "SendDistributionCancelRequest",
+            "OrgId": 13,
+            "ApiParams": {
+              "RefType": "BEN_DIS",
+              "RefId": 77,
+              "RefNo": "D77",
+              "RefDate": "13-Oct-2026",
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "StatusId": 1,
+              "ReasonId": null,
+              "distriTransUpdateDetails": [
+                {
+                  "RefDetailId": 7,
+                  "BeneficiaryGroupId": 81,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "NoOfBeneficiary": 25,
+                  "IssuedQuantity": 2.5,
+                  "PackingId": 201,
+                  "PackingName": "Kilogram"
+                }
+              ]
+            }
+          },
+          "allow_auth_retry": false,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "IsSuccess": true,
+              "Message": "मूल पोर्टल संदेश",
+              "CustomObject": {
+                "TransactionId": 78,
+                "DistributionNo": "D78"
+              }
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update_29",
+      "operation": "update",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": false,
+        "message": "Please note that Request cannot be sent without making any changes ! Make sure all required information is Updated",
+        "status_code": 400
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "Approved",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 1
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionDetailById",
+            "ApiParams": {
+              "TransactionId": 77
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": {
+                "MasterDetails": {
+                  "DistributionNo": "D77",
+                  "DistributionDate": "13-Oct-2026"
+                },
+                "Transactions": [
+                  {
+                    "DetailId": 7,
+                    "TransactionId": 77,
+                    "ProductId": 101,
+                    "ProductName": "Wheat",
+                    "NoOfBeneficiary": 26,
+                    "IssueQuantity": 2.6,
+                    "PackagingId": 201,
+                    "PackagingName": "Kilogram",
+                    "BenefciaryGroupId": 81,
+                    "BenefciaryGroupName": "Primary School",
+                    "EnrolmentCount": 32
+                  }
+                ]
+              }
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update_30",
+      "operation": "update",
+      "payload": {
+        "product_name": "Rice",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": true,
+        "message": "मूल पोर्टल संदेश",
+        "transaction_id": 77,
+        "distribution_no": "D77"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "Approved",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 1
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionDetailById",
+            "ApiParams": {
+              "TransactionId": 77
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": {
+                "MasterDetails": {
+                  "DistributionNo": "D77",
+                  "DistributionDate": "13-Oct-2026"
+                },
+                "Transactions": [
+                  {
+                    "DetailId": 7,
+                    "TransactionId": 77,
+                    "ProductId": 101,
+                    "ProductName": "Wheat",
+                    "NoOfBeneficiary": 26,
+                    "IssueQuantity": 2.6,
+                    "PackagingId": 201,
+                    "PackagingName": "Kilogram",
+                    "BenefciaryGroupId": 81,
+                    "BenefciaryGroupName": "Primary School",
+                    "EnrolmentCount": 32
+                  }
+                ]
+              }
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "SendDistributionCancelRequest",
+            "OrgId": 13,
+            "ApiParams": {
+              "RefType": "BEN_DIS",
+              "RefId": 77,
+              "RefNo": "D77",
+              "RefDate": "13-Oct-2026",
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "StatusId": 1,
+              "ReasonId": null,
+              "distriTransUpdateDetails": [
+                {
+                  "RefDetailId": 7,
+                  "BeneficiaryGroupId": 81,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "NoOfBeneficiary": 26,
+                  "IssuedQuantity": 2.6,
+                  "PackingId": 202,
+                  "PackingName": "Kilogram"
+                }
+              ]
+            }
+          },
+          "allow_auth_retry": false,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "IsSuccess": true,
+              "Message": "मूल पोर्टल संदेश",
+              "CustomObject": {
+                "TransactionId": 78,
+                "DistributionNo": "D78"
+              }
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update_31",
+      "operation": "update",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": -1,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": false,
+        "message": "Beneficiary count cannot be negative."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "Approved",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 1
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionDetailById",
+            "ApiParams": {
+              "TransactionId": 77
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": {
+                "MasterDetails": {
+                  "DistributionNo": "D77",
+                  "DistributionDate": "13-Oct-2026"
+                },
+                "Transactions": [
+                  {
+                    "DetailId": 7,
+                    "TransactionId": 77,
+                    "ProductId": 101,
+                    "ProductName": "Wheat",
+                    "NoOfBeneficiary": 26,
+                    "IssueQuantity": 2.6,
+                    "PackagingId": 201,
+                    "PackagingName": "Kilogram",
+                    "BenefciaryGroupId": 81,
+                    "BenefciaryGroupName": "Primary School",
+                    "EnrolmentCount": 32
+                  }
+                ]
+              }
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update_32",
+      "operation": "update",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 33,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "normal",
+      "expected": {
+        "success": false,
+        "message": "Beneficiary count cannot exceed enrolled students (32)."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "Approved",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 1
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionDetailById",
+            "ApiParams": {
+              "TransactionId": 77
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": {
+                "MasterDetails": {
+                  "DistributionNo": "D77",
+                  "DistributionDate": "13-Oct-2026"
+                },
+                "Transactions": [
+                  {
+                    "DetailId": 7,
+                    "TransactionId": 77,
+                    "ProductId": 101,
+                    "ProductName": "Wheat",
+                    "NoOfBeneficiary": 26,
+                    "IssueQuantity": 2.6,
+                    "PackagingId": 201,
+                    "PackagingName": "Kilogram",
+                    "BenefciaryGroupId": 81,
+                    "BenefciaryGroupName": "Primary School",
+                    "EnrolmentCount": 32
+                  }
+                ]
+              }
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update_33",
+      "operation": "update",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 26,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1,
+        "legacy_date": "13-Oct-2026"
+      },
+      "variant": "legacy",
+      "expected": {
+        "success": false,
+        "message": "TransactionId not found for D77; refusing to create a duplicate entry."
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetLegacyBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null,
+                "StatusName": "unsettled"
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "Approved",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 1
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "update_34",
+      "operation": "update",
+      "payload": {
+        "product_name": "Wheat",
+        "beneficiary_count": 25,
+        "is_zero_consumption": false,
+        "atithi_mata_choice": "0",
+        "atithi_mata_count": 1
+      },
+      "variant": "reject",
+      "expected": {
+        "success": false,
+        "code": "ACCESS_DENIED",
+        "message": "मूल पोर्टल संदेश",
+        "status_code": 403
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryGroupProductList",
+            "ApiParams": {
+              "CurrentPageNumber": 0,
+              "PageSize": 50,
+              "SortBy": "",
+              "SortOrder": "",
+              "SearchText": "",
+              "FilterParams": {
+                "DepartmentId": 16229,
+                "SchemeId": 43,
+                "BeneficiaryGroupId": 0,
+                "UserOfficeId": 11,
+                "UserDeptId": 13
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "PackingId": 201,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Wheat001",
+                  "Quantity": 0.1
+                },
+                {
+                  "BeneficiaryGroupId": 81,
+                  "BeneficiaryGroupName": "Primary School",
+                  "EnrolmentCount": 32,
+                  "ProductId": 102,
+                  "ProductName": "Rice",
+                  "PackingId": 202,
+                  "CriteriaId": 5,
+                  "CriteriaName": "Class Range",
+                  "ProductGroupId": 110,
+                  "ProductGroupName": "Food Grain",
+                  "ProductUomId": 1,
+                  "ProductUomName": "Kilogram",
+                  "PackingName": "Kilogram",
+                  "BatchNo": "Rice001",
+                  "Quantity": 0.1
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionList",
+            "ApiParams": {
+              "SearchText": "",
+              "CurrentPageNumber": 1,
+              "PageSize": 10,
+              "SortOrder": "",
+              "SortBy": "",
+              "FilterParams": {
+                "DepartmentId": 13,
+                "OfficeId": 11,
+                "SchemeId": 43,
+                "Fromdate": null,
+                "Todate": null
+              }
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "TransactionId": 77,
+                  "DistributionNo": "D77",
+                  "DistributionDate": "14-Oct-2026",
+                  "NoOfBeneficiary": 26,
+                  "ProductName": "Wheat",
+                  "StatusName": "Approved",
+                  "CustomerType": "School"
+                }
+              ],
+              "FilteredRecordCount": 1
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetBeneficiaryDistributionDetailById",
+            "ApiParams": {
+              "TransactionId": 77
+            },
+            "OrgId": 13
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": null,
+          "reply": [
+            true,
+            {
+              "CustomObject": {
+                "MasterDetails": {
+                  "DistributionNo": "D77",
+                  "DistributionDate": "13-Oct-2026"
+                },
+                "Transactions": [
+                  {
+                    "DetailId": 7,
+                    "TransactionId": 77,
+                    "ProductId": 101,
+                    "ProductName": "Wheat",
+                    "NoOfBeneficiary": 26,
+                    "IssueQuantity": 2.6,
+                    "PackagingId": 201,
+                    "PackagingName": "Kilogram",
+                    "BenefciaryGroupId": 81,
+                    "BenefciaryGroupName": "Primary School",
+                    "EnrolmentCount": 32
+                  }
+                ]
+              }
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "SendDistributionCancelRequest",
+            "OrgId": 13,
+            "ApiParams": {
+              "RefType": "BEN_DIS",
+              "RefId": 77,
+              "RefNo": "D77",
+              "RefDate": "13-Oct-2026",
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "StatusId": 1,
+              "ReasonId": null,
+              "distriTransUpdateDetails": [
+                {
+                  "RefDetailId": 7,
+                  "BeneficiaryGroupId": 81,
+                  "ProductId": 101,
+                  "ProductName": "Wheat",
+                  "NoOfBeneficiary": 25,
+                  "IssuedQuantity": 2.5,
+                  "PackingId": 201,
+                  "PackingName": "Kilogram"
+                }
+              ]
+            }
+          },
+          "allow_auth_retry": false,
+          "safe_to_retry": null,
+          "reply": [
+            false,
+            {
+              "Message": "मूल पोर्टल संदेश"
+            },
+            403,
+            "मूल पोर्टल संदेश"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "monthly_mismatch",
+      "operation": "monthly",
+      "payload": null,
+      "variant": "mismatch",
+      "expected": {
+        "success": false,
+        "complete": false,
+        "message": "Wheat daily ledger total (2.7) does not match monthly outward (2.6).",
+        "code": "MONTHLY_REPORT_INCOMPLETE"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetSummaryReport",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 0,
+              "OfficeTypeId": 224,
+              "FromDate": null,
+              "ToDate": null
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 101,
+                  "PackingId": 201,
+                  "ProductName": "Wheat",
+                  "OpeningBalance": "100",
+                  "UnitOfMesurement": "Kilogram"
+                },
+                {
+                  "ProductId": 102,
+                  "PackingId": 202,
+                  "ProductName": "Rice",
+                  "OpeningBalance": "100",
+                  "UnitOfMesurement": "Kilogram"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetStockSummaryReportMonthWise",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 101,
+              "PackingId": 201
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 101,
+                  "MonthId": 9,
+                  "InWardQty": "10.2",
+                  "OutWardQty": "2.6"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetStockSummaryReportMonthly",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 101,
+              "PackingId": 201,
+              "Month": 9
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 101,
+                  "REFDATE": "01-Sep-2026",
+                  "OutWardQty": "2.7"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetStockSummaryReportMonthWise",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 102,
+              "PackingId": 202
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 102,
+                  "MonthId": 9,
+                  "InWardQty": "10.2",
+                  "OutWardQty": "1.2"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetStockSummaryReportMonthly",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 102,
+              "PackingId": 202,
+              "Month": 9
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 102,
+                  "REFDATE": "01-Sep-2026",
+                  "OutWardQty": "2.7"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    },
+    {
+      "name": "monthly_wrong_date",
+      "operation": "monthly",
+      "payload": null,
+      "variant": "wrong_date",
+      "expected": {
+        "success": false,
+        "complete": false,
+        "message": "Wheat ledger returned a date outside the selected month.",
+        "code": "MONTHLY_REPORT_INCOMPLETE"
+      },
+      "calls": [
+        {
+          "payload": {
+            "ApiKey": "GetSummaryReport",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 0,
+              "OfficeTypeId": 224,
+              "FromDate": null,
+              "ToDate": null
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 101,
+                  "PackingId": 201,
+                  "ProductName": "Wheat",
+                  "OpeningBalance": "100",
+                  "UnitOfMesurement": "Kilogram"
+                },
+                {
+                  "ProductId": 102,
+                  "PackingId": 202,
+                  "ProductName": "Rice",
+                  "OpeningBalance": "100",
+                  "UnitOfMesurement": "Kilogram"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetStockSummaryReportMonthWise",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 101,
+              "PackingId": 201
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 101,
+                  "MonthId": 9,
+                  "InWardQty": "10.2",
+                  "OutWardQty": "2.6"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetStockSummaryReportMonthly",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 101,
+              "PackingId": 201,
+              "Month": 9
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 101,
+                  "REFDATE": "01-Oct-2026",
+                  "OutWardQty": "2.6"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetStockSummaryReportMonthWise",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 102,
+              "PackingId": 202
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 102,
+                  "MonthId": 9,
+                  "InWardQty": "10.2",
+                  "OutWardQty": "1.2"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        },
+        {
+          "payload": {
+            "ApiKey": "GetStockSummaryReportMonthly",
+            "OrgId": 13,
+            "ApiParams": {
+              "OrgId": 13,
+              "OfficeId": 11,
+              "SchemeId": 43,
+              "ProductGroup": 110,
+              "FinYear": 20262027,
+              "ProductId": 102,
+              "PackingId": 202,
+              "Month": 9
+            }
+          },
+          "allow_auth_retry": true,
+          "safe_to_retry": true,
+          "reply": [
+            true,
+            {
+              "CustomObject": [
+                {
+                  "ProductId": 102,
+                  "REFDATE": "01-Oct-2026",
+                  "OutWardQty": "1.2"
+                }
+              ]
+            },
+            200,
+            ""
+          ]
+        }
+      ]
+    }
+  ]
+}

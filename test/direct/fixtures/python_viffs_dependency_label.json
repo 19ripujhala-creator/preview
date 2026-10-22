@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "code": "STALE_FORM",
+  "message": "A unique class could not be identified in the VIFFS grid.",
+  "field_errors": {}
+}

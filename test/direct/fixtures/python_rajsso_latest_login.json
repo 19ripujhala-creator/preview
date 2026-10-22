@@ -1,0 +1,98 @@
+[
+  {
+    "html": "<script>ShowAlert(\"Incorrect captcha\");</script>",
+    "code": "CAPTCHA_REJECTED",
+    "messages": [
+      "Incorrect captcha"
+    ]
+  },
+  {
+    "html": "<script>ShowModelPopup(\"alert\", \"Invalid password\");</script>",
+    "code": "INVALID_CREDENTIALS",
+    "messages": [
+      "Invalid password"
+    ]
+  },
+  {
+    "html": "<script>ShowModelPopup(\"other\", \"Invalid password\");</script>",
+    "code": "LOGIN_NOT_VERIFIED",
+    "messages": []
+  },
+  {
+    "html": "<script>ShowMessage(\"Error\", \"Incorrect captcha\");</script>",
+    "code": "CAPTCHA_REJECTED",
+    "messages": [
+      "Incorrect captcha"
+    ]
+  },
+  {
+    "html": "<script>//<![CDATA[\nShowAlertBox(\"Incorrect captcha\");\n//]]></script>",
+    "code": "CAPTCHA_REJECTED",
+    "messages": [
+      "Incorrect captcha"
+    ]
+  },
+  {
+    "html": "<script>$(document).ready(function(){ShowAlert(\"Incorrect captcha\");});</script>",
+    "code": "CAPTCHA_REJECTED",
+    "messages": [
+      "Incorrect captcha"
+    ]
+  },
+  {
+    "html": "<script>$(function(){ShowAlert(\"Incorrect captcha\");});</script>",
+    "code": "CAPTCHA_REJECTED",
+    "messages": [
+      "Incorrect captcha"
+    ]
+  },
+  {
+    "html": "<script>Sys.Application.add_load(function(){ShowAlert(\"Incorrect captcha\");});</script>",
+    "code": "CAPTCHA_REJECTED",
+    "messages": [
+      "Incorrect captcha"
+    ]
+  },
+  {
+    "html": "<body onload=\"alert('Invalid password')\"></body>",
+    "code": "INVALID_CREDENTIALS",
+    "messages": [
+      "Invalid password"
+    ]
+  },
+  {
+    "html": "<script>function check(){ShowAlert(\"Incorrect captcha\");}</script>",
+    "code": "LOGIN_NOT_VERIFIED",
+    "messages": []
+  },
+  {
+    "html": "<script>if(false){ShowAlert(\"Incorrect captcha\");}</script>",
+    "code": "LOGIN_NOT_VERIFIED",
+    "messages": []
+  },
+  {
+    "html": "<script>ShowAlert(variable);</script>",
+    "code": "LOGIN_NOT_VERIFIED",
+    "messages": []
+  },
+  {
+    "html": "<script>ShowAlert(\"Incorrect captcha; try again\");ShowAlert(\"Invalid password\");</script>",
+    "code": "CAPTCHA_REJECTED",
+    "messages": [
+      "Incorrect captcha; try again",
+      "Invalid password"
+    ]
+  },
+  {
+    "html": "<script>ShowAlert(\"<b>Incorrect captcha</b>\");</script>",
+    "code": "CAPTCHA_REJECTED",
+    "messages": [
+      "Incorrect captcha"
+    ]
+  },
+  {
+    "html": "<div id=\"LBLERROR\">Invalid password</div>",
+    "code": "INVALID_CREDENTIALS",
+    "messages": []
+  }
+]

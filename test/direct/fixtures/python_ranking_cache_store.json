@@ -1,0 +1,46 @@
+[
+  {
+    "completed": true,
+    "result": {
+      "school_id": "123456",
+      "year": 2026,
+      "month": 9,
+      "completed": true,
+      "checked_at": "2026-10-11T00:54:21+05:30",
+      "checked_date": "2026-10-11",
+      "source": "portal",
+      "form": {
+        "task": "ranking",
+        "completed": true
+      }
+    }
+  },
+  {
+    "completed": false,
+    "result": {
+      "school_id": "123456",
+      "year": 2026,
+      "month": 9,
+      "completed": false,
+      "checked_at": "2026-10-11T00:54:21+05:30",
+      "checked_date": "2026-10-11",
+      "source": "portal",
+      "form": {
+        "task": "ranking",
+        "completed": false
+      }
+    }
+  },
+  {
+    "completed": null,
+    "result": null
+  },
+  {
+    "completed": 1,
+    "result": null
+  },
+  {
+    "completed": "false",
+    "result": null
+  }
+]

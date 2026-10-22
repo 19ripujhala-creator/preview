@@ -1,0 +1,116 @@
+[
+  {
+    "name": "normal",
+    "html": "<div id=\"dvReport\"><table id=\"ContentPlaceHolder1_grdStudentProfile\"><tr><th>Unique NIC ID</th></tr><tr><td><span id=\"x_lblSnicid_0\">001</span></td><td><span id=\"x_lblName_0\">Test Student</span></td><td><span id=\"x_lblSRNO_0\">1</span></td></tr></table></div>",
+    "result": {
+      "identities": [
+        [
+          "001",
+          "1",
+          "Test Student"
+        ]
+      ]
+    }
+  },
+  {
+    "name": "missing_report",
+    "html": "<body>Other</body>",
+    "result": {
+      "code": "NO_STUDENT_TABLE",
+      "message": "Student profile report is not available on the portal."
+    }
+  },
+  {
+    "name": "missing_grid",
+    "html": "<div id=\"dvReport\">Portal original message</div>",
+    "result": {
+      "code": "NO_STUDENT_TABLE",
+      "message": "Portal original message"
+    }
+  },
+  {
+    "name": "incomplete",
+    "html": "<div id=\"dvReport\"><table id=\"ContentPlaceHolder1_grdStudentProfile\"><tr><th>Unique NIC ID</th></tr><tr><td><span id=\"x_lblSnicid_0\">001</span></td><td><span id=\"unrelated\">Test Student</span></td><td><span id=\"x_lblSRNO_0\">1</span></td></tr></table></div>",
+    "result": {
+      "code": "MATCH_MISMATCH",
+      "message": "The portal returned an incomplete student profile row."
+    }
+  },
+  {
+    "name": "empty_name",
+    "html": "<div id=\"dvReport\"><table id=\"ContentPlaceHolder1_grdStudentProfile\"><tr><th>Unique NIC ID</th></tr><tr><td><span id=\"x_lblSnicid_0\">001</span></td><td><span id=\"x_lblName_0\"></span></td><td><span id=\"x_lblSRNO_0\">1</span></td></tr></table></div>",
+    "result": {
+      "code": "MATCH_MISMATCH",
+      "message": "The portal returned an incomplete student profile row."
+    }
+  },
+  {
+    "name": "duplicates",
+    "html": "<div id=\"dvReport\"><table id=\"ContentPlaceHolder1_grdStudentProfile\"><tr><th>Unique NIC ID</th></tr><tr><td><span id=\"x_lblSnicid_0\">001</span></td><td><span id=\"x_lblName_0\">Test Student</span></td><td><span id=\"x_lblSRNO_0\">1</span></td></tr><tr><td><span id=\"x_lblSnicid_0\">001</span></td><td><span id=\"x_lblName_0\">Test Student</span></td><td><span id=\"x_lblSRNO_0\">1</span></td></tr></table></div>",
+    "result": {
+      "code": "MATCH_MISMATCH",
+      "message": "The portal returned duplicate student profile rows."
+    }
+  },
+  {
+    "name": "different_sr",
+    "html": "<div id=\"dvReport\"><table id=\"ContentPlaceHolder1_grdStudentProfile\"><tr><th>Unique NIC ID</th></tr><tr><td><span id=\"x_lblSnicid_0\">001</span></td><td><span id=\"x_lblName_0\">Test Student</span></td><td><span id=\"x_lblSRNO_0\">1</span></td></tr><tr><td><span id=\"x_lblSnicid_0\">001</span></td><td><span id=\"x_lblName_0\">Test Student</span></td><td><span id=\"x_lblSRNO_0\">2</span></td></tr></table></div>",
+    "result": {
+      "identities": [
+        [
+          "001",
+          "1",
+          "Test Student"
+        ],
+        [
+          "001",
+          "2",
+          "Test Student"
+        ]
+      ]
+    }
+  },
+  {
+    "name": "no_headers",
+    "html": "<div id=\"dvReport\"><table id=\"ContentPlaceHolder1_grdStudentProfile\"><tr><td><span id=\"x_lblSnicid_0\">001</span></td><td><span id=\"x_lblName_0\">Test Student</span></td><td><span id=\"x_lblSRNO_0\">1</span></td></tr></table></div>",
+    "result": {
+      "code": "NO_STUDENT_TABLE",
+      "message": "The NIC table headers could not be verified."
+    }
+  },
+  {
+    "name": "no_nic_header",
+    "html": "<div id=\"dvReport\"><table id=\"ContentPlaceHolder1_grdStudentProfile\"><tr><th>Other ID</th></tr><tr><td><span id=\"x_lblSnicid_0\">001</span></td><td><span id=\"x_lblName_0\">Test Student</span></td><td><span id=\"x_lblSRNO_0\">1</span></td></tr></table></div>",
+    "result": {
+      "code": "NO_STUDENT_TABLE",
+      "message": "The NIC table headers could not be verified."
+    }
+  },
+  {
+    "name": "empty_explicit",
+    "html": "<div id=\"dvReport\"><table id=\"ContentPlaceHolder1_grdStudentProfile\"><tr><td>No records found</td></tr></table></div>",
+    "result": {
+      "identities": []
+    }
+  },
+  {
+    "name": "empty_without_notice",
+    "html": "<div id=\"dvReport\"><table id=\"ContentPlaceHolder1_grdStudentProfile\"><tr><th>Unique NIC ID</th></tr></table></div>",
+    "result": {
+      "identities": []
+    }
+  },
+  {
+    "name": "nested_name",
+    "html": "<div id=\"dvReport\"><table id=\"ContentPlaceHolder1_grdStudentProfile\"><tr><th>Unique NIC ID</th></tr><tr><td><span id=\"x_lblSnicid_0\">001</span></td><td><span id=\"x_lblName_0\">Test <b>Student</b><script>ignored</script></span></td><td><span id=\"x_lblSRNO_0\">1</span></td></tr></table></div>",
+    "result": {
+      "identities": [
+        [
+          "001",
+          "1",
+          "TestStudent"
+        ]
+      ]
+    }
+  }
+]

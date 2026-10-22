@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "roles": [
+    {
+      "value": "1",
+      "label": "MDM"
+    },
+    {
+      "value": "2",
+      "label": "Library"
+    }
+  ],
+  "teachers": [
+    {
+      "value": "101",
+      "label": "Teacher A (101)"
+    },
+    {
+      "value": "102",
+      "label": "Teacher B (102)"
+    }
+  ],
+  "current_list": []
+}

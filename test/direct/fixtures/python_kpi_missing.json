@@ -1,0 +1,5 @@
+{
+  "success": false,
+  "code": "INVALID_RESULT",
+  "message": "Section counts are incomplete or duplicated."
+}

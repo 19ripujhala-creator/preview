@@ -1,0 +1,346 @@
+{
+  "passwords": [
+    {
+      "user": "1234567",
+      "password": "TestPassword!",
+      "login_id": "staff-login",
+      "nonce": "nonce42",
+      "fields": {
+        "hdnLoginname": "staff-login",
+        "hdntxtop": "d698ae43fcedb2cc0c51c07f0d2e8336daa98c3030ba78befe53833db2e6e9df3b945d4dfd1713fa7cb42d416c0f0fad3da79b5ee8f04b95987c90ffbaa8bb66",
+        "txtUPNswd": "6ef62f1839f50c1f2070d2d856f03e22387270ff6cd70041838b2c205764dbad3203ba44baefa84a2989878857368ee5b5a91ea1d56792d05a7a72378b3fb5e1",
+        "hdntxtUPswdname": "6ef62f1839f50c1f2070d2d856f03e22387270ff6cd70041838b2c205764dbad3203ba44baefa84a2989878857368ee5b5a91ea1d56792d05a7a72378b3fb5e1",
+        "hdntxtUPswdname1": "22e1315754e4642ecdd1501f149d708f52c4ba3204c822bd4c6f9be4060f9699d48773a9f98b16f6afd592fcc2672128fea02e1eda449ac4489efcb2eb3c6f14",
+        "hdntxtUPswdname2": "9f64a168f417ba5ec62e34f51bdab8c7323c5cc100d9c81065545605e9a0ca3c31ce9c5d60f6fc106b6031bc451154a65470d03829888d800028ab24b2463375"
+      }
+    },
+    {
+      "user": "EMP_42",
+      "password": " a b ",
+      "login_id": "0042",
+      "nonce": "N-2",
+      "fields": {
+        "hdnLoginname": "0042",
+        "hdntxtop": "8d082017fb828cbc8274f36eb03af3b3ccb8799f5f00c57acf0af02d3c28dd74ecdf319e170443a41f81c766cb5e5bdd1fa06b67e46ae98af4e96abc7378b93e",
+        "txtUPNswd": "54390e48529e4475c088f1dacd784dcd246efe16d2cce0f88182842120f44d6a16de312653bf35e22f908f5c0cc1fc3bb728192d1f28f17e966e272a90cc361b",
+        "hdntxtUPswdname": "54390e48529e4475c088f1dacd784dcd246efe16d2cce0f88182842120f44d6a16de312653bf35e22f908f5c0cc1fc3bb728192d1f28f17e966e272a90cc361b",
+        "hdntxtUPswdname1": "789130c74a82504148fb594ccb6d1b129974cef2ff9b2451b6ee59174a3d247a0abe3346733783db32728403aba8c0c02b5e0e74ca72eb404ee3589fea8fa8c7",
+        "hdntxtUPswdname2": "fab5652afb31671a81c7d780c87639f06389c26544f6b03f0913a0135678390f74c0e5ee58b37609ecb8348b56c942d01561e8c531ebadbc42bd5395c9e72c96"
+      }
+    },
+    {
+      "user": "AbC123",
+      "password": "é漢😀",
+      "login_id": "IDé",
+      "nonce": "nonce",
+      "fields": {
+        "hdnLoginname": "IDé",
+        "hdntxtop": "f1dc9ead1a34a36d48a547853f61545e656f181d3890af65a13dde375c77bc7e13e7f4fd6359ca3e5d5b9640b75015fa183ce41cac94c29fb6a905e7d2738a1c",
+        "txtUPNswd": "51be88c19b2b2ae5bfde05e6b0fd2ab14e339aba4f0aca292991e3b98ab949a6914fc5dad7aa664b6ce60e1f31969daac34bf0ea94f4b0cede5b688acb38ad2f",
+        "hdntxtUPswdname": "51be88c19b2b2ae5bfde05e6b0fd2ab14e339aba4f0aca292991e3b98ab949a6914fc5dad7aa664b6ce60e1f31969daac34bf0ea94f4b0cede5b688acb38ad2f",
+        "hdntxtUPswdname1": "3594efc8ac728e929e03d69bc7f1187175e6d644c3850097fc13c4116e539bb4699d22250bdcf55e885fd186f4393482eb7e3ef4716873fbda5c194a60440277",
+        "hdntxtUPswdname2": "45525e97fe3686cfc7f7a0456242981f380807c52d6a7a03e1b4c4c034c8d3aa22a4523343591a860f0524fb4d7c710dca8da2f91a1b90708e6910261c96997d"
+      }
+    },
+    {
+      "user": "user",
+      "password": "\u0000\u0001\n\t",
+      "login_id": "id",
+      "nonce": "salt",
+      "fields": {
+        "hdnLoginname": "id",
+        "hdntxtop": "bae2a007e184a8db71c3c3dd7c75b2aab7c225ed4bde8850f678c727979eb14e8d21a822556dda92c5a4940230361318f18eadc837b04d968b1e73c422cd4417",
+        "txtUPNswd": "6c4eb57756d5decc529d177d64f0542e4f938086d6e267500f3b04eda2221af3b31aebad38ad4ba34b6c62e6f0c09fdb641fbed14c25aba334082c15140eb662",
+        "hdntxtUPswdname": "6c4eb57756d5decc529d177d64f0542e4f938086d6e267500f3b04eda2221af3b31aebad38ad4ba34b6c62e6f0c09fdb641fbed14c25aba334082c15140eb662",
+        "hdntxtUPswdname1": "168eb508988a851ad2c7e61d3533de879df7a0ddd462d71b012fc6a919b724fccc3206747be4e32114f71f86adf36b699ba16d76901c8dcc98088650cbf84c6a",
+        "hdntxtUPswdname2": "71c3428106da5c88a4fc032a88c8936e1f0caa5e1c866d4ab832d6f39cc3afa753cb76f4be3074d765e82746a6dc96a42fade57052ca989db94f56ee73dbf77b"
+      }
+    },
+    {
+      "user": "user",
+      "password": "0123456789~",
+      "login_id": "7",
+      "nonce": "न",
+      "fields": {
+        "hdnLoginname": "7",
+        "hdntxtop": "78fae10861211355fd1fcf423acf3805f64c3971676f1ddcabcef6aec123b296acb92794954e31a4554e77719bf0fdad523c7c2e11ada7abcf88050c7e981f69",
+        "txtUPNswd": "6a663a3740ebcd105f710fcdd83531fdc2bd672e0887e46a111759081e03c6214c4e719e9c5b807ee5ef95c233c6fd0db1be56c56197373647af04f4a0454508",
+        "hdntxtUPswdname": "6a663a3740ebcd105f710fcdd83531fdc2bd672e0887e46a111759081e03c6214c4e719e9c5b807ee5ef95c233c6fd0db1be56c56197373647af04f4a0454508",
+        "hdntxtUPswdname1": "71834191e21e73e0980942f6c5da0834e93881a33d66ba3398701349fbadbe1ae603eb9e3f9d3e1b7466abc4ce657b138dd62563a1a43b7e98a3f1f77e79ff42",
+        "hdntxtUPswdname2": "31047c0799b2efd56c37c76427b9372225799c5df68856fe0dfef34ac9f7cdcf8d06e51ef13344fc5ba1d1d278592bb1ab770ef627b302053f843441f74a22d3"
+      }
+    },
+    {
+      "user": "user",
+      "password": "",
+      "login_id": "empty",
+      "nonce": "",
+      "fields": {
+        "hdnLoginname": "empty",
+        "hdntxtop": "8c6d07d99dc1e09f83f39ad44ee910db362048af77954d62df52c3e5198d12e55c1e5a3b8db5758c981da58e40f4e11e4501497730cf14d962467ca7cddaf7ce",
+        "txtUPNswd": "861b287ca3b78f6c450e87ca8a6f93fbc414f23acf05c921ffcba6994543eaf58a3f2f6bdd99c4bd6ddcf42e658b62a5dc47a24f56358fd32f77a96ff02f35b0",
+        "hdntxtUPswdname": "861b287ca3b78f6c450e87ca8a6f93fbc414f23acf05c921ffcba6994543eaf58a3f2f6bdd99c4bd6ddcf42e658b62a5dc47a24f56358fd32f77a96ff02f35b0",
+        "hdntxtUPswdname1": "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e",
+        "hdntxtUPswdname2": "8fb29448faee18b656030e8f5a8b9e9a695900f36a3b7d7ebb0d9d51e06c8569d81a55e39b481cf50546d697e7bde1715aa6badede8ddc801c739777be77f166"
+      }
+    },
+    {
+      "user": "İD",
+      "password": "Password",
+      "login_id": "1",
+      "nonce": "salt",
+      "fields": {
+        "hdnLoginname": "1",
+        "hdntxtop": "c3346d7b382e889e168d2781bee9f3536ac250b5693dc572f81b721fa2019c4797f3ef652394f6da2fcff9907163eb0f7f4f87d85a8d2928c01519c202ea2e61",
+        "txtUPNswd": "9d3e8ab286b504ccd193e52a5bb81be4063c80b87035478db1b0e1c1e3c38b3384c3b6d8bf14da80f6518edeb6e5737a2474457ca94261f090e2e928126dca11",
+        "hdntxtUPswdname": "9d3e8ab286b504ccd193e52a5bb81be4063c80b87035478db1b0e1c1e3c38b3384c3b6d8bf14da80f6518edeb6e5737a2474457ca94261f090e2e928126dca11",
+        "hdntxtUPswdname1": "e6c83b282aeb2e022844595721cc00bbda47cb24537c1779f9bb84f04039e1676e6ba8573e588da1052510e3aa0a32a9e55879ae22b0c2d62136fc0a3e85f8bb",
+        "hdntxtUPswdname2": "ee726039143e77875534e9035f9a39fc396c19461f6de20d77ce6b3ba6779a143c55130cbca9a6b6d1286e7e867bbf01c65bb702ec00afb47adef227cac1a12d"
+      }
+    },
+    {
+      "user": "ΟΣ",
+      "password": "Password",
+      "login_id": "2",
+      "nonce": "salt",
+      "fields": {
+        "hdnLoginname": "2",
+        "hdntxtop": "fdffcca372067b45792e0e1d99da29be1ed80e23abd11a00d4d453288190f2c50080f173a2c168f4a59c4e954ad1ec523459640dda3b21ee8cc68b739422b9ba",
+        "txtUPNswd": "cba4928894737b0a8e618e701c419535ff14ef87dc5ea744a097cf2fda701e8494e3bc28a02fe128b45c5ebb0d55e4b0bcae895e22288689a5fd90e112ea725b",
+        "hdntxtUPswdname": "cba4928894737b0a8e618e701c419535ff14ef87dc5ea744a097cf2fda701e8494e3bc28a02fe128b45c5ebb0d55e4b0bcae895e22288689a5fd90e112ea725b",
+        "hdntxtUPswdname1": "e6c83b282aeb2e022844595721cc00bbda47cb24537c1779f9bb84f04039e1676e6ba8573e588da1052510e3aa0a32a9e55879ae22b0c2d62136fc0a3e85f8bb",
+        "hdntxtUPswdname2": "ee726039143e77875534e9035f9a39fc396c19461f6de20d77ce6b3ba6779a143c55130cbca9a6b6d1286e7e867bbf01c65bb702ec00afb47adef227cac1a12d"
+      }
+    }
+  ],
+  "documents": [
+    {
+      "name": "home_logout",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/StaffHome.aspx",
+        "status": 200,
+        "text": "<a id=\"lnkLogout\"></a>"
+      },
+      "home": "alive",
+      "profile": "unknown",
+      "history": "unknown"
+    },
+    {
+      "name": "home_name",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/StaffHome.aspx",
+        "status": 200,
+        "text": "<span id=\"ContentPlaceHolder1_lblStaffName\"> Test </span>"
+      },
+      "home": "alive",
+      "profile": "unknown",
+      "history": "unknown"
+    },
+    {
+      "name": "home_widget",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/StaffHome.aspx",
+        "status": 200,
+        "text": "<div class=\"widget-heading\">Name</div><div class=\"widget-subheading\"></div>"
+      },
+      "home": "alive",
+      "profile": "unknown",
+      "history": "unknown"
+    },
+    {
+      "name": "fake_script",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/StaffHome.aspx",
+        "status": 200,
+        "text": "<script>var x=\"lnkLogout\";</script>"
+      },
+      "home": "unknown",
+      "profile": "unknown",
+      "history": "unknown"
+    },
+    {
+      "name": "home_empty",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/StaffHome.aspx",
+        "status": 200,
+        "text": ""
+      },
+      "home": "unknown",
+      "profile": "unknown",
+      "history": "unknown"
+    },
+    {
+      "name": "login_controls",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/x.aspx",
+        "status": 200,
+        "text": "<input id=\"txt_Username\"><input id=\"txtUPNswd\">"
+      },
+      "home": "dead",
+      "profile": "dead",
+      "history": "dead"
+    },
+    {
+      "name": "login_url",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/stafflogin.aspx",
+        "status": 200,
+        "text": "generic"
+      },
+      "home": "dead",
+      "profile": "dead",
+      "history": "dead"
+    },
+    {
+      "name": "maintenance",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/StaffHome.aspx",
+        "status": 503,
+        "text": "<h1>Unavailable</h1>"
+      },
+      "home": "unknown",
+      "profile": "unknown",
+      "history": "unknown"
+    },
+    {
+      "name": "forbidden",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/StaffHome.aspx",
+        "status": 403,
+        "text": "<a id=\"lnkLogout\"></a>"
+      },
+      "home": "unknown",
+      "profile": "unknown",
+      "history": "unknown"
+    },
+    {
+      "name": "unauthorized",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/StaffHome.aspx",
+        "status": 401,
+        "text": "x"
+      },
+      "home": "dead",
+      "profile": "dead",
+      "history": "dead"
+    },
+    {
+      "name": "null_state",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/StaffHome.aspx",
+        "status": 500,
+        "text": "Server Error in System.NullReferenceException"
+      },
+      "home": "unknown",
+      "profile": "unknown",
+      "history": "unknown"
+    },
+    {
+      "name": "profile",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_P10_DetailsV2.aspx",
+        "status": 200,
+        "text": "<input name=\"__VIEWSTATE\" value=\"v\"><input id=\"ContentPlaceHolder1_ImageButton18\">"
+      },
+      "home": "unknown",
+      "profile": "alive",
+      "history": "unknown"
+    },
+    {
+      "name": "profile_blank_state",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_P10_DetailsV2.aspx",
+        "status": 200,
+        "text": "<input name=\"__VIEWSTATE\"><div id=\"ContentPlaceHolder1_divViewLockProfile\"><input></div>"
+      },
+      "home": "unknown",
+      "profile": "alive",
+      "history": "unknown"
+    },
+    {
+      "name": "profile_no_state",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_P10_DetailsV2.aspx",
+        "status": 200,
+        "text": "<input id=\"ContentPlaceHolder1_ImageButton18\">"
+      },
+      "home": "unknown",
+      "profile": "unknown",
+      "history": "unknown"
+    },
+    {
+      "name": "history_date",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+        "status": 200,
+        "text": "<input name=\"__VIEWSTATE\" value=\"v\"><table id=\"ContentPlaceHolder1_grdLeaveDetails\"><tr><td>11/10/2026</td></tr></table>"
+      },
+      "home": "unknown",
+      "profile": "unknown",
+      "history": "alive"
+    },
+    {
+      "name": "history_empty_marker",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+        "status": 200,
+        "text": "<input name=\"__VIEWSTATE\" value=\"v\"><table id=\"grdLeaveDetails\"><tr><td>No records found</td></tr></table>"
+      },
+      "home": "unknown",
+      "profile": "unknown",
+      "history": "alive"
+    },
+    {
+      "name": "history_missing_rows",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+        "status": 200,
+        "text": "<input name=\"__VIEWSTATE\" value=\"v\"><table id=\"grdLeaveDetails\"></table>"
+      },
+      "home": "unknown",
+      "profile": "unknown",
+      "history": "unknown"
+    },
+    {
+      "name": "history_blank_state",
+      "document": {
+        "url": "https://rajshaladarpan.rajasthan.gov.in/SD4/Home/Staff/Staff_LeaveApplication_Applied.aspx",
+        "status": 200,
+        "text": "<input name=\"__VIEWSTATE\" value=\" \"><table id=\"grdLeaveDetails\"><tr><td>11-10-2026</td></tr></table>"
+      },
+      "home": "unknown",
+      "profile": "unknown",
+      "history": "unknown"
+    }
+  ],
+  "notices": [
+    {
+      "html": "<span id=\"lblMsg\">असली <b>संदेश</b></span>",
+      "notice": "असली संदेश"
+    },
+    {
+      "html": "<script>alert(\"Wrong CAPTCHA\");</script>",
+      "notice": "Wrong CAPTCHA"
+    },
+    {
+      "html": "<script>window.alert('Line\\nTwo')</script>",
+      "notice": "Line\nTwo"
+    },
+    {
+      "html": "<script>function x(){alert(\"dormant\");}</script>",
+      "notice": ""
+    },
+    {
+      "html": "<div id=\"divLogedUser\">Old session</div>",
+      "notice": ""
+    },
+    {
+      "html": "<div id=\"divLogedUser\">Old session</div><script>LogedUser();</script>",
+      "notice": "Old session"
+    },
+    {
+      "html": "<div id=\"divimpmsg\">Portal notice</div><script>MsgUserPop();</script>",
+      "notice": "Portal notice"
+    }
+  ]
+}

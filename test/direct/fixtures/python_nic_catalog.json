@@ -1,0 +1,289 @@
+[
+  {
+    "name": "selected",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\">Select</option><option value=\"2025-26\" selected>2025-26</option><option value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"\" selected>Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\">Select</option><option selected=\"\" value=\"2025-26\">2025-26</option><option value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option selected=\"\" value=\"\">Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 0,
+    "result": {
+      "success": true,
+      "school_id": "123456",
+      "classes": [
+        {
+          "id": "1",
+          "label": "Class 1",
+          "selected": false
+        },
+        {
+          "id": "2",
+          "label": "Class 2",
+          "selected": false
+        }
+      ],
+      "session": "2025-26",
+      "session_label": "2025-26"
+    }
+  },
+  {
+    "name": "newest",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\" selected>Select</option><option value=\"2024-25\">2024-25</option><option value=\"2026-27\">2026-27</option><option value=\"2025-26\">2025-26</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"\" selected>Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\">Select</option><option value=\"2024-25\">2024-25</option><option selected=\"\" value=\"2026-27\">2026-27</option><option value=\"2025-26\">2025-26</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option selected=\"\" value=\"\">Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 1,
+    "result": {
+      "success": true,
+      "school_id": "123456",
+      "classes": [
+        {
+          "id": "1",
+          "label": "Class 1",
+          "selected": false
+        },
+        {
+          "id": "2",
+          "label": "Class 2",
+          "selected": false
+        }
+      ],
+      "session": "2026-27",
+      "session_label": "2026-27"
+    }
+  },
+  {
+    "name": "slash_full_year",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\" selected>Select</option><option value=\"2025/2026\">2025/2026</option><option value=\"2026/2027\">2026/2027</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"\" selected>Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\">Select</option><option value=\"2025/2026\">2025/2026</option><option selected=\"\" value=\"2026/2027\">2026/2027</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option selected=\"\" value=\"\">Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 1,
+    "result": {
+      "success": true,
+      "school_id": "123456",
+      "classes": [
+        {
+          "id": "1",
+          "label": "Class 1",
+          "selected": false
+        },
+        {
+          "id": "2",
+          "label": "Class 2",
+          "selected": false
+        }
+      ],
+      "session": "2026/2027",
+      "session_label": "2026/2027"
+    }
+  },
+  {
+    "name": "tie_first",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\" selected>Select</option><option value=\"2026-27\">2026-27</option><option value=\"2026/2027\">2026/2027</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"\" selected>Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\">Select</option><option selected=\"\" value=\"2026-27\">2026-27</option><option value=\"2026/2027\">2026/2027</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option selected=\"\" value=\"\">Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 1,
+    "result": {
+      "success": true,
+      "school_id": "123456",
+      "classes": [
+        {
+          "id": "1",
+          "label": "Class 1",
+          "selected": false
+        },
+        {
+          "id": "2",
+          "label": "Class 2",
+          "selected": false
+        }
+      ],
+      "session": "2026-27",
+      "session_label": "2026-27"
+    }
+  },
+  {
+    "name": "no_onchange",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\"><option value=\"\" selected>Select</option><option value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"\" selected>Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\"><option value=\"\">Select</option><option selected=\"\" value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option selected=\"\" value=\"\">Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 0,
+    "result": {
+      "success": true,
+      "school_id": "123456",
+      "classes": [
+        {
+          "id": "1",
+          "label": "Class 1",
+          "selected": false
+        },
+        {
+          "id": "2",
+          "label": "Class 2",
+          "selected": false
+        }
+      ],
+      "session": "2026-27",
+      "session_label": "2026-27"
+    }
+  },
+  {
+    "name": "no_sessions",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\" selected>Select</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"\" selected>Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option selected=\"\" value=\"\">Select</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option selected=\"\" value=\"\">Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 0,
+    "result": {
+      "success": false,
+      "code": "PAGE_NOT_READY",
+      "message": "Portal academic sessions are not available."
+    }
+  },
+  {
+    "name": "no_dated_sessions",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\" selected>Select</option><option value=\"All\">All</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"\" selected>Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option selected=\"\" value=\"\">Select</option><option value=\"All\">All</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option selected=\"\" value=\"\">Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 0,
+    "result": {
+      "success": false,
+      "code": "PAGE_NOT_READY",
+      "message": "Portal academic sessions are not available."
+    }
+  },
+  {
+    "name": "selected_non_date",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"All\" selected>All</option><option value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"\" selected>Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option selected=\"\" value=\"All\">All</option><option value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option selected=\"\" value=\"\">Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 0,
+    "result": {
+      "success": true,
+      "school_id": "123456",
+      "classes": [
+        {
+          "id": "1",
+          "label": "Class 1",
+          "selected": false
+        },
+        {
+          "id": "2",
+          "label": "Class 2",
+          "selected": false
+        }
+      ],
+      "session": "All",
+      "session_label": "All"
+    }
+  },
+  {
+    "name": "disabled_newest",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\" selected>Select</option><option value=\"2027-28\" disabled>2027-28</option><option value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"\" selected>Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\">Select</option><option disabled=\"\" value=\"2027-28\">2027-28</option><option selected=\"\" value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option selected=\"\" value=\"\">Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 1,
+    "result": {
+      "success": true,
+      "school_id": "123456",
+      "classes": [
+        {
+          "id": "1",
+          "label": "Class 1",
+          "selected": false
+        },
+        {
+          "id": "2",
+          "label": "Class 2",
+          "selected": false
+        }
+      ],
+      "session": "2026-27",
+      "session_label": "2026-27"
+    }
+  },
+  {
+    "name": "disabled_selected",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"2025-26\" selected disabled>2025-26</option><option value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"\" selected>Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option disabled=\"\" value=\"2025-26\">2025-26</option><option selected=\"\" value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option selected=\"\" value=\"\">Select</option><option value=\"1\">Class 1</option><option value=\"2\">Class 2</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 1,
+    "result": {
+      "success": true,
+      "school_id": "123456",
+      "classes": [
+        {
+          "id": "1",
+          "label": "Class 1",
+          "selected": false
+        },
+        {
+          "id": "2",
+          "label": "Class 2",
+          "selected": false
+        }
+      ],
+      "session": "2026-27",
+      "session_label": "2026-27"
+    }
+  },
+  {
+    "name": "no_classes",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"2026-27\" selected>2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"\" selected>Select</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option selected=\"\" value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option selected=\"\" value=\"\">Select</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 0,
+    "result": {
+      "success": false,
+      "code": "PAGE_NOT_READY",
+      "message": "Portal classes are not available for the selected session."
+    }
+  },
+  {
+    "name": "option_labels",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\" 2026-27 \" selected> Session 2026-27 </option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"1\" selected> Class I </option><option value=\"2\" disabled>Class II</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option selected=\"\" value=\" 2026-27 \"> Session 2026-27 </option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option selected=\"\" value=\"1\"> Class I </option><option disabled=\"\" value=\"2\">Class II</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 0,
+    "result": {
+      "success": true,
+      "school_id": "123456",
+      "classes": [
+        {
+          "id": "1",
+          "label": "Class I",
+          "selected": true
+        }
+      ],
+      "session": " 2026-27 ",
+      "session_label": "Session 2026-27"
+    }
+  },
+  {
+    "name": "default_first",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"2025-26\">2025-26</option><option value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"1\">1</option><option value=\"2\">2</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"2025-26\">2025-26</option><option value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"1\">1</option><option value=\"2\">2</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 0,
+    "result": {
+      "success": true,
+      "school_id": "123456",
+      "classes": [
+        {
+          "id": "1",
+          "label": "1",
+          "selected": true
+        },
+        {
+          "id": "2",
+          "label": "2",
+          "selected": false
+        }
+      ],
+      "session": "2025-26",
+      "session_label": "2025-26"
+    }
+  },
+  {
+    "name": "fresh_classes",
+    "initial_html": "<html><body><form><input type=\"hidden\" name=\"__VIEWSTATE\" value=\"state\"><input type=\"hidden\" name=\"__EVENTVALIDATION\" value=\"validation\"><input type=\"hidden\" name=\"ctl00$ScriptManager1\" value=\"unused\"><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\" selected>Select</option><option value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"3\">Old class</option></select><input type=\"submit\" name=\"ctl00$ContentPlaceHolder1$btn_Lock\" value=\"Lock\"></form></body></html>",
+    "after_html": "<html><body><form><input name=\"__VIEWSTATE\" type=\"hidden\" value=\"state\"/><input name=\"__EVENTVALIDATION\" type=\"hidden\" value=\"validation\"/><input name=\"ctl00$ScriptManager1\" type=\"hidden\" value=\"unused\"/><select id=\"ddlSession\" name=\"ctl00$ContentPlaceHolder1$ddlSession\" onchange=\"__doPostBack('ctl00$ContentPlaceHolder1$ddlSession','')\"><option value=\"\">Select</option><option selected=\"\" value=\"2026-27\">2026-27</option></select><select id=\"ContentPlaceHolder1_ddlClass\" name=\"ctl00$ContentPlaceHolder1$ddlClass\"><option value=\"4\">Fresh Class 4</option></select><input name=\"ctl00$ContentPlaceHolder1$btn_Lock\" type=\"submit\" value=\"Lock\"/></form></body></html>",
+    "posts": 1,
+    "result": {
+      "success": true,
+      "school_id": "123456",
+      "classes": [
+        {
+          "id": "4",
+          "label": "Fresh Class 4",
+          "selected": true
+        }
+      ],
+      "session": "2026-27",
+      "session_label": "2026-27"
+    }
+  }
+]

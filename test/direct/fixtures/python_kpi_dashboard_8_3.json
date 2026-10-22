@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "payload": {
+    "sections": "1",
+    "students": "8",
+    "present": "3",
+    "attendance": "3 / 8",
+    "percentage": "38%",
+    "sync_time": "12:10 AM",
+    "sync_date": "Sunday, Oct 11",
+    "class_summary": {
+      "success": true,
+      "date": "11/10/2026",
+      "classes": [
+        {
+          "total": 8,
+          "present": 3,
+          "done": false,
+          "status": "pending"
+        }
+      ]
+    }
+  }
+}

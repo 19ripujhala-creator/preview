@@ -1,0 +1,5 @@
+{
+  "success": false,
+  "code": "INVALID_RESULT",
+  "message": "Attendance rows do not match portal totals."
+}

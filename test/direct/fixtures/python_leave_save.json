@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "message": "Leave action statuses verified in All Applications.",
+  "data": {
+    "success": true,
+    "pending_count": 0,
+    "applications": []
+  },
+  "submission_attempted": true,
+  "verified": true,
+  "verification_source": "all_applications",
+  "verified_statuses": {
+    "501": "Processed",
+    "502": "Rejected"
+  },
+  "refresh_required": false
+}

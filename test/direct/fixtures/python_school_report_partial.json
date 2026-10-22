@@ -1,0 +1,8 @@
+{
+  "success": false,
+  "code": "NO_STUDENT_TABLE",
+  "message": "The following sections could not be read from the portal: 1A. Please wait for the portal session synchronization to complete and try again.",
+  "failedSections": [
+    "1A"
+  ]
+}

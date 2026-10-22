@@ -1,0 +1,5 @@
+{
+  "success": false,
+  "code": "INVALID_RESULT",
+  "message": "Present count exceeds student count."
+}

@@ -1,0 +1,188 @@
+{
+  "success": true,
+  "data": {
+    "task": "ranking",
+    "selectors": [
+      {
+        "id": "ContentPlaceHolder1_ddlMonth1",
+        "label": "Month",
+        "value": "9",
+        "options": [
+          {
+            "value": "0",
+            "label": "0"
+          },
+          {
+            "value": "9",
+            "label": "9"
+          },
+          {
+            "value": "8",
+            "label": "8"
+          }
+        ],
+        "required": false,
+        "readonly": false,
+        "numeric": false,
+        "maxlength": 0,
+        "date": false
+      },
+      {
+        "id": "ContentPlaceHolder1_ddlyear",
+        "label": "Year",
+        "value": "2026",
+        "options": [
+          {
+            "value": "2026",
+            "label": "2026"
+          },
+          {
+            "value": "2025",
+            "label": "2025"
+          }
+        ],
+        "required": false,
+        "readonly": false,
+        "numeric": false,
+        "maxlength": 0,
+        "date": false
+      }
+    ],
+    "sections": [
+      {
+        "title": "District Entry Data Ranking",
+        "fields": [
+          {
+            "id": "ContentPlaceHolder1_txtaward",
+            "label": "txtaward",
+            "value": "1",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 8,
+            "date": false,
+            "required_message": "कृप्या अवार्ड एंट्री की प्रविष्ठी करें"
+          },
+          {
+            "id": "ContentPlaceHolder1_txtlibbooks",
+            "label": "txtlibbooks",
+            "value": "2",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 8,
+            "date": false,
+            "required_message": "कृप्या वितरित पुस्तकों की प्रविष्ठी करें"
+          },
+          {
+            "id": "ContentPlaceHolder1_txtsports",
+            "label": "txtsports",
+            "value": "3",
+            "options": [],
+            "required": true,
+            "readonly": false,
+            "numeric": true,
+            "maxlength": 8,
+            "date": false,
+            "required_message": "Sports participation is required"
+          },
+          {
+            "id": "ContentPlaceHolder1_TextBox1",
+            "label": "TextBox1",
+            "value": "01-09-2026",
+            "options": [],
+            "required": false,
+            "readonly": false,
+            "numeric": false,
+            "maxlength": 0,
+            "date": true
+          }
+        ],
+        "identity": {}
+      }
+    ],
+    "history": [],
+    "can_submit": true,
+    "can_lock": false,
+    "locked": false,
+    "lock_date": null,
+    "completed": false,
+    "no_records": false,
+    "message": "",
+    "selection": {
+      "ContentPlaceHolder1_ddlMonth1": "9",
+      "ContentPlaceHolder1_ddlyear": "2026"
+    },
+    "history_complete": true,
+    "editing": false,
+    "can_edit": false,
+    "can_delete": false
+  },
+  "review": {
+    "task": "ranking",
+    "selection": {
+      "ContentPlaceHolder1_ddlMonth1": "9",
+      "ContentPlaceHolder1_ddlyear": "2026"
+    },
+    "selectors": [
+      {
+        "id": "ContentPlaceHolder1_ddlMonth1",
+        "values": [
+          "0",
+          "8",
+          "9"
+        ]
+      },
+      {
+        "id": "ContentPlaceHolder1_ddlyear",
+        "values": [
+          "2025",
+          "2026"
+        ]
+      }
+    ],
+    "fields": [
+      {
+        "id": "ContentPlaceHolder1_txtaward",
+        "value": "1",
+        "readonly": false,
+        "numeric": true,
+        "maxlength": 8,
+        "date": false
+      },
+      {
+        "id": "ContentPlaceHolder1_txtlibbooks",
+        "value": "2",
+        "readonly": false,
+        "numeric": true,
+        "maxlength": 8,
+        "date": false
+      },
+      {
+        "id": "ContentPlaceHolder1_txtsports",
+        "value": "3",
+        "readonly": false,
+        "numeric": true,
+        "maxlength": 8,
+        "date": false
+      },
+      {
+        "id": "ContentPlaceHolder1_TextBox1",
+        "value": "01-09-2026",
+        "readonly": false,
+        "numeric": false,
+        "maxlength": 0,
+        "date": true
+      }
+    ],
+    "history": [],
+    "history_complete": true,
+    "editing": false,
+    "can_submit": true,
+    "can_edit": false,
+    "can_delete": false,
+    "confirmations": {}
+  }
+}

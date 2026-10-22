@@ -1,0 +1,428 @@
+<html><head><script language="javascript">
+        function openModal2() {
+            $('#selectPopup4').modal('show');
+
+        }
+    </script><script language="javascript" type="text/javascript">
+
+        function OpenPrintPop() {
+            $('#div_StuPrint').modal({
+                backdrop: 'static',
+                keyboard: false
+            });
+            return false;
+        }
+
+        function openValidationModal() {
+            $('#ValidationPopup').modal('show');
+        }
+        function openScheduleModal() {
+            $('#ScheduleOverPopup').modal('show');
+        }
+        function openMsgModal(msg) {
+            document.getElementById("msgDiv").innerHTML = msg;
+            $('#MsgPopup').modal('show');
+        }
+
+        function openAlreadyApplyPopup(msg) {
+            document.getElementById("msg_Success").innerHTML = msg;
+            $('#AlreadyApplyPopup').modal('show');
+        }
+    </script><script language="javascript" type="text/javascript">
+        function onValueChange() {
+
+            document.getElementById('ContentPlaceHolder1_Txt_Days').value = '';
+
+            var valFromDate = document.getElementById('ContentPlaceHolder1_txt_FromDate').value;
+            var valToDate = document.getElementById('ContentPlaceHolder1_txt_ToDate').value;
+            //alert('FromDate : ' + valFromDate + ' ToDate:' + valToDate);
+
+            if (valFromDate == '') {
+                openMsgModal("Please Enter From Date.");
+                document.getElementById('ContentPlaceHolder1_txt_FromDate').focus();
+                return -1;
+            }
+
+            if (valToDate == '') {
+                openMsgModal("Please Enter To Date.");
+                document.getElementById('ContentPlaceHolder1_txt_ToDate').focus();
+                return -1;
+            }
+
+            var strConcat1="";
+            var fDResult = valFromDate.split("-");
+            var fD_DDMM = strConcat1.concat(fDResult[1],"-",fDResult[0],"-",fDResult[2]);
+            
+            strConcat2="";
+            var tDResult = valToDate.split("-");
+            var tD_DDMM = strConcat2.concat(tDResult[1],"-",tDResult[0],"-",tDResult[2]);
+            
+            var fromDate = new Date(fD_DDMM);
+            var tomDate = new Date(tD_DDMM);
+
+//            var fromDate = new Date(valFromDate);
+//            var tomDate = new Date(valToDate);
+
+            if(fromDate > tomDate){
+                openMsgModal("To Date should be greater than from date.");
+                document.getElementById('ContentPlaceHolder1_txt_ToDate').focus();
+                document.getElementById('ContentPlaceHolder1_txt_ToDate').value = '';
+                return -1;
+            }
+
+            $.ajax({
+
+                type: "POST",
+                url: "Staff_LeaveApplication.aspx/getTotalDays",
+                data: "{ fromDate: '" + valFromDate + "', toDate: '" + valToDate + "' }",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (msg) {
+
+                    var noOfDays = msg.d;
+                    document.getElementById('ContentPlaceHolder1_Txt_Days').value = noOfDays;
+                },
+//                error: function (msg) {
+//                    debugger;
+//                    alert(msg.d);
+//                }
+            });
+
+        }
+    </script><script type="text/javascript">
+        $(document).ready(function () {
+            $(".datepicker").datepicker({
+                dateFormat: "dd-mm-yy",
+                changeMonth: true,
+                changeYear: true,
+                yearRange: (new Date().getFullYear() - 2) + ":" + (new Date().getFullYear() + 2),
+                //yearRange: "1930 : 2000"
+                maxDate: (new Date().getDate() + 707)
+            });
+
+            Sys.WebForms.PageRequestManager.getInstance().add_endRequest(EndRequestHandler);
+
+            function EndRequestHandler(sender, args) {
+                $('.datepicker').datepicker({
+                    dateFormat: "dd-mm-yy",
+                    changeMonth: true,
+                    changeYear: true,
+                    yearRange: (new Date().getFullYear() - 2) + ":" + (new Date().getFullYear() + 2),
+
+                    //yearRange: "1930 : 2019"
+                    maxDate: (new Date().getDate() + 707)
+                });
+            }
+        });
+    </script><script type="text/javascript">
+        function DeleteMessage() {
+            if (confirm('Are you sure to delete this Record ?')) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        function isNumberOrDotKey(evt) {
+            var charCode = (evt.which) ? evt.which : evt.keyCode
+
+            if ((charCode == 46) || (charCode >= 48 && charCode <= 57)) {
+                return true;
+            }
+
+            return false;
+        }
+
+    </script></head><body><form action="https://rajshaladarpan.rajasthan.gov.in/SD1/Home/staff/Staff_LeaveApplication.aspx" method="post"><input id="__EVENTTARGET" name="__EVENTTARGET" type="hidden" value=""/><input id="__EVENTARGUMENT" name="__EVENTARGUMENT" type="hidden" value=""/><input id="__LASTFOCUS" name="__LASTFOCUS" type="hidden" value=""/><input id="__VIEWSTATE" name="__VIEWSTATE" type="hidden" value="fixture-__VIEWSTATE"/><input id="__VIEWSTATEGENERATOR" name="__VIEWSTATEGENERATOR" type="hidden" value=""/><input id="__EVENTVALIDATION" name="__EVENTVALIDATION" type="hidden" value="fixture-__EVENTVALIDATION"/><input id="hdnTemp" name="ctl00$hdnTemp" type="hidden" value="972e2b6f-33fe-4b1e-8a65-7357c9397501"/><input id="ContentPlaceHolder1_hdnID" name="ctl00$ContentPlaceHolder1$hdnID" type="hidden"/><script type="text/javascript">
+//<![CDATA[
+Sys.WebForms.PageRequestManager._initialize('ctl00$ScriptManager1', 'form1', ['tctl00$UpdatePanel3','UpdatePanel3','tctl00$UpdatePanel1','UpdatePanel1','tctl00$UpdatePanel2','UpdatePanel2','tctl00$ContentPlaceHolder1$UpdatePanel1','ContentPlaceHolder1_UpdatePanel1'], [], [], 360000, 'ctl00');
+//]]>
+</script><div id="ContentPlaceHolder1_UpdatePanel1">
+<div class="row">
+<div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+<strong>Applicant Name</strong>
+<span class="form-control" id="ContentPlaceHolder1_lblStaffName" style="color:Black;">TEST STAFF</span>
+</div>
+<div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+<strong>Post</strong>
+<span class="form-control" id="ContentPlaceHolder1_lblStaffDesignation" style="color:Black;">Teacher Level-1, ---</span>
+</div>
+</div>
+<div class="clearfix spacer">
+</div>
+<div class="row">
+<div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+<strong>Leave Reason</strong>
+<select class="form-control" id="ContentPlaceHolder1_ddl_LeaveReason" name="ctl00$ContentPlaceHolder1$ddl_LeaveReason" style="color:Black;">
+<option value="">--Select Leave Reason--</option>
+<option value="1">DOMESTIC /PERSONAL</option>
+<option value="2">CASUAL/ INCIDENTAL</option>
+<option value="3">HOSPITALISATION</option>
+<option value="4">RECOVERY AFTER HOSPITALISATION</option>
+<option value="5">MEDICAL GROUND</option>
+<option value="6">OFFICIAL/DEPARTMENTAL</option>
+<option value="7">SPORTING EVENTS-TOURNAMENT RECOGNIZED BY GOVT.</option>
+<option value="8">FOR STUDY</option>
+<option value="10">LEAVE FOR VOTE CASTING</option>
+<option value="11">APPEARING IN DEPARTMENTAL EXAMINATIONS</option>
+<option value="12">VISIT ABROAD</option>
+<option value="13">FAMILY WELFARE PROGRAM</option>
+<option value="14">ABSENCE ON ACCOUNT OF BANDH</option>
+<option value="15">MISCARRIAGE,ABORTION</option>
+<option value="16">CHILD BIRTH</option>
+<option value="17">DONATES BLOOD</option>
+<option value="18">LTC</option>
+<option value="19">TO TAKE CARE OF THE NEEDS OF THE MINOR CHILDREN</option>
+<option value="20">OTHER</option>
+<option value="21">Restricted Holiday</option>
+</select>
+</div>
+<div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+<strong>Leave Type</strong>
+<select class="form-control" id="ContentPlaceHolder1_ddl_LeaveType" name="ctl00$ContentPlaceHolder1$ddl_LeaveType" style="color:Black;">
+<option value="">--Select Leave Type--</option>
+<option value="1">Casual Leave / आकस्मिक अवकाश (CL)</option>
+<option value="2">Commuted Leave / रूपांतरित अवकाश</option>
+<option value="3">Half Pay Leave (HPL)</option>
+<option value="4">Maternity Leave / मातृत्व अवकाश (ML)</option>
+<option value="5">Paternity Leave / पितृत्व अवकाश</option>
+<option value="6">Child Care Leave / संतान पालन अवकाश (CCL)</option>
+<option value="7">Study Leave / अध्ययन अवकाश</option>
+<option value="8">Leave without Pay / अवैतनिक अवकाश (LWP)</option>
+<option value="9">Compensative Casual Leave / क्षतिपूर्ति अवकाश (CCL) For Min. Staff</option>
+<option value="10">Priviledge Leave / उपार्जित अवकाश (PL)</option>
+<option value="11">सवैतनिक अवकाश (सव. अव.)</option>
+<option value="12">Half CL (HCL)</option>
+<option value="96">On Headquarter Only</option>
+<option value="97">On HQ with COVID-19 Duty</option>
+<option value="98">Out of Headquarter</option>
+<option value="13">Quarantine Leave</option>
+<option value="14">Restricted Holiday/ ऐच्छिक अवकाश (RH)</option>
+</select>
+</div>
+</div>
+<div class="clearfix spacer">
+</div>
+<div class="row">
+<div class="col-xs-12 col-sm-12 col-md-6 col-lg-6 nopadding">
+<div class="col-lg-12">
+<strong>From</strong>
+</div>
+<div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+<input autocomplete="off" class="datepicker form-control hasDatepicker" id="ContentPlaceHolder1_txt_FromDate" name="ctl00$ContentPlaceHolder1$txt_FromDate" onkeydown="return false" type="text"/>
+</div>
+<div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+<select class="form-control" id="ContentPlaceHolder1_ddl_fromDuration" name="ctl00$ContentPlaceHolder1$ddl_fromDuration" onchange="javascript:setTimeout('__doPostBack(\'ctl00$ContentPlaceHolder1$ddl_fromDuration\',\'\')', 0)" style="color:Black;">
+<option selected="selected" value="1">Full day</option>
+<option value="2">Half day</option>
+</select>
+</div>
+<div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+<select class="aspNetDisabled form-control" disabled="disabled" id="ContentPlaceHolder1_ddl_FromDayType" name="ctl00$ContentPlaceHolder1$ddl_FromDayType" style="color:Black;">
+<option selected="selected" value="0">--Select--</option>
+<option value="1">Forenoon</option>
+<option value="2">Afternoon</option>
+</select>
+</div>
+</div>
+<div class="col-xs-12 col-sm-12 col-md-6 col-lg-6 nopadding">
+<div class="col-lg-12">
+<strong>To</strong>
+</div>
+<div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+<input autocomplete="off" class="datepicker form-control hasDatepicker" id="ContentPlaceHolder1_txt_ToDate" name="ctl00$ContentPlaceHolder1$txt_ToDate" onchange="onValueChange()" onkeydown="return false" type="text"/>
+</div>
+<div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+<select class="form-control" id="ContentPlaceHolder1_ddl_ToDuration" name="ctl00$ContentPlaceHolder1$ddl_ToDuration" onchange="javascript:setTimeout('__doPostBack(\'ctl00$ContentPlaceHolder1$ddl_ToDuration\',\'\')', 0)" style="color:Black;">
+<option selected="selected" value="1">Full day</option>
+<option value="2">Half day</option>
+</select>
+</div>
+<div class="col-xs-12 col-sm-12 col-md-4 col-lg-4">
+<select class="aspNetDisabled form-control" disabled="disabled" id="ContentPlaceHolder1_ddl_ToDayType" name="ctl00$ContentPlaceHolder1$ddl_ToDayType" style="color:Black;">
+<option selected="selected" value="0">--Select--</option>
+<option value="1">Forenoon</option>
+<option value="2">Afternoon</option>
+</select>
+</div>
+</div>
+</div>
+<div class="clearfix spacer">
+</div>
+<div class="row">
+<div class="col-xs-12 col-sm-12 col-md-6 col-lg-6 nopadding">
+<div class="col-lg-4">
+<strong>No of Days</strong>
+<input autocomplete="off" class="form-control" id="ContentPlaceHolder1_Txt_Days" maxlength="5" name="ctl00$ContentPlaceHolder1$Txt_Days" onkeypress="return isNumberOrDotKey(event)" type="text"/>
+</div>
+<div class="col-lg-8">
+<strong>Headquarter Leave Required</strong>
+<table cellpadding="5" cellspacing="5" id="ContentPlaceHolder1_rbl_StationLeaveReq">
+<tbody><tr>
+<td><input id="ContentPlaceHolder1_rbl_StationLeaveReq_0" name="ctl00$ContentPlaceHolder1$rbl_StationLeaveReq" type="radio" value="Y"/><label for="ContentPlaceHolder1_rbl_StationLeaveReq_0">Yes</label></td><td><input id="ContentPlaceHolder1_rbl_StationLeaveReq_1" name="ctl00$ContentPlaceHolder1$rbl_StationLeaveReq" type="radio" value="N"/><label for="ContentPlaceHolder1_rbl_StationLeaveReq_1">No</label></td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="col-xs-12 col-sm-12 col-md-6 col-lg-6">
+<strong>Address During Leave Period</strong>
+<input autocomplete="off" class="form-control" id="ContentPlaceHolder1_txt_AddressDuringLeave" maxlength="100" name="ctl00$ContentPlaceHolder1$txt_AddressDuringLeave" type="text"/>
+</div>
+</div>
+<div class="clearfix spacer">
+</div>
+<div class="row">
+<div class="col-xs-12 col-sm-12 col-md-6 col-lg-6 nopadding">
+<div class="col-lg-12">
+<strong>Remark</strong>
+<input autocomplete="off" class="form-control" id="ContentPlaceHolder1_txt_Remark" maxlength="60" name="ctl00$ContentPlaceHolder1$txt_Remark" type="text"/>
+
+</div>
+</div>
+</div>
+<div class="clearfix spacer">
+</div>
+<div class="row">
+<div class="col-lg-12 text-center">
+<input class="btn btn-lg btn-info" id="ContentPlaceHolder1_BtnNext" name="ctl00$ContentPlaceHolder1$BtnNext" type="submit" value="Next"/>
+</div>
+</div>
+<br/>
+<div class="table-responsive">
+<div>
+<table cellpadding="0" cellspacing="0" class="table table-bordered table-striped table-hover CSSTableGenerator tabel-detail-leave-Header" data-compression="5" id="ContentPlaceHolder1_grdLeaveDetails" style="border-width:1px;border-style:None;width:100%;border-collapse:collapse;">
+<tbody><tr>
+<th scope="col" style="width:5%;">Sr.No</th><th scope="col" style="width:20%;">Reason</th><th scope="col" style="width:20%;">Leave Type</th><th scope="col" style="width:10%;">From Date</th><th scope="col" style="width:10%;">To Date</th><th scope="col" style="width:10%;">Status</th><th scope="col" style="width:10%;">Remark</th><th scope="col" style="width:10%;">Action</th>
+</tr><tr>
+<td>
+                                                    1
+                                                </td><td>
+                                                    DOMESTIC /PERSONAL
+                                                </td><td>
+                                                    Casual Leave / आकस्मिक अवकाश (CL)
+                                                </td><td>
+                                                    12-10-2026
+                                                </td><td>
+                                                    12-10-2026
+                                                </td><td>
+                                                    Pending
+                                                </td><td>
+                                                    Leave Application
+                                                </td><td align="center">
+<input id="ContentPlaceHolder1_grdLeaveDetails_btnEdit_0" name="ctl00$ContentPlaceHolder1$grdLeaveDetails$ctl03$btnEdit" src="./Integrated ShalaDarpan_files/Edit.png" title="Edit" type="image"/>
+                                                     
+                                                    
+                                                </td>
+</tr>
+</tbody></table>
+</div>
+</div>
+<div class="modal fade" id="MsgPopup" role="dialog">
+<div class="modal-dialog modal-lg">
+<div class="modal-content">
+<div class="modal-header">
+<button class="close" data-dismiss="modal" type="button">
+                                                    ×</button>
+<h4 class="modal-title">
+                                                    कृपया ध्यान दें...</h4>
+</div>
+<div class="modal-body">
+<div id="msgDiv" style="font-size: 20px; color: #B71C1C">
+</div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-default" data-dismiss="modal" type="button">
+                                                    Close</button>
+</div>
+</div>
+</div>
+</div>
+<div class="modal fade" id="div_StuPrint" role="dialog">
+<div class="modal-dialog" style="width: 70%;">
+<div class="modal-content">
+<div class="modal-header">
+<div class="row">
+<div class="col-md-12">
+<div class="col-md-8">
+<h4 class="modal-title">
+<span id="ContentPlaceHolder1_Label63">Leave Preview</span></h4>
+</div>
+<div class="col-md-3">
+</div>
+<div class="col-md-1">
+<button class="close" data-dismiss="modal" type="button">
+                                                                ×</button>
+</div>
+</div>
+</div>
+</div>
+<div class="modal-body">
+<div class="row">
+<div class="col-md-12">
+<div id="dvReport">
+<div class="row">
+<div class="col-md-12">
+<div class="row">
+<div class="col-sm-12">
+<div class="clearfix spacer">
+</div>
+<div class="row">
+<div class="col-lg-3">
+<strong>Leave Type</strong>
+</div>
+<div class="col-lg-3">
+<strong>Leave From</strong>
+</div>
+<div class="col-lg-3">
+<strong>Leave To</strong>
+</div>
+<div class="col-lg-3">
+<strong>No of Days</strong>
+</div>
+</div>
+<div class="row">
+<div class="col-lg-3">
+<span autocomplete="off" id="ContentPlaceHolder1_Txt_LeaveType" readonly="true"></span>
+</div>
+<div class="col-lg-3">
+<span autocomplete="off" id="ContentPlaceHolder1_Txt_From" readonly="true"></span>
+</div>
+<div class="col-lg-3">
+<span autocomplete="off" id="ContentPlaceHolder1_Txt_To" readonly="true"></span>
+</div>
+<div class="col-lg-3">
+<span autocomplete="off" id="ContentPlaceHolder1_Txt_Total" readonly="true"></span>
+</div>
+</div>
+<div class="clearfix spacer">
+</div>
+<div class="row">
+<div class="col-md-1">
+<input id="ContentPlaceHolder1_Chk_Terms" name="ctl00$ContentPlaceHolder1$Chk_Terms" type="checkbox"/>
+</div>
+<div class="col-md-11">
+<span style="text-align: justify; font-size: 12px; font-family: Arial;"><strong>I hereby
+                                                                                        solemnly declare that I have applied for leave as per RSR, in case my statement
+                                                                                        is found false or proved untrue, I shall be liable to subject myselef to disciplinary
+                                                                                        proceedings under the Rajasthan Civil Services (Classification, Control and Appeal)
+                                                                                        Rules, 1958. I am Submitting/will submit the hardcopy duly signed in prescribed
+                                                                                        format to the school head. </strong></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="modal-footer">
+<input class="btn btn-lg btn-info" id="ContentPlaceHolder1_btnApply" name="ctl00$ContentPlaceHolder1$btnApply" type="submit" value="आवेदन करें"/>
+<button class="btn btn-default" data-dismiss="modal" type="button">
+                                                    Close</button>
+</div>
+</div>
+</div>
+</div>
+</div></form></body></html>

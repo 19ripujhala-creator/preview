@@ -1,0 +1,22 @@
+[
+  {
+    "target": "ctl00$ContentPlaceHolder1$ddlStudentType",
+    "body": "__VIEWSTATE=vs1&__EVENTVALIDATION=ev1&ctl00%24ContentPlaceHolder1%24ddlStudentType=2026-27&ctl00%24ContentPlaceHolder1%24ddlClass=P&ctl00%24ContentPlaceHolder1%24ddlmonth=9&__EVENTARGUMENT=&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24ddlStudentType",
+    "timeout_ms": 25000
+  },
+  {
+    "target": "ctl00$ContentPlaceHolder1$ddlClass",
+    "body": "__VIEWSTATE=VS2&__EVENTVALIDATION=EV2&ctl00%24ContentPlaceHolder1%24ddlStudentType=2026-27&ctl00%24ContentPlaceHolder1%24ddlClass=P&ctl00%24ContentPlaceHolder1%24ddlmonth=9&__EVENTARGUMENT=&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24ddlClass",
+    "timeout_ms": 25000
+  },
+  {
+    "target": "ctl00$ContentPlaceHolder1$ddlmonth",
+    "body": "__VIEWSTATE=VS3&__EVENTVALIDATION=EV3&ctl00%24ContentPlaceHolder1%24ddlStudentType=2026-27&ctl00%24ContentPlaceHolder1%24ddlClass=P&ctl00%24ContentPlaceHolder1%24ddlmonth=9&__EVENTARGUMENT=&__EVENTTARGET=ctl00%24ContentPlaceHolder1%24ddlmonth",
+    "timeout_ms": 25000
+  },
+  {
+    "target": "",
+    "body": "__VIEWSTATE=VS4&__EVENTVALIDATION=EV4&ctl00%24ContentPlaceHolder1%24ddlStudentType=2026-27&ctl00%24ContentPlaceHolder1%24ddlClass=P&ctl00%24ContentPlaceHolder1%24ddlmonth=9&__EVENTARGUMENT=&__EVENTTARGET=&ctl00%24ContentPlaceHolder1%24Button1=Show",
+    "timeout_ms": 30000
+  }
+]

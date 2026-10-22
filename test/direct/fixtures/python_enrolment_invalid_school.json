@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "complete": false,
+  "code": "ACCOUNT_CHANGED",
+  "message": "Requested school does not match the active login. Fetch again after login."
+}

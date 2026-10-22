@@ -1,0 +1,20 @@
+<script type="text/javascript">
+    //<![CDATA[
+    alert('10 तारीख के बाद एंट्री उपलब्‍ध नहीं है| अनलॉक बटन पर क्लिक करें')(function(id) {
+        var e = document.getElementById(id);
+        if (e) {
+            e.dispose = function() {
+                Array.remove(Page_ValidationSummaries, document.getElementById(id));
+            }
+            e = null;
+        }
+    })('ContentPlaceHolder1_valsummary');
+    Sys.Application.add_init(function() {
+        $create(Sys.UI._UpdateProgress, {
+            "associatedUpdatePanelId": null,
+            "displayAfter": 500,
+            "dynamicLayout": true
+        }, null, null, $get("UpdateProgress1"));
+    });
+    //]]>
+</script>

@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "complete": false,
+  "code": "NETWORK_ERROR",
+  "message": "Could not connect to the enrolment report."
+}

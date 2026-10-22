@@ -1,0 +1,5 @@
+{
+  "success": false,
+  "code": "PAGE_NOT_READY",
+  "message": "Paginated student counts cannot be verified as a complete summary."
+}

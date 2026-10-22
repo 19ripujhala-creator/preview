@@ -1,0 +1,47 @@
+[
+  {
+    "action": "Submit",
+    "request": {
+      "url": "https://rajshaladarpan.rajasthan.gov.in/SD1/Home/school/StudentAwardEntry.aspx",
+      "content": "__VIEWSTATE=vs1&__EVENTVALIDATION=ev1&ctl00%24ContentPlaceHolder1%24ddlMonth1=9&ctl00%24ContentPlaceHolder1%24ddlyear=2026&ctl00%24ContentPlaceHolder1%24txtaward=1&ctl00%24ContentPlaceHolder1%24txtlibbooks=2&ctl00%24ContentPlaceHolder1%24txtsports=3&ctl00%24ContentPlaceHolder1%24TextBox1=01-09-2026&ctl00%24ScriptManager1=ctl00%24ContentPlaceHolder1%24upPnl%7Cctl00%24ContentPlaceHolder1%24sub_btn&__EVENTTARGET=&__EVENTARGUMENT=&__ASYNCPOST=true&ctl00%24ContentPlaceHolder1%24sub_btn=Submit",
+      "timeout": 60.0,
+      "follow_redirects": false,
+      "headers": {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "X-MicrosoftAjax": "Delta=true",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD1/Home/school/StudentAwardEntry.aspx"
+      }
+    }
+  },
+  {
+    "action": "Edit",
+    "request": {
+      "url": "https://rajshaladarpan.rajasthan.gov.in/SD1/Home/school/StudentAwardEntry.aspx",
+      "content": "__VIEWSTATE=vs1&__EVENTVALIDATION=ev1&ctl00%24ContentPlaceHolder1%24ddlMonth1=9&ctl00%24ContentPlaceHolder1%24ddlyear=2026&ctl00%24ContentPlaceHolder1%24txtaward=1&ctl00%24ContentPlaceHolder1%24txtlibbooks=2&ctl00%24ContentPlaceHolder1%24txtsports=3&ctl00%24ContentPlaceHolder1%24TextBox1=01-09-2026&ctl00%24ScriptManager1=ctl00%24ContentPlaceHolder1%24upPnl%7Cctl00%24ContentPlaceHolder1%24grd_Add%24ctl02%24btnEdit&__EVENTTARGET=&__EVENTARGUMENT=&__ASYNCPOST=true&ctl00%24ContentPlaceHolder1%24grd_Add%24ctl02%24btnEdit.x=4&ctl00%24ContentPlaceHolder1%24grd_Add%24ctl02%24btnEdit.y=11",
+      "timeout": 60.0,
+      "follow_redirects": false,
+      "headers": {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "X-MicrosoftAjax": "Delta=true",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD1/Home/school/StudentAwardEntry.aspx"
+      }
+    }
+  },
+  {
+    "action": "Delete",
+    "request": {
+      "url": "https://rajshaladarpan.rajasthan.gov.in/SD1/Home/school/StudentAwardEntry.aspx",
+      "content": "__VIEWSTATE=vs1&__EVENTVALIDATION=ev1&ctl00%24ContentPlaceHolder1%24ddlMonth1=9&ctl00%24ContentPlaceHolder1%24ddlyear=2026&ctl00%24ContentPlaceHolder1%24txtaward=1&ctl00%24ContentPlaceHolder1%24txtlibbooks=2&ctl00%24ContentPlaceHolder1%24txtsports=3&ctl00%24ContentPlaceHolder1%24TextBox1=01-09-2026&ctl00%24ScriptManager1=ctl00%24ContentPlaceHolder1%24upPnl%7Cctl00%24ContentPlaceHolder1%24grd_Add%24ctl02%24btnDelete&__EVENTTARGET=&__EVENTARGUMENT=&__ASYNCPOST=true&ctl00%24ContentPlaceHolder1%24grd_Add%24ctl02%24btnDelete.x=4&ctl00%24ContentPlaceHolder1%24grd_Add%24ctl02%24btnDelete.y=11",
+      "timeout": 60.0,
+      "follow_redirects": false,
+      "headers": {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "X-MicrosoftAjax": "Delta=true",
+        "X-Requested-With": "XMLHttpRequest",
+        "Referer": "https://rajshaladarpan.rajasthan.gov.in/SD1/Home/school/StudentAwardEntry.aspx"
+      }
+    }
+  }
+]

@@ -1,0 +1,71 @@
+{
+  "success": true,
+  "attendance_verified": true,
+  "is_already_marked": true,
+  "already_locked": true,
+  "submission_attempted": true,
+  "message": "Staff attendance confirmed by the portal.",
+  "message_source": "backend_verified",
+  "outcome": "newly_submitted",
+  "portalMessages": [],
+  "data": {
+    "success": true,
+    "school_id": "123456",
+    "date": "2026-10-10",
+    "marked_at": "Oct 10 2026 09:12:34:123 AM",
+    "portal_marking_text": "Attendance Mark On : Oct 10 2026 09:12:34:123 AM",
+    "is_already_marked": true,
+    "attendance_verified": true,
+    "attendance_status": "marked",
+    "can_submit": false,
+    "restriction_message": null,
+    "stats": {
+      "total": 2,
+      "present": 0,
+      "leave": 1,
+      "other": 0,
+      "absent": 1,
+      "total_staff": 2,
+      "present_staff": 0,
+      "leave_staff": 1,
+      "other_staff": 0,
+      "absent_staff": 1
+    },
+    "staff": [
+      {
+        "schoolId": "123456",
+        "sno": "1",
+        "staffId": "101",
+        "employeeId": "E101",
+        "name": "Ram",
+        "post": "Teacher",
+        "status": "Absent",
+        "status_code": null,
+        "original_status": "Absent",
+        "editable": false,
+        "selectId": null,
+        "options": [],
+        "appliedLeave": null,
+        "isApprovedLeave": false,
+        "category": "absent"
+      },
+      {
+        "schoolId": "123456",
+        "sno": "2",
+        "staffId": "102",
+        "employeeId": "E102",
+        "name": "Sita",
+        "post": "Head Teacher",
+        "status": "CL",
+        "status_code": null,
+        "original_status": "CL",
+        "editable": false,
+        "selectId": null,
+        "options": [],
+        "appliedLeave": "CL",
+        "isApprovedLeave": true,
+        "category": "leave"
+      }
+    ]
+  }
+}

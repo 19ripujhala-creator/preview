@@ -1,0 +1,181 @@
+{
+  "success": true,
+  "data": {
+    "task": "viffs",
+    "selectors": [
+      {
+        "id": "ContentPlaceHolder1_ddlStudentType",
+        "label": "सत्र",
+        "value": "2026-27",
+        "options": [
+          {
+            "value": "0",
+            "label": "0"
+          },
+          {
+            "value": "2026-27",
+            "label": "2026-27"
+          }
+        ],
+        "required": false,
+        "readonly": false,
+        "numeric": false,
+        "maxlength": 0,
+        "date": false
+      },
+      {
+        "id": "ContentPlaceHolder1_ddlClass",
+        "label": "गोली",
+        "value": "P",
+        "options": [
+          {
+            "value": "0",
+            "label": "0"
+          },
+          {
+            "value": "P",
+            "label": "P"
+          },
+          {
+            "value": "B",
+            "label": "B"
+          }
+        ],
+        "required": false,
+        "readonly": false,
+        "numeric": false,
+        "maxlength": 0,
+        "date": false
+      },
+      {
+        "id": "ContentPlaceHolder1_ddlmonth",
+        "label": "माह",
+        "value": "9",
+        "options": [
+          {
+            "value": "0",
+            "label": "0"
+          },
+          {
+            "value": "9",
+            "label": "9"
+          },
+          {
+            "value": "8",
+            "label": "8"
+          }
+        ],
+        "required": false,
+        "readonly": false,
+        "numeric": false,
+        "maxlength": 0,
+        "date": false
+      }
+    ],
+    "sections": [],
+    "history": [],
+    "can_submit": false,
+    "can_lock": false,
+    "locked": false,
+    "lock_date": null,
+    "completed": null,
+    "no_records": true,
+    "message": "No records found",
+    "selection": {
+      "ContentPlaceHolder1_ddlStudentType": "2026-27",
+      "ContentPlaceHolder1_ddlClass": "P",
+      "ContentPlaceHolder1_ddlmonth": "9"
+    },
+    "note": "नोट :- सत्र का प्रारंभ मई माह से मानते हुए, इस प्रपत्र में एंट्रीज़ करनी है"
+  },
+  "review": {
+    "http_session": null,
+    "task": "viffs",
+    "selection": {
+      "ContentPlaceHolder1_ddlStudentType": "2026-27",
+      "ContentPlaceHolder1_ddlClass": "P",
+      "ContentPlaceHolder1_ddlmonth": "9"
+    },
+    "selectors": [
+      {
+        "id": "ContentPlaceHolder1_ddlStudentType",
+        "label": "सत्र",
+        "value": "2026-27",
+        "options": [
+          {
+            "value": "0",
+            "label": "0"
+          },
+          {
+            "value": "2026-27",
+            "label": "2026-27"
+          }
+        ],
+        "required": false,
+        "readonly": false,
+        "numeric": false,
+        "maxlength": 0,
+        "date": false
+      },
+      {
+        "id": "ContentPlaceHolder1_ddlClass",
+        "label": "गोली",
+        "value": "P",
+        "options": [
+          {
+            "value": "0",
+            "label": "0"
+          },
+          {
+            "value": "P",
+            "label": "P"
+          },
+          {
+            "value": "B",
+            "label": "B"
+          }
+        ],
+        "required": false,
+        "readonly": false,
+        "numeric": false,
+        "maxlength": 0,
+        "date": false
+      },
+      {
+        "id": "ContentPlaceHolder1_ddlmonth",
+        "label": "माह",
+        "value": "9",
+        "options": [
+          {
+            "value": "0",
+            "label": "0"
+          },
+          {
+            "value": "9",
+            "label": "9"
+          },
+          {
+            "value": "8",
+            "label": "8"
+          }
+        ],
+        "required": false,
+        "readonly": false,
+        "numeric": false,
+        "maxlength": 0,
+        "date": false
+      }
+    ],
+    "sections": [],
+    "history": [],
+    "can_submit": false,
+    "can_lock": false,
+    "locked": false,
+    "lock_date": null,
+    "editing": null,
+    "can_edit": null,
+    "can_delete": null,
+    "edit_control": null,
+    "confirmations": null
+  }
+}

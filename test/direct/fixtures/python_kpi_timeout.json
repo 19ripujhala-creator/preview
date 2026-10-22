@@ -1,0 +1,5 @@
+{
+  "success": false,
+  "code": "PORTAL_SLOW",
+  "message": "Student KPI request timed out."
+}

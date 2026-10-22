@@ -1,0 +1,1425 @@
+{
+  "form": "<form action=\"./signin\"><input name=\"__VIEWSTATE\" value=\"state\"><input name=\"csrf\" type=\"hidden\" value=\"csrf-token\"><input id=\"cpBodyMain_cpBody_txt_Data1\" name=\"user\" type=\"text\"><input id=\"cpBodyMain_cpBody_txt_Data2\" name=\"password\" type=\"password\"><input id=\"cpBodyMain_cpBody_ssoCaptcha_txtCaptcha\" name=\"captcha\" type=\"text\"><input id=\"cpBodyMain_cpBody_btn_Login\" name=\"button\" type=\"submit\"><img id=\"cpBodyMain_cpBody_ssoCaptcha_imgCaptcha\" src=\"data:image/png;base64,aW1hZ2U=\"></form><script>function initFormDataEncryption() {var key=\"0123456789abcdef\";var iv=\"fedcba9876543210\";encryptFormData(key, iv);}</script>",
+  "tile": "<form action=\"/sso\" method=\"post\"><input name=\"__VIEWSTATE\" value=\"state\"><input name=\"same\" value=\"one\"><input name=\"same\" value=\"two\"><a class=\"tile_anchor\" title=\"RAJSIMS\" href=\"javascript:__doPostBack('tile$actual','')\">RajSIMS</a></form>",
+  "bridge": "<form action=\"https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin\" method=\"post\"><input type=\"hidden\" name=\"userdetails\" value=\"native opaque\"></form>",
+  "dept": "<a class=\"rajlink\" href=\"/SSOIntegration/SsoDetail?SsoId=offline&amp;DeptId=16229&amp;Url=mdm&amp;ssotoken=opaque\">MDM</a><script>var cnt = '1'; var next = $('.rajlink').attr('href');</script>",
+  "detail": "<form id=\"myForm\" method=\"get\" action=\"https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&amp;AuthKey=offline-key\"></form><script>document.forms['myForm'].submit();</script>",
+  "profile": {
+    "IsSuccess": true,
+    "CustomObject": {
+      "OfficeId": 11,
+      "OrgId": 13,
+      "PersonalDetails": {
+        "Name": "Offline",
+        "Mobile": "9000000000"
+      }
+    }
+  },
+  "parsers": [
+    {
+      "kind": "form",
+      "name": "original",
+      "args": [
+        "<form action=\"./signin\"><input name=\"__VIEWSTATE\" value=\"state\"><input name=\"csrf\" type=\"hidden\" value=\"csrf-token\"><input id=\"cpBodyMain_cpBody_txt_Data1\" name=\"user\" type=\"text\"><input id=\"cpBodyMain_cpBody_txt_Data2\" name=\"password\" type=\"password\"><input id=\"cpBodyMain_cpBody_ssoCaptcha_txtCaptcha\" name=\"captcha\" type=\"text\"><input id=\"cpBodyMain_cpBody_btn_Login\" name=\"button\" type=\"submit\"><img id=\"cpBodyMain_cpBody_ssoCaptcha_imgCaptcha\" src=\"data:image/png;base64,aW1hZ2U=\"></form><script>function initFormDataEncryption() {var key=\"0123456789abcdef\";var iv=\"fedcba9876543210\";encryptFormData(key, iv);}</script>",
+        "https://sso.rajasthan.gov.in/signin"
+      ],
+      "value": {
+        "fields": {
+          "__VIEWSTATE": "state",
+          "csrf": "csrf-token",
+          "user": "",
+          "password": "",
+          "captcha": ""
+        },
+        "action": "https://sso.rajasthan.gov.in/signin",
+        "key": "0123456789abcdef",
+        "iv": "fedcba9876543210",
+        "image": "data:image/png;base64,aW1hZ2U=",
+        "controls": {
+          "user": {
+            "id": "cpBodyMain_cpBody_txt_Data1",
+            "name": "user",
+            "type": "text"
+          },
+          "password": {
+            "id": "cpBodyMain_cpBody_txt_Data2",
+            "name": "password",
+            "type": "password"
+          },
+          "captcha": {
+            "id": "cpBodyMain_cpBody_ssoCaptcha_txtCaptcha",
+            "name": "captcha",
+            "type": "text"
+          },
+          "button": {
+            "id": "cpBodyMain_cpBody_btn_Login",
+            "name": "button",
+            "type": "submit"
+          }
+        }
+      }
+    },
+    {
+      "kind": "form",
+      "name": "encrypted_user",
+      "args": [
+        "<form action=\"./signin\"><input name=\"__VIEWSTATE\" value=\"state\"><input name=\"csrf\" type=\"hidden\" value=\"csrf-token\"><input id=\"cpBodyMain_cpBody_txt_Data1\" name=\"user\" type=\"text\" data-encrypt=\"true\"><input id=\"cpBodyMain_cpBody_txt_Data2\" name=\"password\" type=\"password\"><input id=\"cpBodyMain_cpBody_ssoCaptcha_txtCaptcha\" name=\"captcha\" type=\"text\"><input id=\"cpBodyMain_cpBody_btn_Login\" name=\"button\" type=\"submit\"><img id=\"cpBodyMain_cpBody_ssoCaptcha_imgCaptcha\" src=\"data:image/png;base64,aW1hZ2U=\"></form><script>function initFormDataEncryption() {var key=\"0123456789abcdef\";var iv=\"fedcba9876543210\";encryptFormData(key, iv);}</script>",
+        "https://sso.rajasthan.gov.in/signin"
+      ],
+      "value": {
+        "fields": {
+          "__VIEWSTATE": "state",
+          "csrf": "csrf-token",
+          "user": "",
+          "password": "",
+          "captcha": ""
+        },
+        "action": "https://sso.rajasthan.gov.in/signin",
+        "key": "0123456789abcdef",
+        "iv": "fedcba9876543210",
+        "image": "data:image/png;base64,aW1hZ2U=",
+        "controls": {
+          "user": {
+            "id": "cpBodyMain_cpBody_txt_Data1",
+            "name": "user",
+            "type": "text",
+            "data-encrypt": "true"
+          },
+          "password": {
+            "id": "cpBodyMain_cpBody_txt_Data2",
+            "name": "password",
+            "type": "password"
+          },
+          "captcha": {
+            "id": "cpBodyMain_cpBody_ssoCaptcha_txtCaptcha",
+            "name": "captcha",
+            "type": "text"
+          },
+          "button": {
+            "id": "cpBodyMain_cpBody_btn_Login",
+            "name": "button",
+            "type": "submit"
+          }
+        }
+      }
+    },
+    {
+      "kind": "form",
+      "name": "no_viewstate",
+      "args": [
+        "<form action=\"./signin\"><input name=\"wrong\" value=\"state\"><input name=\"csrf\" type=\"hidden\" value=\"csrf-token\"><input id=\"cpBodyMain_cpBody_txt_Data1\" name=\"user\" type=\"text\"><input id=\"cpBodyMain_cpBody_txt_Data2\" name=\"password\" type=\"password\"><input id=\"cpBodyMain_cpBody_ssoCaptcha_txtCaptcha\" name=\"captcha\" type=\"text\"><input id=\"cpBodyMain_cpBody_btn_Login\" name=\"button\" type=\"submit\"><img id=\"cpBodyMain_cpBody_ssoCaptcha_imgCaptcha\" src=\"data:image/png;base64,aW1hZ2U=\"></form><script>function initFormDataEncryption() {var key=\"0123456789abcdef\";var iv=\"fedcba9876543210\";encryptFormData(key, iv);}</script>",
+        "https://sso.rajasthan.gov.in/signin"
+      ],
+      "code": "FORM_CHANGED"
+    },
+    {
+      "kind": "form",
+      "name": "disabled_password",
+      "args": [
+        "<form action=\"./signin\"><input name=\"__VIEWSTATE\" value=\"state\"><input name=\"csrf\" type=\"hidden\" value=\"csrf-token\"><input id=\"cpBodyMain_cpBody_txt_Data1\" name=\"user\" type=\"text\"><input id=\"cpBodyMain_cpBody_txt_Data2\" disabled name=\"password\" type=\"password\"><input id=\"cpBodyMain_cpBody_ssoCaptcha_txtCaptcha\" name=\"captcha\" type=\"text\"><input id=\"cpBodyMain_cpBody_btn_Login\" name=\"button\" type=\"submit\"><img id=\"cpBodyMain_cpBody_ssoCaptcha_imgCaptcha\" src=\"data:image/png;base64,aW1hZ2U=\"></form><script>function initFormDataEncryption() {var key=\"0123456789abcdef\";var iv=\"fedcba9876543210\";encryptFormData(key, iv);}</script>",
+        "https://sso.rajasthan.gov.in/signin"
+      ],
+      "code": "FORM_CHANGED"
+    },
+    {
+      "kind": "form",
+      "name": "external",
+      "args": [
+        "<form action=\"https://evil.example/signin\"><input name=\"__VIEWSTATE\" value=\"state\"><input name=\"csrf\" type=\"hidden\" value=\"csrf-token\"><input id=\"cpBodyMain_cpBody_txt_Data1\" name=\"user\" type=\"text\"><input id=\"cpBodyMain_cpBody_txt_Data2\" name=\"password\" type=\"password\"><input id=\"cpBodyMain_cpBody_ssoCaptcha_txtCaptcha\" name=\"captcha\" type=\"text\"><input id=\"cpBodyMain_cpBody_btn_Login\" name=\"button\" type=\"submit\"><img id=\"cpBodyMain_cpBody_ssoCaptcha_imgCaptcha\" src=\"data:image/png;base64,aW1hZ2U=\"></form><script>function initFormDataEncryption() {var key=\"0123456789abcdef\";var iv=\"fedcba9876543210\";encryptFormData(key, iv);}</script>",
+        "https://sso.rajasthan.gov.in/signin"
+      ],
+      "code": "INVALID_REDIRECT"
+    },
+    {
+      "kind": "tile",
+      "name": "tile",
+      "args": [
+        "<form action=\"/sso\" method=\"post\"><input name=\"__VIEWSTATE\" value=\"state\"><input name=\"same\" value=\"one\"><input name=\"same\" value=\"two\"><a class=\"tile_anchor\" title=\"RAJSIMS\" href=\"javascript:__doPostBack('tile$actual','')\">RajSIMS</a></form>",
+        "https://sso.rajasthan.gov.in/sso"
+      ],
+      "value": [
+        "https://sso.rajasthan.gov.in/sso",
+        [
+          [
+            "__VIEWSTATE",
+            "state"
+          ],
+          [
+            "same",
+            "one"
+          ],
+          [
+            "same",
+            "two"
+          ],
+          [
+            "__EVENTTARGET",
+            "tile$actual"
+          ],
+          [
+            "__EVENTARGUMENT",
+            ""
+          ]
+        ]
+      ]
+    },
+    {
+      "kind": "tile",
+      "name": "duplicate_tile",
+      "args": [
+        "<form action=\"/sso\" method=\"post\"><input name=\"__VIEWSTATE\" value=\"state\"><input name=\"same\" value=\"one\"><input name=\"same\" value=\"two\"><a class=\"tile_anchor\" title=\"RAJSIMS\" href=\"javascript:__doPostBack('tile$actual','')\">RajSIMS</a></form><form action=\"/sso\" method=\"post\"><input name=\"__VIEWSTATE\" value=\"state\"><input name=\"same\" value=\"one\"><input name=\"same\" value=\"two\"><a class=\"tile_anchor\" title=\"RAJSIMS\" href=\"javascript:__doPostBack('tile$actual','')\">RajSIMS</a></form>",
+        "https://sso.rajasthan.gov.in/sso"
+      ],
+      "code": "PORTAL_LAUNCH_CHANGED"
+    },
+    {
+      "kind": "document",
+      "name": "bridge",
+      "args": [
+        "<form action=\"https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin\" method=\"post\"><input type=\"hidden\" name=\"userdetails\" value=\"native opaque\"></form>",
+        "https://sso.rajasthan.gov.in/sso"
+      ],
+      "value": [
+        "POST",
+        "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin",
+        [
+          [
+            "userdetails",
+            "native opaque"
+          ]
+        ]
+      ]
+    },
+    {
+      "kind": "document",
+      "name": "department",
+      "args": [
+        "<a class=\"rajlink\" href=\"/SSOIntegration/SsoDetail?SsoId=offline&amp;DeptId=16229&amp;Url=mdm&amp;ssotoken=opaque\">MDM</a><script>var cnt = '1'; var next = $('.rajlink').attr('href');</script>",
+        "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin"
+      ],
+      "value": [
+        "GET",
+        "https://rajsims.rajasthan.gov.in/SSOIntegration/SsoDetail?SsoId=offline&DeptId=16229&Url=mdm&ssotoken=opaque",
+        null
+      ]
+    },
+    {
+      "kind": "document",
+      "name": "detail",
+      "args": [
+        "<form id=\"myForm\" method=\"get\" action=\"https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&amp;AuthKey=offline-key\"></form><script>document.forms['myForm'].submit();</script>",
+        "https://rajsims.rajasthan.gov.in/SSOIntegration/SsoDetail"
+      ],
+      "value": [
+        "GET",
+        "https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&AuthKey=offline-key",
+        null
+      ]
+    },
+    {
+      "kind": "document",
+      "name": "department_guess_forbidden",
+      "args": [
+        "<a class=\"rajlink\" href=\"/SSOIntegration/SsoDetail?SsoId=offline&amp;DeptId=16229&amp;Url=mdm&amp;ssotoken=opaque\">MDM</a><script>var cnt = '2'; var next = $('.rajlink').attr('href');</script>",
+        "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin"
+      ],
+      "code": "DEPARTMENT_SELECTION_REQUIRED"
+    },
+    {
+      "kind": "document",
+      "name": "get_form_changed",
+      "args": [
+        "<form id=\"myForm\" method=\"post\" action=\"https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&amp;AuthKey=offline-key\"></form><script>document.forms['myForm'].submit();</script>",
+        "https://rajsims.rajasthan.gov.in/SSOIntegration/SsoDetail"
+      ],
+      "code": "PORTAL_LAUNCH_CHANGED"
+    },
+    {
+      "kind": "document",
+      "name": "literal",
+      "args": [
+        "<script>location.href=\"https://rajsims.rajasthan.gov.in/landing?AuthId=a&AuthKey=b\";</script>",
+        "https://sso.rajasthan.gov.in/sso"
+      ],
+      "value": [
+        "GET",
+        "https://rajsims.rajasthan.gov.in/landing?AuthId=a&AuthKey=b",
+        null
+      ]
+    },
+    {
+      "kind": "document",
+      "name": "expression",
+      "args": [
+        "<script>location.href=base + \"/landing\";</script>",
+        "https://sso.rajasthan.gov.in/sso"
+      ],
+      "code": "PORTAL_LAUNCH_CHANGED"
+    },
+    {
+      "kind": "document",
+      "name": "unobserved_post",
+      "args": [
+        "<form id=\"f\" method=\"post\" action=\"https://rajsims-mdm.rajasthan.gov.in/write\"><input type=\"hidden\" name=\"x\" value=\"1\"></form><script>document.getElementById(\"f\").submit();</script>",
+        "https://sso.rajasthan.gov.in/sso"
+      ],
+      "code": "PORTAL_LAUNCH_CHANGED"
+    },
+    {
+      "kind": "tokens",
+      "name": "https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=a&AuthKey=b",
+      "args": [
+        "https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=a&AuthKey=b"
+      ],
+      "value": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "kind": "tokens",
+      "name": "https://rajsims-mdm.rajasthan.gov.in/?AuthId=a&AuthKey=b",
+      "args": [
+        "https://rajsims-mdm.rajasthan.gov.in/?AuthId=a&AuthKey=b"
+      ],
+      "value": [
+        "a",
+        "b"
+      ]
+    },
+    {
+      "kind": "tokens",
+      "name": "https://rajsims-mdm.rajasthan.gov.in/?AuthId=a&AuthId=c&AuthKey=b",
+      "args": [
+        "https://rajsims-mdm.rajasthan.gov.in/?AuthId=a&AuthId=c&AuthKey=b"
+      ],
+      "code": "PORTAL_LAUNCH_CHANGED"
+    },
+    {
+      "kind": "tokens",
+      "name": "https://rajsims-mdm.rajasthan.gov.in/?AuthId=a&AuthKey=",
+      "args": [
+        "https://rajsims-mdm.rajasthan.gov.in/?AuthId=a&AuthKey="
+      ],
+      "code": "PORTAL_LAUNCH_CHANGED"
+    },
+    {
+      "kind": "tokens",
+      "name": "https://rajsims-mdm.rajasthan.gov.in/?AuthId=a#/sso?AuthId=c&AuthKey=b",
+      "args": [
+        "https://rajsims-mdm.rajasthan.gov.in/?AuthId=a#/sso?AuthId=c&AuthKey=b"
+      ],
+      "code": "PORTAL_LAUNCH_CHANGED"
+    },
+    {
+      "kind": "tokens",
+      "name": "https://sso.rajasthan.gov.in/sso",
+      "args": [
+        "https://sso.rajasthan.gov.in/sso"
+      ],
+      "value": null
+    },
+    {
+      "kind": "tokens",
+      "name": "https://evil.example/",
+      "args": [
+        "https://evil.example/"
+      ],
+      "code": "INVALID_REDIRECT"
+    },
+    {
+      "kind": "tokens",
+      "name": "https://sso.rajasthan.gov.in:444/sso",
+      "args": [
+        "https://sso.rajasthan.gov.in:444/sso"
+      ],
+      "code": "INVALID_REDIRECT"
+    },
+    {
+      "kind": "literal",
+      "name": "window.open(\"https://rajsims.rajasthan.gov.in/a\", \"_blank\");",
+      "args": [
+        "window.open(\"https://rajsims.rajasthan.gov.in/a\", \"_blank\");"
+      ],
+      "value": [
+        "https://rajsims.rajasthan.gov.in/a"
+      ]
+    },
+    {
+      "kind": "literal",
+      "name": "location.assign('/sso');",
+      "args": [
+        "location.assign('/sso');"
+      ],
+      "value": [
+        "/sso"
+      ]
+    },
+    {
+      "kind": "literal",
+      "name": "location.href=base + \"/a\";",
+      "args": [
+        "location.href=base + \"/a\";"
+      ],
+      "value": []
+    },
+    {
+      "kind": "literal",
+      "name": "self.location=\"https://rajsims.rajasthan.gov.in/a\";",
+      "args": [
+        "self.location=\"https://rajsims.rajasthan.gov.in/a\";"
+      ],
+      "value": [
+        "https://rajsims.rajasthan.gov.in/a"
+      ]
+    },
+    {
+      "kind": "literal",
+      "name": "location.href=\"https:\\\\/\\\\/rajsims.rajasthan.gov.in\\\\/a\";",
+      "args": [
+        "location.href=\"https:\\\\/\\\\/rajsims.rajasthan.gov.in\\\\/a\";"
+      ],
+      "value": [
+        "https:\\/\\/rajsims.rajasthan.gov.in\\/a"
+      ]
+    }
+  ],
+  "crypto": [
+    {
+      "value": " password ",
+      "key": "0123456789abcdef",
+      "iv": "fedcba9876543210",
+      "expected": "9pHt8+uk0A5nahMkThwinA=="
+    },
+    {
+      "value": " password ",
+      "key": "0123456789abcdefABCDEFGH",
+      "iv": "fedcba9876543210",
+      "expected": "JlvNtkqa4NVQYQ6KRNx+QA=="
+    },
+    {
+      "value": " password ",
+      "key": "0123456789abcdef0123456789abcdef",
+      "iv": "fedcba9876543210",
+      "expected": "eQOzrvAO++IMuPAnmNj3bw=="
+    },
+    {
+      "value": "हिन्दी password",
+      "key": "0123456789abcdef",
+      "iv": "fedcba9876543210",
+      "expected": "ygjo/WcWwj2cYeLbvwYkgk1BYjrD1g0z7fO7B1S4C1I="
+    },
+    {
+      "value": "हिन्दी password",
+      "key": "0123456789abcdefABCDEFGH",
+      "iv": "fedcba9876543210",
+      "expected": "/gbuebJZdTg9BhQmZx9lFVbA/p1bBLjkRF0DIiLuf0E="
+    },
+    {
+      "value": "हिन्दी password",
+      "key": "0123456789abcdef0123456789abcdef",
+      "iv": "fedcba9876543210",
+      "expected": "wK9pU/jYFGg3hzQNT5moBL3YmeT96+hJsQ6WO0FqcIg="
+    },
+    {
+      "value": "",
+      "key": "0123456789abcdef",
+      "iv": "fedcba9876543210",
+      "expected": "PEks7dlUzDg/PT7pPnKEhA=="
+    },
+    {
+      "value": "",
+      "key": "0123456789abcdefABCDEFGH",
+      "iv": "fedcba9876543210",
+      "expected": "10hFfY6Rl89mL1+qR1SJ2A=="
+    },
+    {
+      "value": "",
+      "key": "0123456789abcdef0123456789abcdef",
+      "iv": "fedcba9876543210",
+      "expected": "BJiXSBVu/WANms7iJn3Mww=="
+    },
+    {
+      "value": "0123456789abcdef",
+      "key": "0123456789abcdef",
+      "iv": "fedcba9876543210",
+      "expected": "ZXXPazdHnZIVM3/5dn/nhmZz5w1+C/F0mAGe4bx7lF8="
+    },
+    {
+      "value": "0123456789abcdef",
+      "key": "0123456789abcdefABCDEFGH",
+      "iv": "fedcba9876543210",
+      "expected": "tezU/u17XFi/s7TOnf3xiRW7G8Lm4x5ulO9hgJThEsk="
+    },
+    {
+      "value": "0123456789abcdef",
+      "key": "0123456789abcdef0123456789abcdef",
+      "iv": "fedcba9876543210",
+      "expected": "9E7Ti56IJCxF5VJXx8nSST3ybvJT3meXJ3GJaofiI4I="
+    }
+  ],
+  "flows": [
+    {
+      "name": "native_full_launch",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "__VIEWSTATE=state&same=one&same=two&__EVENTTARGET=tile%24actual&__EVENTARGUMENT=",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/sso",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin",
+          "content": "userdetails=native+opaque",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/",
+            "sec-fetch-site": "same-site",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://rajsims.rajasthan.gov.in/SSOIntegration/SsoDetail?SsoId=offline&DeptId=16229&Url=mdm&ssotoken=opaque",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&AuthKey=offline-key",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://rajsims.rajasthan.gov.in/",
+            "sec-fetch-site": "same-site",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Authenticate/GetSSOlogin",
+          "content": "{\"ApiKey\":\"ValidateTokenAndGetUserDetail\",\"OrgId\":0,\"ApiParams\":{\"AuthId\":\"offline-id\",\"AuthKey\":\"offline-key\"}}",
+          "headers": {
+            "accept": "application/json, text/plain, */*",
+            "content-type": "application/json",
+            "origin": "https://rajsims-mdm.rajasthan.gov.in",
+            "referer": "https://rajsims-mdm.rajasthan.gov.in/",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-dest": "empty"
+          }
+        }
+      ],
+      "result": {
+        "cached": false,
+        "auth_id": "offline-id",
+        "auth_key": "offline-key",
+        "url": "https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&AuthKey=offline-key",
+        "profile": {
+          "IsSuccess": true,
+          "CustomObject": {
+            "OfficeId": 11,
+            "OrgId": 13,
+            "PersonalDetails": {
+              "Name": "Offline",
+              "Mobile": "9000000000"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "saved_session",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "__VIEWSTATE=state&same=one&same=two&__EVENTTARGET=tile%24actual&__EVENTARGUMENT=",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/sso",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin",
+          "content": "userdetails=native+opaque",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/",
+            "sec-fetch-site": "same-site",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://rajsims.rajasthan.gov.in/SSOIntegration/SsoDetail?SsoId=offline&DeptId=16229&Url=mdm&ssotoken=opaque",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&AuthKey=offline-key",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://rajsims.rajasthan.gov.in/",
+            "sec-fetch-site": "same-site",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Authenticate/GetSSOlogin",
+          "content": "{\"ApiKey\":\"ValidateTokenAndGetUserDetail\",\"OrgId\":0,\"ApiParams\":{\"AuthId\":\"offline-id\",\"AuthKey\":\"offline-key\"}}",
+          "headers": {
+            "accept": "application/json, text/plain, */*",
+            "content-type": "application/json",
+            "origin": "https://rajsims-mdm.rajasthan.gov.in",
+            "referer": "https://rajsims-mdm.rajasthan.gov.in/",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-dest": "empty"
+          }
+        }
+      ],
+      "result": {
+        "cached": true,
+        "auth_id": "offline-id",
+        "auth_key": "offline-key",
+        "url": "https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&AuthKey=offline-key",
+        "profile": {
+          "IsSuccess": true,
+          "CustomObject": {
+            "OfficeId": 11,
+            "OrgId": 13,
+            "PersonalDetails": {
+              "Name": "Offline",
+              "Mobile": "9000000000"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "captcha_rejected",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "__VIEWSTATE=state&same=one&same=two&__EVENTTARGET=tile%24actual&__EVENTARGUMENT=",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/sso",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin",
+          "content": "userdetails=native+opaque",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/",
+            "sec-fetch-site": "same-site",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://rajsims.rajasthan.gov.in/SSOIntegration/SsoDetail?SsoId=offline&DeptId=16229&Url=mdm&ssotoken=opaque",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&AuthKey=offline-key",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://rajsims.rajasthan.gov.in/",
+            "sec-fetch-site": "same-site",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Authenticate/GetSSOlogin",
+          "content": "{\"ApiKey\":\"ValidateTokenAndGetUserDetail\",\"OrgId\":0,\"ApiParams\":{\"AuthId\":\"offline-id\",\"AuthKey\":\"offline-key\"}}",
+          "headers": {
+            "accept": "application/json, text/plain, */*",
+            "content-type": "application/json",
+            "origin": "https://rajsims-mdm.rajasthan.gov.in",
+            "referer": "https://rajsims-mdm.rajasthan.gov.in/",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-dest": "empty"
+          }
+        }
+      ],
+      "result": {
+        "cached": false,
+        "auth_id": "offline-id",
+        "auth_key": "offline-key",
+        "url": "https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&AuthKey=offline-key",
+        "profile": {
+          "IsSuccess": true,
+          "CustomObject": {
+            "OfficeId": 11,
+            "OrgId": 13,
+            "PersonalDetails": {
+              "Name": "Offline",
+              "Mobile": "9000000000"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "credentials_rejected",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        }
+      ],
+      "result": {
+        "code": "INVALID_CREDENTIALS"
+      }
+    },
+    {
+      "name": "active_session",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        }
+      ],
+      "result": {
+        "code": "ACTIVE_SESSION_CONFIRMATION_REQUIRED"
+      }
+    },
+    {
+      "name": "timeout_unknown",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        }
+      ],
+      "result": {
+        "code": "LOGIN_RESULT_UNKNOWN"
+      }
+    },
+    {
+      "name": "timeout_confirmed",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "__VIEWSTATE=state&same=one&same=two&__EVENTTARGET=tile%24actual&__EVENTARGUMENT=",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/sso",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin",
+          "content": "userdetails=native+opaque",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/",
+            "sec-fetch-site": "same-site",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://rajsims.rajasthan.gov.in/SSOIntegration/SsoDetail?SsoId=offline&DeptId=16229&Url=mdm&ssotoken=opaque",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&AuthKey=offline-key",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://rajsims.rajasthan.gov.in/",
+            "sec-fetch-site": "same-site",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Authenticate/GetSSOlogin",
+          "content": "{\"ApiKey\":\"ValidateTokenAndGetUserDetail\",\"OrgId\":0,\"ApiParams\":{\"AuthId\":\"offline-id\",\"AuthKey\":\"offline-key\"}}",
+          "headers": {
+            "accept": "application/json, text/plain, */*",
+            "content-type": "application/json",
+            "origin": "https://rajsims-mdm.rajasthan.gov.in",
+            "referer": "https://rajsims-mdm.rajasthan.gov.in/",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-dest": "empty"
+          }
+        }
+      ],
+      "result": {
+        "cached": false,
+        "auth_id": "offline-id",
+        "auth_key": "offline-key",
+        "url": "https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&AuthKey=offline-key",
+        "profile": {
+          "IsSuccess": true,
+          "CustomObject": {
+            "OfficeId": 11,
+            "OrgId": 13,
+            "PersonalDetails": {
+              "Name": "Offline",
+              "Mobile": "9000000000"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "post307",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        }
+      ],
+      "result": {
+        "code": "LOGIN_RESULT_UNKNOWN"
+      }
+    },
+    {
+      "name": "external_redirect",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        }
+      ],
+      "result": {
+        "code": "INVALID_REDIRECT"
+      }
+    },
+    {
+      "name": "launch307",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "__VIEWSTATE=state&same=one&same=two&__EVENTTARGET=tile%24actual&__EVENTARGUMENT=",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/sso",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        }
+      ],
+      "result": {
+        "code": "PORTAL_LAUNCH_CHANGED"
+      }
+    },
+    {
+      "name": "repeated_launch_post",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "__VIEWSTATE=state&same=one&same=two&__EVENTTARGET=tile%24actual&__EVENTARGUMENT=",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/sso",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        }
+      ],
+      "result": {
+        "code": "PORTAL_LAUNCH_CHANGED"
+      }
+    },
+    {
+      "name": "token_denied",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "__VIEWSTATE=state&same=one&same=two&__EVENTTARGET=tile%24actual&__EVENTARGUMENT=",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/sso",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin",
+          "content": "userdetails=native+opaque",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/",
+            "sec-fetch-site": "same-site",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://rajsims.rajasthan.gov.in/SSOIntegration/SsoDetail?SsoId=offline&DeptId=16229&Url=mdm&ssotoken=opaque",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://rajsims.rajasthan.gov.in/SSOIntegration/SSOLogin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://rajsims-mdm.rajasthan.gov.in/#/sso-login?AuthId=offline-id&AuthKey=offline-key",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://rajsims.rajasthan.gov.in/",
+            "sec-fetch-site": "same-site",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://rajsims-mdm.rajasthan.gov.in/Gateway/api/Authenticate/GetSSOlogin",
+          "content": "{\"ApiKey\":\"ValidateTokenAndGetUserDetail\",\"OrgId\":0,\"ApiParams\":{\"AuthId\":\"offline-id\",\"AuthKey\":\"offline-key\"}}",
+          "headers": {
+            "accept": "application/json, text/plain, */*",
+            "content-type": "application/json",
+            "origin": "https://rajsims-mdm.rajasthan.gov.in",
+            "referer": "https://rajsims-mdm.rajasthan.gov.in/",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-dest": "empty"
+          }
+        }
+      ],
+      "result": {
+        "code": "TOKEN_NOT_VERIFIED"
+      }
+    },
+    {
+      "name": "launch_timeout",
+      "calls": [
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "sec-fetch-site": "none",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/signin",
+          "content": "__VIEWSTATE=state&csrf=csrf-token&user=offline-user&password=9pHt8%2Buk0A5nahMkThwinA%3D%3D&captcha=123456&button=Login",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "GET",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "referer": "https://sso.rajasthan.gov.in/signin",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        },
+        {
+          "method": "POST",
+          "url": "https://sso.rajasthan.gov.in/sso",
+          "content": "__VIEWSTATE=state&same=one&same=two&__EVENTTARGET=tile%24actual&__EVENTARGUMENT=",
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://sso.rajasthan.gov.in",
+            "referer": "https://sso.rajasthan.gov.in/sso",
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "navigate",
+            "sec-fetch-dest": "document"
+          }
+        }
+      ],
+      "result": {
+        "timeout": true
+      }
+    }
+  ]
+}

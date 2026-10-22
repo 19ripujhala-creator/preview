@@ -1,0 +1,13 @@
+{
+  "success": true,
+  "message": "Leave statuses verified in portal history after an uncertain response.",
+  "verified": true,
+  "submission_attempted": true,
+  "verification_source": "all_applications",
+  "verified_statuses": {
+    "501": "Processed",
+    "502": "Rejected"
+  },
+  "data": null,
+  "refresh_required": true
+}

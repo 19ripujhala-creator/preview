@@ -1,0 +1,14 @@
+{
+  "__VIEWSTATE": "view&state",
+  "__EVENTVALIDATION": "event-token",
+  "__VIEWSTATEGENERATOR": "ABCD",
+  "ctl00$bodyContent$txtUName": "123456",
+  "ctl00$bodyContent$txtUPswd": "e76b1ac62b9676a44ad1dd9acb1660460da67c642219662640121c6748740d8b3534a81cf4cf3c31c4ce24750a1d766c0093de3d6109fe436b8725b6fcaf95b1",
+  "ctl00$bodyContent$hdnLoginid": "SchoolABC",
+  "ctl00$bodyContent$hdnfld": "salt-42",
+  "ctl00$bodyContent$hdntxtop": "19b8cbd3c125f9531bd84c0518c04d39ee3efc956c2c047210d41300ec6bc8d2aa6b95353ad0efb25bcde3b2d9194a41ecd2369a0bfeb33e8199dfa2664c6b10",
+  "ctl00$bodyContent$hdntxtUPswdname": "22e1315754e4642ecdd1501f149d708f52c4ba3204c822bd4c6f9be4060f9699d48773a9f98b16f6afd592fcc2672128fea02e1eda449ac4489efcb2eb3c6f14",
+  "ctl00$bodyContent$hdntxtUPswdname1": "5f25b08b8172db66a6fe93f072b0178a46d9f709e17e97598479f47899c0c9029995d42cbcf6dd3aa49b708bea969ca55d307d64086342891676e5cec7ee5580",
+  "ctl00$bodyContent$txt_Captchaname": "123456",
+  "ctl00$bodyContent$btn_Login": "Login"
+}

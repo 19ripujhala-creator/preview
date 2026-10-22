@@ -1,0 +1,6 @@
+{
+  "success": false,
+  "code": "STALE_FORM",
+  "message": "Multiple VIFFS grids were returned. Refresh before continuing.",
+  "field_errors": {}
+}
