@@ -37,6 +37,8 @@ class StaffReadService {
   bool _owned(String user) =>
       staffLower(registry.current()?.user ?? '') == staffLower(user) &&
       user.isNotEmpty;
+  bool _foreign(String user) =>
+      user.isEmpty || (registry.current() != null && !_owned(user));
   bool get _connected =>
       registry.current()?.authenticated == true &&
       coordinator.health == Health.ready;
@@ -45,13 +47,15 @@ class StaffReadService {
   List<dynamic> _copy(List<dynamic> rows) =>
       jsonDecode(jsonEncode(rows)) as List<dynamic>;
   Future<Map<String, dynamic>> fetchProfile(String user) async {
-    if (!_owned(user))
+    if (_foreign(user))
       return _failure('ACCOUNT_CHANGED', 'Staff login changed.');
     try {
       final result = await coordinator.run(
         resource: 'staff.home',
         kind: Kind.read,
-        worker: (_) => bridge.fetchProfile(),
+        worker: (_) => _owned(user)
+            ? bridge.fetchProfile()
+            : Future.value(_failure('ACCOUNT_CHANGED', 'Staff login changed.')),
         timeout: 45,
         label: 'staff_profile',
       );
@@ -127,10 +131,12 @@ class StaffReadService {
     if ((page != null && page < 1) ||
         (pageSize != null && (pageSize < 1 || pageSize > 500)))
       return _failure('INVALID_PAYLOAD', 'Invalid history pagination.');
-    if (!_owned(user))
+    if (_foreign(user))
       return _failure('ACCOUNT_CHANGED', 'Staff login changed.');
     try {
       await coordinator.ensureReady(Kind.read);
+      if (!_owned(user))
+        return _failure('ACCOUNT_CHANGED', 'Staff login changed.');
       final key = _key(user, filter), cached = _cache[_key(user, filter)];
       List<dynamic> rows;
       if (_connected &&

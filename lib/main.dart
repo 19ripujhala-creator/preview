@@ -258,8 +258,18 @@ class AppRootCoordinatorState extends State<AppRootCoordinator>
     StudentService.directAttendanceEnabled = false;
     DirectSchoolSession.reset();
     EcosystemService.reset();
-    unawaited(StaffDirectRuntime.reset());
-    unawaited(RajsimsDirectRuntime.reset());
+    // A retirement that is still waiting on unsettled work reports failure; it
+    // is retried by the next login, so it must not surface as an unhandled error.
+    unawaited(
+      StaffDirectRuntime.reset().catchError((Object _) {
+        debugPrint('Staff runtime is still settling; retried on next login.');
+      }),
+    );
+    unawaited(
+      RajsimsDirectRuntime.reset().catchError((Object _) {
+        debugPrint('RajSIMS runtime is still settling; retried on next login.');
+      }),
+    );
     NetworkSyncDispatcher().dispose();
     SyncCoordinator.dispose();
     FocusManager.instance.primaryFocus?.unfocus();

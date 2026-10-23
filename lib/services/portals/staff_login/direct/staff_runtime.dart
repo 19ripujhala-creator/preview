@@ -4,6 +4,7 @@ import 'dart:async';
 
 import '../../../core/direct/async_primitives.dart';
 import '../../../core/direct/coordinator.dart';
+import '../../../core/direct/runtime_slot.dart';
 import '../../shaladarpan/direct/captcha_onnx.dart';
 import 'auth_manager.dart';
 import 'http_auth.dart';
@@ -74,15 +75,12 @@ class StaffDirectRuntime {
     coordinator: coordinator,
     reads: reads,
   );
-  static Future<StaffDirectRuntime>? _instance;
-  static StaffDirectRuntime? _current;
-  static StaffDirectRuntime? get current => _current;
-  static Future<void>? _retiring;
-  Future<void>? _closing;
-  static Future<StaffDirectRuntime> get() async {
-    if (_retiring != null) await _retiring;
-    return _instance ??= _create();
-  }
+  static final _slot = RuntimeSlot<StaffDirectRuntime>(
+    create: _create,
+    close: (runtime) => runtime._closeSafely(),
+  );
+  static StaffDirectRuntime? get current => _slot.current;
+  static Future<StaffDirectRuntime> get() => _slot.get();
 
   static Future<StaffDirectRuntime> _create() async {
     final captcha = SchoolOnnxCaptcha();
@@ -98,28 +96,14 @@ class StaffDirectRuntime {
       captcha,
       StaffCoordinator(backend: StaffHttpBackend(auth)),
     );
-    _current = runtime;
     return runtime;
   }
 
-  static Future<void> reset() async {
-    final existing = _instance;
-    if (existing == null) return;
-    await (await existing).close();
-  }
+  /// Retires the live runtime. A failed retirement keeps its barrier and is
+  /// retried by the next call / login (see [RuntimeSlot]).
+  static Future<void> reset() => _slot.retire();
 
-  Future<void> close() {
-    if (_closing != null) return _closing!;
-    final task = _closeSafely();
-    _closing = task;
-    _retiring = task;
-    task.then<void>((_) {
-      if (identical(_current, this)) _current = null;
-      _instance = null;
-      _retiring = null;
-    }, onError: (Object _, StackTrace __) {});
-    return task;
-  }
+  Future<void> close() => _slot.retire(this);
 
   Future<void> _closeSafely() async {
     await coordinator.shutdown();

@@ -125,6 +125,19 @@ class DashboardBootstrap {
   static String? _key;
   static Future<Map<String, dynamic>>? _pending;
   static DateTime? _started;
+
+  /// Test seam; production always uses [ShaladarpanService].
+  @visibleForTesting
+  static DashboardLoader? dashboardLoader;
+
+  @visibleForTesting
+  static void resetForTest() {
+    _key = null;
+    _pending = null;
+    _started = null;
+    dashboardLoader = null;
+  }
+
   static Future<Map<String, dynamic>> load(
     String schoolId, {
     bool fresh = false,
@@ -143,10 +156,34 @@ class DashboardBootstrap {
       return _pending!;
     _key = key;
     _started = now;
-    _pending = ShaladarpanService.loginAndSyncDashboard(
-      forceRefresh: fresh,
-      onProgress: onProgress,
+    final DashboardLoader loader =
+        dashboardLoader ?? ShaladarpanService.loginAndSyncDashboard;
+    final task = Future<Map<String, dynamic>>.sync(
+      () => loader(forceRefresh: fresh, onProgress: onProgress),
     );
-    return _pending!;
+    _pending = task;
+    // Share only a usable result. A failed or thrown load is dropped so the
+    // next call retries instead of replaying the same failure for two minutes.
+    // (Registered before the caller's own await, so it runs first.)
+    task.then<void>(
+      (result) {
+        if (identical(_pending, task) && result['success'] != true) {
+          _pending = null;
+          _started = null;
+        }
+      },
+      onError: (Object _, StackTrace __) {
+        if (identical(_pending, task)) {
+          _pending = null;
+          _started = null;
+        }
+      },
+    );
+    return task;
   }
 }
+
+typedef DashboardLoader = Future<Map<String, dynamic>> Function({
+  bool forceRefresh,
+  void Function(double, String)? onProgress,
+});

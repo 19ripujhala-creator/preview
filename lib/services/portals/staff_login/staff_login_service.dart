@@ -22,6 +22,14 @@ class StaffLoginService {
   static Future<StaffNativePrintService> Function()? directPrintProvider;
   static Future<StaffLeaveApplyService> Function()? directLeaveProvider;
 
+  /// Only a live session owned by a *different* user is an account change. A
+  /// missing session (never restored, failed login, retired runtime) is not:
+  /// the saved account's coordinator signs in again with the saved credentials.
+  static bool _foreignSession(String? sessionUser, String user) {
+    final owner = staffLower(sessionUser ?? '');
+    return owner.isNotEmpty && owner != staffLower(user);
+  }
+
   static Future<Uint8List?> _directPdf({
     bool format10 = false,
     String? nicId,
@@ -38,7 +46,7 @@ class StaffLoginService {
         await (directPrintProvider?.call() ??
             StaffDirectRuntime.get().then((runtime) => runtime.prints));
     if (!directReadsEnabled ||
-        staffLower(prints.registry.current()?.user ?? '') != staffLower(user)) {
+        _foreignSession(prints.registry.current()?.user, user)) {
       throw const StaffPortalError('ACCOUNT_CHANGED', 'Staff login changed.');
     }
     // A restored cookie jar does not restore the coordinator's in-memory
@@ -95,7 +103,7 @@ class StaffLoginService {
           await (directReadProvider?.call() ??
               StaffDirectRuntime.get().then((runtime) => runtime.reads));
       if (!directReadsEnabled ||
-          staffLower(reads.registry.current()?.user ?? '') != staffLower(user))
+          _foreignSession(reads.registry.current()?.user, user))
         return {
           'success': false,
           'code': 'ACCOUNT_CHANGED',
@@ -298,8 +306,7 @@ class StaffLoginService {
           await (directLeaveProvider?.call() ??
               StaffDirectRuntime.get().then((runtime) => runtime.leaves));
       if (!directReadsEnabled ||
-          staffLower(service.registry.current()?.user ?? '') !=
-              staffLower(user))
+          _foreignSession(service.registry.current()?.user, user))
         return {
           'success': false,
           'code': 'ACCOUNT_CHANGED',

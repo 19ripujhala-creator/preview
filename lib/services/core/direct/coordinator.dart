@@ -103,6 +103,7 @@ class PortalCoordinator {
   (Object, int)? _probeKey;
   Timer? _keepalive;
   bool _keepaliveEnabled = false;
+  Future<void>? _shutdownTask;
 
   int get generation => _generation;
   Health get health => _health;
@@ -473,6 +474,7 @@ class PortalCoordinator {
         };
       }
       final same = _credentials == (user, password);
+      final previous = _credentials;
       if (!forceFresh &&
           same &&
           _context != null &&
@@ -516,6 +518,20 @@ class PortalCoordinator {
           user,
           password,
         ), forceFresh || _context != null);
+        // The caller asked for a different account and that login failed. The
+        // previous account's credentials must not stay armed: otherwise the next
+        // read, keepalive or expiry would silently log the old account back in.
+        if (!ok &&
+            !_closed &&
+            previous != null &&
+            previous != (user, password) &&
+            _credentials == previous) {
+          _credentials = null;
+          // A fallback may still contain the retired account. Only an explicit
+          // successful login may re-arm recovery after a failed account switch.
+          _signedOut = true;
+          _authBlocked = true;
+        }
         return {...result, 'success': ok, 'generation': _generation};
       } finally {
         _lowerBarrier();
@@ -1227,13 +1243,31 @@ class PortalCoordinator {
     }
   }
 
-  Future<void> shutdown() async {
-    if (_closed) return;
+  /// Idempotent. A shutdown that fails because work is still unsettled stays
+  /// retryable: once that work finishes, a later call completes the shutdown.
+  /// (The coordinator remains closed meanwhile, and a retry never reports
+  /// success while work is pending.) [timeout] overrides the default settle
+  /// deadline of `max(10, config.shutdownTimeout)` seconds.
+  Future<void> shutdown({double? timeout}) {
+    final running = _shutdownTask;
+    if (running != null) return running;
+    final task = _shutdown(timeout);
+    _shutdownTask = task;
+    task.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace __) {
+        if (identical(_shutdownTask, task)) _shutdownTask = null;
+      },
+    );
+    return task;
+  }
+
+  Future<void> _shutdown(double? timeout) async {
     _closed = true;
     _raiseBarrier();
     _keepaliveEnabled = false;
     _keepalive?.cancel();
-    final deadline = _now + max(10, config.shutdownTimeout);
+    final deadline = _now + (timeout ?? max(10.0, config.shutdownTimeout));
     while (hasPendingWork() && _now < deadline) {
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }

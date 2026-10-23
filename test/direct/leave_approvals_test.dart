@@ -158,10 +158,10 @@ void main() {
         if (mode == 'mismatch')
           p.history = p.history.replaceAll('Processed', 'Pending');
         await p.worker.fetch();
-        expect(
-          await p.worker.submit(actions(), userConfirmed: true),
-          golden('python_leave_$mode.json'),
-        );
+        expect(await p.worker.submit(actions(), userConfirmed: true), {
+          ...golden('python_leave_$mode.json') as Map,
+          'message_source': 'app',
+        });
         expect(p.payloads, golden('python_leave_${mode}_payloads.json'));
         expect(p.posts.where((a) => a == 'APPROVE').length, 1);
         final f = p.payloads.last;
@@ -423,10 +423,10 @@ void main() {
       addTearDown(active.close);
       final service = DirectLeaveApprovalService(active);
       expect(await service.fetch(), golden('python_leave_pending.json'));
-      expect(
-        await service.submit(actions(), userConfirmed: true),
-        golden('python_leave_save.json'),
-      );
+      expect(await service.submit(actions(), userConfirmed: true), {
+        ...golden('python_leave_save.json') as Map,
+        'message_source': 'app',
+      });
     },
   );
 }

@@ -6,6 +6,7 @@ import 'dart:async';
 
 import '../../../core/direct/coordinator.dart';
 import '../../../core/direct/coordinator_config.dart';
+import '../../../core/direct/runtime_slot.dart';
 import 'auth_manager.dart';
 import 'captcha_onnx.dart';
 import 'http_auth.dart';
@@ -50,21 +51,18 @@ class RajsimsDirectRuntime {
   final PortalCoordinator coordinator;
   late final RajsimsMdmWorker worker;
   late final RajsimsMdmService mdm;
-  static Future<RajsimsDirectRuntime>? _instance;
-  static RajsimsDirectRuntime? _current;
-  static RajsimsDirectRuntime? get current => _current;
-  static Future<void>? _retiring;
-  Future<void>? _closing;
+  static final _slot = RuntimeSlot<RajsimsDirectRuntime>(
+    create: _create,
+    close: (runtime) => runtime._closeSafely(),
+  );
+  static RajsimsDirectRuntime? get current => _slot.current;
   // Explicit version avoids guessing between the two different Python input
   // normalizations. Supply the installed backend version with --dart-define.
   static const installedDdddocrVersion = String.fromEnvironment(
     'RAJSHALA_DDDDOCR_VERSION',
   );
 
-  static Future<RajsimsDirectRuntime> get() async {
-    if (_retiring != null) await _retiring;
-    return _instance ??= _create();
-  }
+  static Future<RajsimsDirectRuntime> get() => _slot.get();
 
   /// Python's full installer supplies the same browser User-Agent to SSO and
   /// Gateway transports. Separate cookie jars still follow their context owner.
@@ -105,27 +103,14 @@ class RajsimsDirectRuntime {
       worker: worker,
       coordinator: runtime.coordinator,
     );
-    _current = runtime;
     return runtime;
   }
 
-  static Future<void> reset() async {
-    final existing = _instance;
-    if (existing != null) await (await existing).close();
-  }
+  /// Retires the live runtime. A failed retirement keeps its barrier and is
+  /// retried by the next call / login (see [RuntimeSlot]).
+  static Future<void> reset() => _slot.retire();
 
-  Future<void> close() {
-    if (_closing != null) return _closing!;
-    final task = _closeSafely();
-    _closing = task;
-    _retiring = task;
-    task.then<void>((_) {
-      if (identical(_current, this)) _current = null;
-      _instance = null;
-      _retiring = null;
-    }, onError: (Object _, StackTrace __) {});
-    return task;
-  }
+  Future<void> close() => _slot.retire(this);
 
   Future<void> _closeSafely() async {
     await coordinator.shutdown();

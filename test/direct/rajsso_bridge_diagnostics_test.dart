@@ -23,11 +23,6 @@ void main() {
       sso,
       'method_is_post',
     ),
-    'query on bridge action': (
-      bridge.replaceFirst('SSOLogin"', 'SSOLogin?token=PRIVATE_QUERY_TOKEN"'),
-      sso,
-      'action_query_empty',
-    ),
     'fragment on bridge action': (
       bridge.replaceFirst('SSOLogin"', 'SSOLogin#PRIVATE_FRAGMENT_TOKEN"'),
       sso,
@@ -61,9 +56,18 @@ void main() {
         final encoded = jsonEncode(failure.diagnostics);
         expect(encoded, isNot(contains('PRIVATE_')));
         expect(encoded, isNot(contains('https://')));
-        },
+      },
     );
   }
+  test('official bridge query is retained without exposing its values', () {
+    final action = rajssoDocumentLaunchAction(
+      bridge.replaceFirst('SSOLogin"', 'SSOLogin?token=PRIVATE_QUERY_TOKEN"'),
+      sso,
+    );
+    expect(action.url.query, 'token=PRIVATE_QUERY_TOKEN');
+    expect(action.method, 'POST');
+    expect(action.fields, [('userdetails', privateValue)]);
+  });
   test('original valid bridge and opaque userdetails are unchanged', () {
     final action = rajssoDocumentLaunchAction(bridge, sso);
     expect(action.method, 'POST');

@@ -36,7 +36,7 @@ class StaffLeaveApplyService {
     } on StaffLeavePayloadError catch (e) {
       return _failure(e.code, e.message);
     }
-    if (!_owned(user))
+    if (user.isEmpty || (registry.current() != null && !_owned(user)))
       return _failure('ACCOUNT_CHANGED', 'Staff login changed.');
     final confirmed = data['confirmed'] == true;
     if (confirmed) reads.invalidateHistory();
