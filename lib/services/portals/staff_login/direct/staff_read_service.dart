@@ -142,6 +142,7 @@ class StaffReadService {
       if (_connected &&
           !refresh &&
           cached != null &&
+          !now().difference(cached.$1).isNegative &&
           now().difference(cached.$1) < const Duration(seconds: 45)) {
         rows = _copy(cached.$2);
       } else {

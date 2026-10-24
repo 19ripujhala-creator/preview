@@ -7,6 +7,7 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html;
 
 import '../portal_state.dart';
+import '../staff_attendance_status.dart';
 import '../../../core/direct/async_primitives.dart';
 import 'student_attendance_worker.dart' show AttendanceHttpReply;
 
@@ -292,13 +293,10 @@ class StaffAttendanceWorker {
           : RegExp(r'^\d+$').hasMatch(leaveValue)
           ? leaveValue
           : null;
-      final category = _matches('absent|अनुपस्थित', status)
-          ? 'absent'
-          : _matches(r'leave|अवकाश|^(?:cl|ml|pl|hpl|el)(?:\b|$)', status)
-          ? 'leave'
-          : _matches('present|उपस्थित', status)
-          ? 'present'
-          : 'other';
+      final category = staffAttendanceCategory(
+        status,
+        selectionPending: select != null && (code == null || code.isEmpty),
+      );
       rows.add({
         'schoolId': _clean(control('hdnSCHCD', 'input')?.attributes['value']),
         'sno': _clean(_text(cells[0])),
@@ -507,13 +505,38 @@ class StaffAttendanceWorker {
     return (date: date, timestamp: timestamp, text: markingText);
   }
 
-  String _message(dom.Document soup) =>
+  List<String> _messages(dom.Document soup) =>
       ['msgDiv', 'ContentPlaceHolder1_lblMsg', 'ContentPlaceHolder1_lblMessage']
           .map(soup.getElementById)
           .where(_visible)
           .map((e) => _text(e!))
           .where((e) => e.isNotEmpty)
-          .join('\n');
+          .toSet()
+          .toList();
+  String _message(dom.Document soup) => _messages(soup).join('\n');
+
+  Map<String, dynamic> _withFinalMessages(
+    Map<String, dynamic> result,
+    List<String> finalMessages,
+  ) {
+    if (finalMessages.isEmpty) return result;
+    final messages = <String>{...finalMessages};
+    if (result['message_source'] == 'portal' &&
+        result['portal_message'] is String) {
+      messages.add(result['portal_message'] as String);
+    }
+    final text = messages.join('\n');
+    return {
+      ...result,
+      if (result['message_source'] != 'portal')
+        'backend_message': result['message'],
+      'message': text,
+      'portal_message': text,
+      'message_source': 'portal',
+      'portalMessages': messages.toList(),
+    };
+  }
+
   void _stop(dom.Document soup) {
     final message = _message(soup);
     if (message.isNotEmpty)
@@ -538,7 +561,19 @@ class StaffAttendanceWorker {
       timeout: timeout,
     );
     _check();
-    validateSchoolDocument(response.url, response.html, response.status);
+    try {
+      validateSchoolDocument(response.url, response.html, response.status);
+    } on SchoolDocumentError catch (error) {
+      if (error.code == 'PAGE_NOT_READY' &&
+          html.parse(response.html).querySelector('h2, h1') != null) {
+        throw SchoolDocumentError({
+          ...error.result,
+          'portal_message': error.message,
+          'message_source': 'portal',
+        });
+      }
+      rethrow;
+    }
     if (response.url.scheme != 'https' ||
         response.url.host != 'rajshaladarpan.rajasthan.gov.in' ||
         !RegExp(
@@ -614,7 +649,7 @@ class StaffAttendanceWorker {
     };
     for (final row in rows) {
       final category = row['category'] as String;
-      stats[category] = stats[category]! + 1;
+      stats[category] = (stats[category] ?? 0) + 1;
     }
     stats.addAll({
       for (final e in stats.entries.toList()) '${e.key}_staff': e.value,
@@ -699,24 +734,36 @@ class StaffAttendanceWorker {
     bool attempted = false,
   ]) {
     if (attempted) {
+      final document = error is SchoolDocumentError ? error.result : null;
       final portalText =
-          error is StaffAttendanceError &&
-              ['PORTAL_MESSAGE', 'PORTAL_TIME_RESTRICTED'].contains(error.code)
-          ? error.message
-          : null;
+          document?['portal_message']?.toString() ??
+          (error is StaffAttendanceError &&
+                  [
+                    'PORTAL_MESSAGE',
+                    'PORTAL_TIME_RESTRICTED',
+                  ].contains(error.code)
+              ? error.message
+              : null);
+      const uncertainty =
+          'Staff attendance submission outcome is uncertain. Refresh and verify before retrying.';
       return {
         ..._failure(
           'SAVE_UNCONFIRMED',
-          portalText ?? 'Staff attendance submission outcome is uncertain. Refresh and verify before retrying.',
+          portalText ??
+              (error is SchoolDocumentError ? error.message : uncertainty),
           submitted: true,
         ),
         'portal_message': portalText,
         'message_source':
             portalText != null &&
-                (error as StaffAttendanceError).code == 'PORTAL_MESSAGE'
+                (document?['message_source'] == 'portal' ||
+                    (error is StaffAttendanceError &&
+                        error.code == 'PORTAL_MESSAGE'))
             ? 'portal'
             : 'backend',
         'requires_verification': true,
+        if (portalText != null || error is SchoolDocumentError)
+          'backend_message': uncertainty,
       };
     }
     if (error is SchoolDocumentError)
@@ -798,6 +845,7 @@ class StaffAttendanceWorker {
     required bool userConfirmed,
   }) async {
     var attempted = false;
+    var finalMessages = <String>[];
     try {
       if (!userConfirmed)
         throw const StaffAttendanceError(
@@ -975,6 +1023,9 @@ class StaffAttendanceWorker {
           mutation: true,
           timeout: const Duration(seconds: 30),
         );
+        // Retain the FINAL message before fresh readback replaces the document.
+        // Message wording never decides success: locked matching data does.
+        finalMessages = _messages(next.soup);
       }
       final last = (await _snapshot(school)).data;
       if (last['is_already_marked'] == true &&
@@ -984,7 +1035,7 @@ class StaffAttendanceWorker {
                 original,
               ) ==
               null)
-        return {
+        return _withFinalMessages({
           'success': true,
           'attendance_verified': true,
           'is_already_marked': true,
@@ -995,17 +1046,17 @@ class StaffAttendanceWorker {
           'outcome': 'newly_submitted',
           'portalMessages': [],
           'data': last,
-        };
-      return {
+        }, finalMessages);
+      return _withFinalMessages({
         ..._failure(
           'SAVE_UNCONFIRMED',
           'Portal has not confirmed matching staff attendance. Refresh and verify before retrying.',
           submitted: true,
         ),
         'data': last,
-      };
+      }, finalMessages);
     } catch (error) {
-      return errorResult(error, attempted);
+      return _withFinalMessages(errorResult(error, attempted), finalMessages);
     }
   }
 }

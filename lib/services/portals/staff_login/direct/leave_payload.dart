@@ -393,7 +393,7 @@ Map<String, String>? findStaffLeaveEditTarget(
 bool? classifyStaffLeaveMessage(String text) {
   if (text.isEmpty) return null;
   if (RegExp(
-    r'not\s+(?:applied|updated|modified|successful|approved)|unsuccess|unable|cannot|could not|नहीं|असफल|pehle se|already|पहले से|duplicate|invalid|error|त्रुटि|please enter|required|फेल|failed',
+    r'\b(?:not|never)\s+(?:(?:yet|been|be|being)\s+)*(?:applied|updated|modified|successful|approved)|unsuccess|unable|cannot|could not|नहीं|असफल|pehle se|already|पहले से|duplicate|invalid|error|त्रुटि|please enter|required|फेल|failed',
     caseSensitive: false,
   ).hasMatch(text))
     return false;

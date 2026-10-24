@@ -446,6 +446,9 @@ class PortalCoordinator {
       );
     }
     _syncContext(ok && backend.currentContext() != null);
+    if (!ok && result['code'] == 'SESSION_UNCERTAIN' && contextIsCurrent()) {
+      _health = Health.unknown;
+    }
     ok = ok && _health == Health.ready;
     _lastRecoverOk = ok;
     if (ok) {
@@ -474,7 +477,11 @@ class PortalCoordinator {
         };
       }
       final same = _credentials == (user, password);
-      final previous = _credentials;
+      final previous = _resolveCredentials();
+      final wasSignedOut = _signedOut;
+      // A restored backend owns and verifies its saved account. Until this
+      // coordinator has authenticated, let it probe rather than force a login.
+      final canRestoreSaved = _credentials == null;
       if (!forceFresh &&
           same &&
           _context != null &&
@@ -483,6 +490,17 @@ class PortalCoordinator {
         final recent = _lastOk > 0 && _now - _lastOk <= config.probeMaxAge;
         final activeVerified = _active.isNotEmpty && _health == Health.ready;
         final verdict = recent || activeVerified ? Probe.alive : await _probe();
+        // Shutdown can begin while the saved-session probe is in flight.
+        // Its late result must not publish cached success or re-arm keepalive.
+        if (_closed) {
+          _health = Health.failed;
+          return {
+            'success': false,
+            'code': 'SHUTDOWN',
+            'message': '$displayName coordinator is shut down.',
+            'generation': _generation,
+          };
+        }
         if (const {Probe.alive, Probe.unknown}.contains(verdict) &&
             contextIsCurrent() &&
             const {Health.ready, Health.unknown}.contains(_health)) {
@@ -517,15 +535,14 @@ class PortalCoordinator {
         final (ok, result) = await _authenticateLocked((
           user,
           password,
-        ), forceFresh || _context != null);
+        ), forceFresh || (_context != null && !canRestoreSaved));
         // The caller asked for a different account and that login failed. The
         // previous account's credentials must not stay armed: otherwise the next
         // read, keepalive or expiry would silently log the old account back in.
         if (!ok &&
             !_closed &&
-            previous != null &&
-            previous != (user, password) &&
-            _credentials == previous) {
+            (wasSignedOut ||
+                (previous != null && previous != (user, password)))) {
           _credentials = null;
           // A fallback may still contain the retired account. Only an explicit
           // successful login may re-arm recovery after a failed account switch.

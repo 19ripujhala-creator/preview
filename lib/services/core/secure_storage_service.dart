@@ -3,8 +3,13 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'direct/async_primitives.dart';
+
 class SecureStorageService {
   static const _storage = FlutterSecureStorage();
+  // One queue for complete credential operations, including metadata cleanup.
+  // Public methods acquire it once; helpers must not reacquire the same lock.
+  static final _credentialsLock = AsyncMutex();
 
   static Future<Map<String, String>> _readPair(
     String idKey,
@@ -40,26 +45,34 @@ class SecureStorageService {
     return credentials.values.every((value) => value.isNotEmpty);
   }
 
-  static Future<Map<String, String>> getShaladarpanCreds() =>
+  static Future<Map<String, String>> _schoolCreds() =>
       _readPair('shala_id', 'shala_pass', ['saved_shala_id', 'saved_school_id', 'school_id'], 'saved_shala_pass');
-  static Future<Map<String, String>> getStaffCreds() =>
+  static Future<Map<String, String>> _staffCreds() =>
       _readPair('staff_id', 'staff_pass', ['saved_staff_id'], 'saved_staff_pass');
-  static Future<Map<String, String>> getRajSimsCreds() =>
+  static Future<Map<String, String>> _ssoCreds() =>
       _readPair('rajsims_id', 'rajsims_pass', ['saved_sso_id'], 'saved_sso_pass');
 
-  static Future<Map<String, String>> getAllPortalCreds() async {
-    final shala = await getShaladarpanCreds();
-    final staff = await getStaffCreds();
-    final sso = await getRajSimsCreds();
-    return {
-      'school_id': shala['id']!.trim(),
-      'school_password': shala['pass']!,
-      'staff_id': staff['id']!.trim(),
-      'staff_password': staff['pass']!,
-      'sso_id': sso['id']!.trim(),
-      'sso_password': sso['pass']!,
-    };
-  }
+  static Future<Map<String, String>> getShaladarpanCreds() =>
+      _credentialsLock.protect(_schoolCreds);
+  static Future<Map<String, String>> getStaffCreds() =>
+      _credentialsLock.protect(_staffCreds);
+  static Future<Map<String, String>> getRajSimsCreds() =>
+      _credentialsLock.protect(_ssoCreds);
+
+  static Future<Map<String, String>> getAllPortalCreds() =>
+      _credentialsLock.protect(() async {
+        final shala = await _schoolCreds();
+        final staff = await _staffCreds();
+        final sso = await _ssoCreds();
+        return {
+          'school_id': shala['id']!.trim(),
+          'school_password': shala['pass']!,
+          'staff_id': staff['id']!.trim(),
+          'staff_password': staff['pass']!,
+          'sso_id': sso['id']!.trim(),
+          'sso_password': sso['pass']!,
+        };
+      });
 
   static Future<void> saveAllPortals({
     required String shalaId,
@@ -68,8 +81,8 @@ class SecureStorageService {
     required String staffPass,
     required String rajsimsId,
     required String rajsimsPass,
-  }) async {
-    final previous = await getShaladarpanCreds();
+  }) => _credentialsLock.protect(() async {
+    final previous = await _schoolCreds();
     final values = {
       'shala_id': shalaId.trim(),
       'shala_pass': shalaPass,
@@ -106,9 +119,9 @@ class SecureStorageService {
     for (final key in ['saved_shala_pass', 'saved_staff_pass', 'saved_sso_pass']) {
       await prefs.remove(key);
     }
-  }
+  });
 
-  static Future<void> clearAll() async {
+  static Future<void> clearAll() => _credentialsLock.protect(() async {
     for (final key in [
       'portal_credentials_v2',
       'is_app_configured',
@@ -134,5 +147,5 @@ class SecureStorageService {
     ]) {
       await prefs.remove(key);
     }
-  }
+  });
 }

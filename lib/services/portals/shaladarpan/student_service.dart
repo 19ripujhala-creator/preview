@@ -7,6 +7,7 @@ import 'dart:convert';
 import '../../../experiments/student_attendance_parity.dart';
 import '../../core/direct/mutation_dispatch.dart';
 import '../../core/direct/attendance_read_scope.dart';
+import 'direct/leave_result_messages.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shaladarpan/services/core/secure_storage_service.dart';
@@ -25,6 +26,7 @@ class StudentService {
   // A mutation stays guarded even if the HTTP caller times out. A fresh
   // verified read must settle the hold before another Save can be attempted.
   static bool _saving = false;
+  static bool _checkingSubmission = false;
   static int _attendanceEpoch = 0;
   static const Duration _reportTimeout = Duration(seconds: 240);
   static const Duration _saveTimeout = Duration(seconds: 180);
@@ -119,6 +121,20 @@ class StudentService {
         ((data['students'] as List).isEmpty && !isVerifiedEmptyClass(data))) {
       return false;
     }
+    final students = data['students'] as List;
+    if (data['total'] != students.length ||
+        (data['summary'] is Map &&
+            data['summary']['total'] != null &&
+            data['summary']['total'] != students.length))
+      return false;
+    final identities = <String>{};
+    for (final value in students) {
+      if (value is! Map) return false;
+      final row = Map<String, dynamic>.from(value);
+      final key = _studentKey(row);
+      if (key == 'row::' || !identities.add(key)) return false;
+      if (_markedOnPortal(data) && _status(row) == null) return false;
+    }
     final requestedNumber = RegExp(r'\d+').firstMatch(classId)?.group(0);
     final receivedNumber = RegExp(r'\d+')
         .firstMatch('${data['classId']}')
@@ -206,6 +222,44 @@ class StudentService {
     return _markedOnPortal(portal) &&
         _sameStudents(hold['expected'], portal['students']);
   }
+
+  static bool _calendarDate(String date) {
+    try {
+      StudentAttendanceParity.normalizeDate(_dateKey(date));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<bool> _clearHold(SharedPreferences prefs, String key) async {
+    final raw = prefs.getString(key);
+    try {
+      if (await prefs.remove(key)) return true;
+    } catch (_) {}
+    // SharedPreferences updates its memory before a platform write completes.
+    // Restore the guard if deletion was not acknowledged by durable storage.
+    if (raw != null) {
+      try {
+        await prefs.setString(key, raw);
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  static Map<String, dynamic> _unconfirmed(
+    Map<String, dynamic> result,
+    String code,
+    String note, {
+    required bool attempted,
+  }) => LeaveResultMessages.attach({
+    ...result,
+    'success': false,
+    'code': code,
+    'message': note,
+    'attendance_verified': false,
+    'submission_attempted': attempted,
+  }, LeaveResultMessages.portalTexts(result));
 
   static const Duration _manualReviewDelay = Duration(seconds: 180);
 
@@ -351,116 +405,138 @@ class StudentService {
     String? section,
     bool acknowledgeManualRetry = false,
   }) async {
-    if (_saving) {
+    if (_saving || _checkingSubmission) {
       return {
         'success': false,
         'code': 'SUBMISSION_BUSY',
         'message': 'An attendance submission is still running.',
       };
     }
-    final epoch = _attendanceEpoch;
-    final before = await SecureStorageService.getShaladarpanCreds();
-    final school = before['id']?.trim() ?? '';
-    if (school.isEmpty) {
-      return {
-        'success': false,
-        'code': 'ACCOUNT_NOT_READY',
-        'message': 'School login is required.',
-      };
-    }
-    final prefs = await SharedPreferences.getInstance();
-    final key = _holdKey(school, date, classId, section);
-    final metadata = _hold(prefs, key);
-    if (metadata == null) {
+    _checkingSubmission = true;
+    try {
+      final epoch = _attendanceEpoch;
+      final before = await SecureStorageService.getShaladarpanCreds();
+      final school = before['id']?.trim() ?? '';
+      if (school.isEmpty) {
+        return {
+          'success': false,
+          'code': 'ACCOUNT_NOT_READY',
+          'message': 'School login is required.',
+        };
+      }
+      final prefs = await SharedPreferences.getInstance();
+      final key = _holdKey(school, date, classId, section);
+      final metadata = _hold(prefs, key);
+      if (metadata == null) {
+        return {
+          'success': true,
+          'resolved': 'not_held',
+          'message': 'There is no unresolved submission for this class.',
+        };
+      }
+
+      // Fetch twice: single transient portal response must never release the hold.
+      final first = await _fetchAttendance(
+        classId: classId,
+        date: date,
+        section: section,
+      );
+      if (!_validRead(first, classId, date, section)) {
+        return {
+          'success': false,
+          'code': 'RECHECK_FAILED',
+          'message': 'Portal verification failed. Previous submission is still on hold.',
+        };
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 1000));
+      final second = await _fetchAttendance(
+        classId: classId,
+        date: date,
+        section: section,
+      );
+      if (!_validRead(second, classId, date, section) ||
+          !_sameStudents(first['students'], second['students']) ||
+          first['is_already_marked'] != second['is_already_marked']) {
+        return {
+          'success': false,
+          'code': 'RECHECK_FAILED',
+          'message': 'Portal results are inconsistent. Previous submission remains on hold.',
+        };
+      }
+      final after = await SecureStorageService.getShaladarpanCreds();
+      if (_saving ||
+          epoch != _attendanceEpoch ||
+          after['id']?.trim() != school) {
+        return {
+          'success': false,
+          'code': 'ACCOUNT_CHANGED',
+          'message': 'Session changed during verification. Previous submission remains on hold.',
+        };
+      }
+      // Re-read metadata: never clear a different/newer outstanding operation.
+      final latest = _hold(prefs, key);
+      if (latest == null || jsonEncode(latest) != jsonEncode(metadata)) {
+        return {
+          'success': false,
+          'code': 'STALE_ATTENDANCE_READ',
+          'message': 'Submission state changed while checking. Refresh again.',
+        };
+      }
+      if (_holdMatches(metadata, first) && _holdMatches(metadata, second)) {
+        if (!await _clearHold(prefs, key)) {
+          return {
+            'success': false,
+            'code': 'LOCAL_STORAGE_ERROR',
+            'submission_on_hold': true,
+            'attendance_verified': true,
+            'message': 'Portal attendance is verified, but the local submission guard could not be cleared. Check again before another Save.',
+          };
+        }
+        return {
+          'success': true,
+          'resolved': 'applied',
+          'message':
+              'Previous attendance submission is verified on the portal.',
+        };
+      }
+
+      // A prior marked attendance can remain marked when an UPDATE failed.
+      // Therefore 'marked' alone must NEVER unlock a retry.
+      final started = metadata['created_at'];
+      final ageMs = started is int
+          ? DateTime.now().millisecondsSinceEpoch - started
+          : 0;
+      final oldEnough =
+          metadata['legacy'] == true ||
+          ageMs >= _manualReviewDelay.inMilliseconds;
+      if (!acknowledgeManualRetry || !oldEnough) {
+        return {
+          'success': false,
+          'code': 'REVIEW_REQUIRED',
+          'manual_retry_allowed': oldEnough,
+          'message': oldEnough
+              ? 'Portal statuses differ from the attempted Save. Review the recorded attendance before authorizing a new attempt.'
+              : 'Save outcome is unresolved. Check again later; do not submit a second time.',
+        };
+      }
+      // Explicitly authorized manual recovery after two identical verified reads,
+      // never an automatic retry. The caller MUST show a warning/confirmation.
+      if (!await _clearHold(prefs, key)) {
+        return {
+          'success': false,
+          'code': 'LOCAL_STORAGE_ERROR',
+          'submission_on_hold': true,
+          'message': 'The local submission guard could not be cleared. No new Save is authorized.',
+        };
+      }
       return {
         'success': true,
-        'resolved': 'not_held',
-        'message': 'There is no unresolved submission for this class.',
+        'resolved': 'manual_review',
+        'message': 'Submission hold released after your explicit review. Check portal statuses before a new Save.',
       };
+    } finally {
+      _checkingSubmission = false;
     }
-
-    // Fetch twice: single transient portal response must never release the hold.
-    final first = await _fetchAttendance(
-      classId: classId,
-      date: date,
-      section: section,
-    );
-    if (!_validRead(first, classId, date, section)) {
-      return {
-        'success': false,
-        'code': 'RECHECK_FAILED',
-        'message':
-            'Portal verification failed. Previous submission is still on hold.',
-      };
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 1000));
-    final second = await _fetchAttendance(
-      classId: classId,
-      date: date,
-      section: section,
-    );
-    if (!_validRead(second, classId, date, section) ||
-        !_sameStudents(first['students'], second['students']) ||
-        first['is_already_marked'] != second['is_already_marked']) {
-      return {
-        'success': false,
-        'code': 'RECHECK_FAILED',
-        'message': 'Portal results are inconsistent. Previous submission remains on hold.',
-      };
-    }
-    final after = await SecureStorageService.getShaladarpanCreds();
-    if (_saving || epoch != _attendanceEpoch || after['id']?.trim() != school) {
-      return {
-        'success': false,
-        'code': 'ACCOUNT_CHANGED',
-        'message': 'Session changed during verification. Previous submission remains on hold.',
-      };
-    }
-    // Re-read metadata: never clear a different/newer outstanding operation.
-    final latest = _hold(prefs, key);
-    if (latest == null || jsonEncode(latest) != jsonEncode(metadata)) {
-      return {
-        'success': false,
-        'code': 'STALE_ATTENDANCE_READ',
-        'message': 'Submission state changed while checking. Refresh again.',
-      };
-    }
-    if (_holdMatches(metadata, first) && _holdMatches(metadata, second)) {
-      await prefs.remove(key);
-      return {
-        'success': true,
-        'resolved': 'applied',
-        'message': 'Previous attendance submission is verified on the portal.',
-      };
-    }
-
-    // A prior marked attendance can remain marked when an UPDATE failed.
-    // Therefore 'marked' alone must NEVER unlock a retry.
-    final started = metadata['created_at'];
-    final ageMs = started is int
-        ? DateTime.now().millisecondsSinceEpoch - started
-        : 0;
-    final oldEnough =
-        metadata['legacy'] == true ||
-        ageMs >= _manualReviewDelay.inMilliseconds;
-    if (!acknowledgeManualRetry || !oldEnough) {
-      return {
-        'success': false,
-        'code': 'REVIEW_REQUIRED',
-        'manual_retry_allowed': oldEnough,
-        'message': oldEnough
-            ? 'Portal statuses differ from the attempted Save. Review the recorded attendance before authorizing a new attempt.'
-            : 'Save outcome is unresolved. Check again later; do not submit a second time.',
-      };
-    }
-    // Explicitly authorized manual recovery after two identical verified reads,
-    // never an automatic retry. The caller MUST show a warning/confirmation.
-    await prefs.remove(key);
-    return {
-      'success': true,
-      'resolved': 'manual_review',
-      'message': 'Submission hold released after your explicit review. Check portal statuses before a new Save.',
-    };
   }
 
   /// A Save and an Update share the same one-POST flow.
@@ -469,6 +545,18 @@ class StudentService {
     Map<String, dynamic> payload, {
     AttendanceReadScope? expectedScope,
   }) async {
+    try {
+      payload = Map<String, dynamic>.from(
+        jsonDecode(jsonEncode(payload)) as Map,
+      );
+    } catch (_) {
+      return {
+        'success': false,
+        'code': 'INVALID_PAYLOAD',
+        'submission_attempted': false,
+        'message': 'Attendance payload could not be read. Nothing was sent.',
+      };
+    }
     if (expectedScope != null && await captureReadScope() != expectedScope) {
       return {
         'success': false,
@@ -477,7 +565,7 @@ class StudentService {
         'message': 'School session changed. Refresh class data before Save.',
       };
     }
-    if (_saving) {
+    if (_saving || _checkingSubmission) {
       return {
         'success': false,
         'code': 'SUBMISSION_BUSY',
@@ -494,6 +582,23 @@ class StudentService {
     try {
       final credentials = await SecureStorageService.getShaladarpanCreds();
       final school = credentials['id']?.trim() ?? '';
+      final direct = directAttendanceEnabled;
+      final boundService = direct ? DirectSchoolSession.attendance : null;
+      final boundIdentity = boundService?.auth.schoolSessionIdentity;
+      final boundBase = baseUrl;
+      Future<bool> sameOwner() async {
+        final current = await SecureStorageService.getShaladarpanCreds();
+        return current['id']?.trim() == school &&
+            current['pass'] == credentials['pass'] &&
+            directAttendanceEnabled == direct &&
+            (direct
+                ? identical(boundService, DirectSchoolSession.attendance) &&
+                      boundService?.auth.schoolSessionIdentity ==
+                          boundIdentity &&
+                      DirectSchoolSession.schoolId == school
+                : baseUrl == boundBase);
+      }
+
       if (school.isEmpty) {
         return {
           'success': false,
@@ -527,7 +632,7 @@ class StudentService {
       final cls = '${payload['class_id'] ?? ''}';
       final section = payload['section']?.toString();
       final expected = _snapshot(payload['students']);
-      if (date.isEmpty || cls.trim().isEmpty || expected == null) {
+      if (!_calendarDate(date) || cls.trim().isEmpty || expected == null) {
         return {
           'success': false,
           'code': 'INVALID_PAYLOAD',
@@ -547,6 +652,8 @@ class StudentService {
           'message': 'Previous Save/Update is unresolved. Verify its result before another submission.',
         };
       }
+      holdPrefs = prefs;
+      registeredHoldKey = key;
       final stored = await prefs.setString(
         key,
         jsonEncode({
@@ -555,6 +662,7 @@ class StudentService {
         }),
       );
       if (!stored) {
+        await _clearHold(prefs, key);
         return {
           'success': false,
           'code': 'SAVE_PREPARATION_FAILED',
@@ -562,8 +670,16 @@ class StudentService {
           'message': 'Could not register the submission safety hold. Nothing was sent.',
         };
       }
-      holdPrefs = prefs;
-      registeredHoldKey = key;
+      if (!await sameOwner()) {
+        final cleared = await _clearHold(prefs, key);
+        return {
+          'success': false,
+          'code': 'ACCOUNT_CHANGED',
+          'submission_attempted': false,
+          'submission_on_hold': !cleared,
+          'message': 'School session changed before Save. Nothing was sent.',
+        };
+      }
       if (expectedScope != null &&
           (directAttendanceEnabled
               ? !identical(
@@ -586,7 +702,7 @@ class StudentService {
         };
       }
       Map<String, dynamic> result;
-      if (directAttendanceEnabled) {
+      if (direct) {
         if (!DirectSchoolSession.available ||
             DirectSchoolSession.schoolId != school) {
           await prefs.remove(key);
@@ -602,7 +718,7 @@ class StudentService {
             .map((row) => Map<String, Object?>.from(row as Map))
             .toList();
         final outcome = await directDispatch.run(
-          () => DirectSchoolSession.attendance!.save(
+          () => boundService!.save(
             classId: cls,
             date: date,
             section: section,
@@ -635,32 +751,44 @@ class StudentService {
             ? data
             : _error(data, response.statusCode);
       }
-      if (result['success'] == true && result['attendance_verified'] != true) {
-        result = {
-          ...result,
-          'success': false,
-          'code': 'SAVE_UNCONFIRMED',
-          'submission_attempted': true,
-          'attendance_verified': false,
-          'message': 'Save response did not verify attendance on the portal.',
-        };
+      final attempted = result['submission_attempted'] is bool
+          ? result['submission_attempted'] == true
+          : requestMayHaveStarted;
+      if (result['success'] == true &&
+          (!_validRead(result, cls, date, section) ||
+              !_markedOnPortal(result) ||
+              !_sameStudents(payload['students'], result['students']) ||
+              (result['school_id'] != null &&
+                  '${result['school_id']}'.trim() != school))) {
+        result = _unconfirmed(
+          result,
+          'SAVE_UNCONFIRMED',
+          'Exact class, date and student statuses were not verified on the portal. Check the recorded attendance before retrying.',
+          attempted: attempted,
+        );
       }
-      final after = await SecureStorageService.getShaladarpanCreds();
-      if (after['id']?.trim() != school) {
+      if (!await sameOwner()) {
         return {
-          'success': false,
-          'code': 'ACCOUNT_CHANGED',
-          'submission_attempted': true,
-          'attendance_verified': false,
-          'message': 'School changed during Save. Verify the previous school separately.',
+          ..._unconfirmed(
+            result,
+            attempted ? 'SAVE_UNCONFIRMED' : 'ACCOUNT_CHANGED',
+            'School session changed during Save. Verify the previous school separately.',
+            attempted: attempted,
+          ),
+          'submission_on_hold': true,
         };
       }
+      var cleanupFailed = false;
       if (result['submission_attempted'] == false ||
           (result['success'] == true &&
               result['attendance_verified'] == true)) {
-        await prefs.remove(key);
+        cleanupFailed = !await _clearHold(prefs, key);
       }
-      return {...result, 'submission_on_hold': _hold(prefs, key) != null};
+      return {
+        ...result,
+        'submission_on_hold': cleanupFailed || _hold(prefs, key) != null,
+        if (cleanupFailed) 'verification_message': 'Portal result is retained, but the local submission guard could not be cleared. Use Verify Previous Save before another attempt.',
+      };
     } catch (_) {
       requestMayHaveStarted =
           directDispatch?.mayHaveStarted ?? requestMayHaveStarted;
@@ -668,7 +796,7 @@ class StudentService {
           registeredHoldKey != null &&
           holdPrefs != null) {
         try {
-          await holdPrefs.remove(registeredHoldKey);
+          await _clearHold(holdPrefs, registeredHoldKey);
         } catch (_) {
           // Storage failure cannot change the factual dispatch state.
         }
@@ -690,131 +818,144 @@ class StudentService {
     }
   }
 
-  /// 3. Fetch summary of all classes for the day
+  /// Summary belongs to the same local session/revision as the register.
   static Future<Map<String, dynamic>> fetchClassSummary({String? date}) async {
     try {
-      final queryParams = <String, String>{
-        if (date != null && date.isNotEmpty) 'date': date,
-      };
-
-      final uri = Uri.parse(
-        "$baseUrl/summary",
-      ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
-
-      if (directAttendanceEnabled) {
-        if (!DirectSchoolSession.available) {
-          return {
-            'success': false,
-            'code': 'DIRECT_SESSION_EXPIRED',
-            'message': 'Direct school session unavailable.',
-          };
-        }
-        return await DirectSchoolSession.attendance!.fetchClassSummaryResponse(
-          date: date,
-        );
-      }
-      final response = await http.get(uri).timeout(_timeout);
-      final Map<String, dynamic> data = _parseResponseBody(response.body);
-
-      if (response.statusCode == 200) {
-        return data;
-      } else {
+      final scope = await captureReadScope();
+      if (scope == null)
         return {
-          "success": false,
-          "message": _extractErrorMessage(data, response.statusCode),
+          'success': false,
+          'code': 'ACCOUNT_NOT_READY',
+          'message': 'Refresh the school login before loading attendance.',
+        };
+      Map<String, dynamic> result;
+      if (directAttendanceEnabled) {
+        result = await DirectSchoolSession.attendance!
+            .fetchClassSummaryResponse(date: date);
+      } else {
+        final uri = Uri.parse('$baseUrl/summary').replace(
+          queryParameters: {if (date != null && date.isNotEmpty) 'date': date},
+        );
+        final reply = await http.get(uri).timeout(_timeout);
+        final data = _parseResponseBody(reply.body);
+        result = reply.statusCode == 200
+            ? data
+            : _error(data, reply.statusCode);
+      }
+      if (await captureReadScope() != scope) return _staleReport();
+      if (result['success'] == true &&
+          date != null &&
+          _dateKey('${result['date'] ?? ''}') != _dateKey(date)) {
+        return {
+          'success': false,
+          'code': 'DATE_MISMATCH',
+          'message': 'Portal summary date did not match this request.',
         };
       }
+      return result;
     } catch (e) {
-      return {"success": false, "message": "Connection error: $e"};
+      return {'success': false, 'message': 'Connection error: $e'};
     }
   }
 
-  /// 4. School-wide report (class/section wise Boys, Girls, Absent, Leave, Total)
-  /// Response: { success, date, schoolName, rows: [...], unknownGender, failedSections }
+  static Map<String, dynamic> _staleReport() => {
+    'success': false,
+    'code': 'STALE_ATTENDANCE_READ',
+    'message':
+        'School session or attendance changed during this read. Refresh again.',
+  };
+
+  static bool _validReport(Map<String, dynamic> report, String date) {
+    if (_dateKey('${report['date'] ?? ''}') != _dateKey(date) ||
+        !_calendarDate(date) ||
+        report['rows'] is! List ||
+        (report['rows'] as List).isEmpty ||
+        (report['failedSections'] is List &&
+            (report['failedSections'] as List).isNotEmpty) ||
+        (report['attendance_verified'] == true &&
+            report['pendingSections'] is List &&
+            (report['pendingSections'] as List).isNotEmpty))
+      return false;
+    int? count(dynamic value) {
+      final n = value is num ? value : num.tryParse('$value');
+      return n != null && n.isFinite && n >= 0 && n == n.round()
+          ? n.toInt()
+          : null;
+    }
+
+    final labels = <String>{};
+    for (final row in report['rows'] as List) {
+      if (row is! Map) return false;
+      final cls = '${row['className'] ?? ''}'.trim();
+      final label = '$cls/${row['section'] ?? ''}'.trim().toLowerCase();
+      if (cls.isEmpty || !labels.add(label)) return false;
+      final values = [
+        for (final k in ['boys', 'girls', 'absent', 'leave']) count(row[k]),
+      ];
+      if (values.any((n) => n == null)) return false;
+      final sum = values.fold<int>(0, (a, n) => a + n!);
+      final unknown = count(row['presentUnknown'] ?? 0),
+          unselected = count(row['unselected'] ?? 0);
+      if (unknown == null ||
+          unselected == null ||
+          (row['total'] != null && count(row['total']) != sum) ||
+          (row['enrolled'] != null &&
+              count(row['enrolled']) != sum + unknown + unselected) ||
+          (report['attendance_verified'] == true && unselected > 0))
+        return false;
+    }
+    return count(report['unknownPresent'] ?? 0) != null;
+  }
+
   static Future<Map<String, dynamic>> fetchSchoolReport({
     required String date,
     void Function(int completed, int total)? onProgress,
   }) async {
-    if (directAttendanceEnabled) {
-      try {
-        final epoch = _attendanceEpoch;
-        final before = await SecureStorageService.getShaladarpanCreds();
-        final school = before['id']?.trim() ?? '';
-        if (school.isEmpty ||
-            !DirectSchoolSession.available ||
-            DirectSchoolSession.schoolId != school) {
-          return {
-            'success': false,
-            'code': 'DIRECT_SESSION_EXPIRED',
-            'message': 'Direct school session unavailable. Log in again.',
-          };
-        }
-        final result = await DirectSchoolSession.attendance!.fetchSchoolReport(
+    try {
+      final scope = await captureReadScope();
+      if (scope == null)
+        return {
+          'success': false,
+          'code': 'ACCOUNT_NOT_READY',
+          'message': 'Refresh the school login before loading the report.',
+        };
+      Map<String, dynamic> result;
+      if (directAttendanceEnabled) {
+        result = await DirectSchoolSession.attendance!.fetchSchoolReport(
           date: date,
           onProgress: onProgress,
         );
-        final after = await SecureStorageService.getShaladarpanCreds();
-        if (after['id']?.trim() != school ||
-            !DirectSchoolSession.available ||
-            DirectSchoolSession.schoolId != school) {
-          return {
-            'success': false,
-            'code': 'ACCOUNT_CHANGED',
-            'message': 'School account changed during report fetch.',
-          };
-        }
-        if (epoch != _attendanceEpoch || _saving) {
-          return {
-            'success': false,
-            'code': 'STALE_ATTENDANCE_READ',
-            'message': 'Attendance changed during report fetch. Refresh after submission settles.',
-          };
-        }
-        if (result['success'] == true &&
-            _dateKey('${result['date'] ?? ''}') != _dateKey(date)) {
-          return {
-            'success': false,
-            'code': 'DATE_MISMATCH',
-            'message': 'Portal report date did not match this request.',
-          };
-        }
-        return result;
-      } catch (error) {
-        return {
-          'success': false,
-          'code': 'NETWORK_ERROR',
-          'message': 'Connection error: $error',
-        };
-      }
-    }
-    if (onProgress == null) {
-      try {
+      } else if (onProgress == null) {
         final uri = Uri.parse('$baseUrl/school-report')
             .replace(queryParameters: {'date': date});
-        final response = await http.get(uri).timeout(_reportTimeout);
-        final data = _parseResponseBody(response.body);
-        if (response.statusCode == 200) return data;
+        final reply = await http.get(uri).timeout(_reportTimeout);
+        final data = _parseResponseBody(reply.body);
+        result = reply.statusCode == 200
+            ? data
+            : _error(data, reply.statusCode);
+      } else {
+        final client = http.Client();
+        try {
+          result = await _readReportStream(
+            client,
+            date,
+            onProgress,
+          ).timeout(_reportTimeout);
+        } finally {
+          client.close();
+        }
+      }
+      if (await captureReadScope() != scope) return _staleReport();
+      if (result['success'] == true && !_validReport(result, date)) {
         return {
           'success': false,
-          'code': data['code'] ?? '${response.statusCode}',
-          'message': _extractErrorMessage(data, response.statusCode),
+          'code': 'INVALID_REPORT',
+          'message': 'Report date, class sections or attendance totals could not be verified completely.',
         };
-      } catch (e) {
-        return {'success': false, 'message': 'Connection error: $e'};
       }
-    }
-    final client = http.Client();
-    try {
-      return await _readReportStream(
-        client,
-        date,
-        onProgress,
-      ).timeout(_reportTimeout);
+      return Map<String, dynamic>.from(jsonDecode(jsonEncode(result)) as Map);
     } catch (e) {
       return {'success': false, 'message': 'Connection error: $e'};
-    } finally {
-      // Closes the request on success, timeout, incomplete stream or errors.
-      client.close();
     }
   }
 
@@ -829,11 +970,7 @@ class StudentService {
     if (response.statusCode != 200) {
       final body = await response.stream.bytesToString();
       final data = _parseResponseBody(body);
-      return {
-        'success': false,
-        'code': '${response.statusCode}',
-        'message': _extractErrorMessage(data, response.statusCode),
-      };
+      return _error(data, response.statusCode);
     }
     if (!(response.headers['content-type'] ?? '').contains(
       'application/x-ndjson',
@@ -868,13 +1005,7 @@ class StudentService {
           final statusCode = event['status'] is int
               ? event['status'] as int
               : 500;
-          return {
-            'success': false,
-            'code': '$statusCode',
-            'message': _extractErrorMessage({
-              'detail': event['detail'],
-            }, statusCode),
-          };
+          return _error({'detail': event['detail']}, statusCode);
         case 'started':
         case 'heartbeat':
           break;

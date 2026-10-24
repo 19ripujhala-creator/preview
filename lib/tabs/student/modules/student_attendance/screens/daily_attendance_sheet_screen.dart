@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/student_service.dart';
+import 'package:shaladarpan/services/portals/shaladarpan/direct/leave_result_messages.dart';
 
 import '../widgets/custom_calendar_dialog.dart';
 
@@ -112,20 +113,21 @@ class StudentRecord {
     required this.className,
     required this.section,
     this.gender = '',
-    this.attendanceStatus = 'P',
+    this.attendanceStatus = '?',
   }) : originalStatus = attendanceStatus;
 
   bool get isChanged => attendanceStatus != originalStatus;
 
   static String _code(Map<String, dynamic> j) {
     final st = (j['status'] ?? '').toString().toLowerCase().replaceAll(' ', '');
-
-    if (st.contains('medical') || st == 'm' || st == 'ml') return 'M';
-    if (st.contains('leave') || st == 'l') return 'L';
-    if (st.contains('absent') || st == 'a') return 'A';
-    if (st.contains('present') || st == 'p') return 'P';
-
-    return j['present'] == false ? 'A' : 'P';
+    switch (st) {
+      case 'p': case 'present': return 'P';
+      case 'a': case 'absent': return 'A';
+      case 'l': case 'leave': case 'onleave': return 'L';
+      case 'm': case 'ml': case 'medical': case 'onmedical': return 'M';
+    }
+    if (st.isEmpty && j['present'] is bool) return j['present'] == true ? 'P' : 'A';
+    return '?';
   }
 
   /// Portal/backend ke alag-alag gender formats ko 'B' / 'G' me badalta hai.
@@ -187,8 +189,8 @@ class StudentRecord {
       'serialNo': serialNo,
       'name': name,
       'section': section,
-      'status': map[attendanceStatus] ?? 'Present',
-      'present': attendanceStatus == 'P',
+      'status': map[attendanceStatus],
+      'present': map.containsKey(attendanceStatus) ? attendanceStatus == 'P' : null,
     };
   }
 }
@@ -219,7 +221,8 @@ class _Entry {
 // 2. SCREEN
 // ==========================================
 class DailyAttendanceSheetScreen extends StatefulWidget {
-  const DailyAttendanceSheetScreen({super.key});
+  const DailyAttendanceSheetScreen({super.key, this.clock});
+  final DateTime Function()? clock;
 
   @override
   State<DailyAttendanceSheetScreen> createState() =>
@@ -227,7 +230,7 @@ class DailyAttendanceSheetScreen extends StatefulWidget {
 }
 
 class _DailyAttendanceSheetScreenState
-    extends State<DailyAttendanceSheetScreen> {
+    extends State<DailyAttendanceSheetScreen> with WidgetsBindingObserver {
   String _activeClass = 'Class 1';
   String _activeSection = '';
 
@@ -264,13 +267,76 @@ class _DailyAttendanceSheetScreenState
 
   String _errorMessage = '';
 
-  DateTime _selectedDate = DateTime.now();
+  late DateTime _selectedDate;
+  late DateTime _observedDay;
+  AttendanceReadScope? _observedScope;
+  Timer? _boundaryTimer;
+  bool _checkingBoundary = false;
+  Route<dynamic>? _confirmationRoute;
+  DateTime get _indiaToday {
+    final now = (widget.clock?.call() ?? DateTime.now()).toUtc().add(const Duration(hours: 5, minutes: 30));
+    return DateTime(now.year, now.month, now.day);
+  }
   String _query = '';
 
   @override
   void initState() {
     super.initState();
+    _selectedDate = _observedDay = _indiaToday;
+    WidgetsBinding.instance.addObserver(this);
+    _boundaryTimer = Timer.periodic(const Duration(seconds: 15), (_) => _checkBoundary());
     _init();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_checkBoundary());
+  }
+
+  void _closeConfirmation() {
+    final route = _confirmationRoute;
+    _confirmationRoute = null;
+    final navigator = route?.navigator;
+    if (route != null && route.isActive && navigator != null && navigator.mounted) navigator.removeRoute(route);
+  }
+
+  Future<void> _checkBoundary() async {
+    if (!mounted || _isSaving || _checkingBoundary) return;
+    _checkingBoundary = true;
+    try {
+      final today = _indiaToday, previousDay = _observedDay;
+      final scope = await StudentService.captureReadScope();
+      if (!mounted || _isSaving) return;
+      final changedDay = !_sameDay(today, previousDay);
+      final changedSession = _observedScope != null && scope != _observedScope;
+      _observedDay = today;
+      if (!changedDay && !changedSession) return;
+      final followToday = changedDay && _sameDay(_selectedDate, previousDay);
+      if (!followToday && !changedSession) return;
+      _observedScope = scope;
+      _cache.clear();
+      _closeConfirmation();
+      if (followToday) _selectedDate = today;
+      if (changedSession) {
+        _activeSection = '';
+        _sections = [];
+        _query = '';
+        _searchCtrl.clear();
+      }
+      if (scope == null) {
+        _currentLoadId++;
+        _classReads.discardPending();
+        setState(() {
+          _students = [];
+          _portalDataVerified = _isPortalVerified = _isAlreadyMarked = false;
+          _loadedScope = null;
+          _isLoading = false;
+          _errorMessage = 'App: School session changed. Refresh the school login.';
+        });
+        return;
+      }
+      await _loadClassData(forceRefresh: true);
+    } finally { _checkingBoundary = false; }
   }
 
   Future<void> _init() async {
@@ -280,6 +346,13 @@ class _DailyAttendanceSheetScreenState
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _boundaryTimer?.cancel();
+    final route = _confirmationRoute;
+    if (route != null) WidgetsBinding.instance.addPostFrameCallback((_) {
+      final navigator = route.navigator;
+      if (route.isActive && navigator != null && navigator.mounted) navigator.removeRoute(route);
+    });
     _currentLoadId++; // Discard stale UI completions.
     _classReads.discardPending();
     _classScroll.dispose();
@@ -330,6 +403,7 @@ class _DailyAttendanceSheetScreenState
   int get _absent => _count('A');
   int get _leave => _count('L');
   int get _medical => _count('M');
+  int get _pending => _students.where((s) => !{'P', 'A', 'L', 'M'}.contains(s.attendanceStatus)).length;
   int get _changes => _students.where((s) => s.isChanged).length;
   bool get _dirty => _changes > 0;
 
@@ -416,6 +490,7 @@ class _DailyAttendanceSheetScreenState
   }) async {
     final scope = await StudentService.captureReadScope();
     if (!mounted || loadId != _currentLoadId) return;
+    if (scope != null) _observedScope = scope;
     final key = _cacheKey(_activeClass, _activeSection);
 
     // 1. Instant cache render
@@ -910,6 +985,10 @@ class _DailyAttendanceSheetScreenState
       _snack('No student records to submit.', error: true);
       return;
     }
+    if (_pending > 0) {
+      _snack('App: Select attendance for all $_pending pending student(s) before review.', error: true);
+      return;
+    }
     // Portal supports genuine same-day updates. No-change updates waste a POST.
     if ((_isAlreadyMarked || _isPortalVerified) && !_dirty) {
       _snack('No changes to update.');
@@ -936,16 +1015,20 @@ class _DailyAttendanceSheetScreenState
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
-        builder: (_) => _ConfirmSheet(
+        builder: (sheetContext) {
+          _confirmationRoute = ModalRoute.of(sheetContext);
+          return _ConfirmSheet(
           className: _classTitle,
           date: _fmtDisplayDate(_selectedDate),
           present: _present,
           absent: _absent,
           leave: _leave,
           medical: _medical,
-        ),
+        );
+        },
       );
     } finally {
+      _confirmationRoute = null;
       if (mounted) setState(() => _isConfirming = false);
     }
     if (confirmed != true ||
@@ -995,6 +1078,7 @@ class _DailyAttendanceSheetScreenState
       if (!mounted) return;
       _cache.clear();
       _loadedScope = savedScope;
+      _observedScope = savedScope;
       if (savedScope == null ||
           savedScope.school != scope.school ||
           !identical(savedScope.session, scope.session) ||
@@ -1008,14 +1092,13 @@ class _DailyAttendanceSheetScreenState
         setState(() {
           _isAlreadyMarked = true;
           _isPortalVerified = true;
-          _submissionHold = false;
+          _submissionHold = result['submission_on_hold'] == true;
           for (final s in _students) {
             s.originalStatus = s.attendanceStatus;
           }
         });
         _snack(
-          result['message']?.toString() ??
-              'Attendance saved and verified on the portal.',
+          LeaveResultMessages.display(result, fallback: 'Attendance saved and verified on the portal.'),
           success: true,
         );
       } else {
@@ -1037,12 +1120,8 @@ class _DailyAttendanceSheetScreenState
         }
         if (!mounted) return;
         _snack(
-          (result['portal_message']?.toString().trim().isNotEmpty == true)
-              ? '${result['portal_message']}\nSave not verified. Use Verify Previous Save.'
-              : (result['message']?.toString() ??
-                    (ambiguous
-                        ? 'Save outcome is uncertain. Use Verify Previous Save before trying again.'
-                        : 'Submission failed.')),
+          LeaveResultMessages.display(result, fallback: ambiguous
+            ? 'Save outcome is uncertain. Use Verify Previous Save before trying again.' : 'Submission failed.'),
           error: true,
         );
       }
@@ -1204,6 +1283,11 @@ class _DailyAttendanceSheetScreenState
                                   child: _buildClassAndSectionSelectors(),
                                 ),
                                 SliverToBoxAdapter(child: _buildHeroCard()),
+                                if (_pending > 0 && !_isLoading) SliverToBoxAdapter(child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                                  child: Text('Selection pending: $_pending', style: const TextStyle(
+                                    fontFamily: kAppFont, fontSize: 12, color: _C.slate)),
+                                )),
                                 if (_hasGender && !_isLoading)
                                   SliverToBoxAdapter(
                                     child: _buildGenderStrip(),
@@ -1212,7 +1296,7 @@ class _DailyAttendanceSheetScreenState
                                   pinned: true,
                                   delegate: _PinnedHeaderDelegate(
                                     // FIX: 80 tight tha (overflow risk) + ab solid bg hai
-                                    height: 84,
+                                    height: 88 * MediaQuery.textScalerOf(context).scale(1),
                                     child: _buildSearchAndTableHeaders(),
                                   ),
                                 ),
@@ -1358,14 +1442,16 @@ class _DailyAttendanceSheetScreenState
   }
 
   Widget _buildDailyAttendanceHeader() {
-    final isToday = _sameDay(_selectedDate, DateTime.now());
+    final isToday = _sameDay(_selectedDate, _indiaToday);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween, spacing: 12, runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Image.asset(
                 'assets/icons/calendar_attendance.png',
@@ -1379,7 +1465,7 @@ class _DailyAttendanceSheetScreenState
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
+              const Flexible(child: Text(
                 'Daily Attendance',
                 style: TextStyle(
                   fontFamily: kAppFont,
@@ -1387,7 +1473,7 @@ class _DailyAttendanceSheetScreenState
                   fontWeight: FontWeight.w600,
                   color: _C.ink,
                   letterSpacing: -0.2,
-                ),
+                )),
               ),
             ],
           ),
@@ -1735,7 +1821,28 @@ class _DailyAttendanceSheetScreenState
     );
   }
 
+  Widget _buildLargeTextCounters() => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+    child: Container(padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: _C.line)),
+      child: LayoutBuilder(builder: (context, box) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Wrap(spacing: 10, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          Text(_classTitle, style: const TextStyle(fontFamily: kAppFont, fontSize: 13.5, fontWeight: FontWeight.w700)),
+          _statusBadge((_isPortalVerified || _isAlreadyMarked) && !_dirty),
+          Text('${_students.length} students', style: const TextStyle(fontFamily: kAppFont, fontSize: 10.5)),
+        ]),
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 10, children: [
+          for (final item in [('Present', _present), ('Absent', _absent), ('Leave', _leave), ('Medical', _medical)])
+            SizedBox(width: (box.maxWidth - 8) / 2, child: Text('${item.$1}: ${item.$2}',
+              style: const TextStyle(fontFamily: kAppFont, fontSize: 11, fontWeight: FontWeight.w600))),
+        ]),
+      ])),
+    ),
+  );
+
   Widget _buildHeroCard() {
+    if (MediaQuery.textScalerOf(context).scale(1) > 1.1) return _buildLargeTextCounters();
     const dark = kDarkHero;
 
     final total = _students.length;
@@ -1952,7 +2059,7 @@ class _DailyAttendanceSheetScreenState
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 6),
             child: Container(
-              height: 36,
+              height: 36 * MediaQuery.textScalerOf(context).scale(1),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
@@ -2162,7 +2269,7 @@ class _DailyAttendanceSheetScreenState
     final bool isLast = index == totalCount;
 
     Color rowBg = Colors.white.withOpacity(0.92);
-    Color dot = _C.green;
+    Color dot = st == '?' ? _C.muted : _C.green;
 
     if (st == 'A') {
       rowBg = _C.roseBg;
@@ -2300,7 +2407,8 @@ class _DailyAttendanceSheetScreenState
           onTap: disabled ? null : _onSubmitTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
-            height: 42,
+            constraints: const BoxConstraints(minHeight: 42),
+            padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: disabled ? _C.muted : _C.ink,
               borderRadius: BorderRadius.circular(8),
@@ -2336,15 +2444,15 @@ class _DailyAttendanceSheetScreenState
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          title,
+                        Flexible(child: Text(
+                          title, textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontFamily: kAppFont,
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
                             letterSpacing: -0.1,
                             color: Colors.white,
-                          ),
+                          )),
                         ),
                         if (_dirty) ...[
                           const SizedBox(width: 8),

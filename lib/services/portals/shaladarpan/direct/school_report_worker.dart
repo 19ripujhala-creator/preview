@@ -8,6 +8,7 @@ import 'package:html/parser.dart' as html;
 
 import '../../../core/direct/async_primitives.dart';
 import 'gender_master.dart';
+import 'leave_result_messages.dart';
 import 'student_attendance_worker.dart';
 
 typedef SchoolLogoReply = ({
@@ -277,7 +278,7 @@ class SchoolReportWorker {
         final closed = '${lastFail['message'] ?? ''}'.toLowerCase().contains(
           'closed',
         );
-        return {
+        final failure = <String, dynamic>{
           'success': false,
           'code': closed
               ? 'SESSION_EXPIRED'
@@ -286,6 +287,10 @@ class SchoolReportWorker {
               'The following sections could not be read from the portal: ${failed.join(', ')}. Please wait for the portal session synchronization to complete and try again.',
           'failedSections': failed,
         };
+        final native = LeaveResultMessages.portalTexts(lastFail);
+        return native.isEmpty
+            ? failure
+            : LeaveResultMessages.attach(failure, native);
       }
       OperationCancellation.current?.check();
       final school = schoolId().isEmpty ? 'default' : schoolId();
@@ -321,11 +326,16 @@ class SchoolReportWorker {
       OperationCancellation.current?.check();
       onProgress?.call(3 + collected.length, progressTotal);
       final rows = <Map<String, dynamic>>[];
-      var unknownTotal = 0;
+      var unknownTotal = 0, unselectedTotal = 0;
       for (final section in collected) {
         final label = '${section['section']}';
         final students = section['students'] as List;
-        var boys = 0, girls = 0, absent = 0, leave = 0, unknown = 0;
+        var boys = 0,
+            girls = 0,
+            absent = 0,
+            leave = 0,
+            unknown = 0,
+            unselected = 0;
         for (final value in students) {
           final student = value as Map;
           if (student['status'] == 'Absent') {
@@ -334,6 +344,11 @@ class SchoolReportWorker {
           }
           if (['OnLeave', 'OnMedical'].contains(student['status'])) {
             leave++;
+            continue;
+          }
+          if (student['status'] != 'Present') {
+            unselected++;
+            consistent = false;
             continue;
           }
           switch (genders[GenderMaster.normSr(student['srNo'])] ?? '') {
@@ -359,8 +374,10 @@ class SchoolReportWorker {
           'total': boys + girls + absent + leave,
           'enrolled': students.length,
           'presentUnknown': unknown,
+          if (unselected > 0) 'unselected': unselected,
         });
         unknownTotal += unknown;
+        unselectedTotal += unselected;
       }
       onProgress?.call(progressTotal, progressTotal);
       return {
@@ -376,6 +393,7 @@ class SchoolReportWorker {
         'pendingSections': pending,
         'submittedSections': submitted,
         'unknownPresent': unknownTotal,
+        if (unselectedTotal > 0) 'pendingSelections': unselectedTotal,
         'failedSections': [],
         'message': '',
       };

@@ -111,6 +111,19 @@ class StaffAuthManager {
     'code': code,
     'message': message,
   };
+  static Map<String, dynamic> _loginFailure(
+    String code,
+    String message, {
+    String portalMessage = '',
+  }) => {
+    ...failure(code, portalMessage.isEmpty ? message : portalMessage),
+    if (portalMessage.isNotEmpty) ...{
+      'portal_message': portalMessage,
+      'message_source': 'portal',
+      if (message != portalMessage) 'backend_message': message,
+    },
+  };
+
   static Map<String, dynamic> successPayload(
     String base,
     String user, {
@@ -347,13 +360,37 @@ class StaffAuthManager {
     }
     progress?.call(30, 'Checking Staff saved session...');
     final base = session.base ?? activeServerBase;
-    final home = await fetchHome(session, base);
-    final verdict = classifyHome(home);
-    if (verdict == Probe.alive && home != null) {
-      final actual = staffServerBase(home.url);
+    var document = await fetchHome(session, base);
+    var verdict = classifyHome(document);
+    // Reuse the same protected-page proof as probeContext when Home alone is
+    // inconclusive. Explicit Home expiry and force-fresh keep their source flow.
+    if (verdict == Probe.unknown &&
+        staffServerBase(base).isNotEmpty &&
+        isCurrent(session)) {
+      final profile = await getDocument(session, base, profilePath);
+      if (classifyProfileDocument(profile) == Probe.alive) {
+        verdict = Probe.alive;
+        document = profile;
+      } else if (isCurrent(session)) {
+        final history = await getDocument(session, base, historyPath);
+        if (classifyHistoryDocument(history) == Probe.alive) {
+          verdict = Probe.alive;
+          document = history;
+        }
+      }
+    }
+    Map<String, dynamic> changed() => failure(
+      'ACCOUNT_CHANGED',
+      'Staff session changed during saved login verification.',
+    );
+    if (!isCurrent(session)) return changed();
+    if (verdict == Probe.alive && document != null) {
+      final actual = staffServerBase(document.url);
       final live = actual.isEmpty ? base : actual;
       await saveActiveSessionInfo(live, user);
+      if (!isCurrent(session)) return changed();
       await registry.persist(session);
+      if (!isCurrent(session)) return changed();
       progress?.call(100, 'Staff Portal Live (saved session)!');
       return successPayload(live, user, cached: true);
     }
@@ -395,6 +432,7 @@ class StaffAuthManager {
       ...staffServers.where((s) => s.toLowerCase() != best.toLowerCase()),
     ];
     var node = 0, attempt = 0;
+    var lastPortalMessage = '';
     while (attempt < maxCaptchaAttempts) {
       OperationCancellation.current?.check();
       if (monotonic() > deadline)
@@ -452,6 +490,9 @@ class StaffAuthManager {
         final message = outcome.portalMessage.isNotEmpty
             ? outcome.portalMessage
             : outcome.message;
+        if (outcome.portalMessage.isNotEmpty) {
+          lastPortalMessage = outcome.portalMessage;
+        }
         if (outcome.code == 'CAPTCHA_UNREADABLE' ||
             outcome.code == 'LOGIN_NOT_VERIFIED' && captchaRejection(message)) {
           await sleep(const Duration(milliseconds: 300));
@@ -459,14 +500,23 @@ class StaffAuthManager {
         }
         if (outcome.code == 'LOGIN_NOT_VERIFIED' &&
             credentialRejection(message))
-          return failure(
+          return _loginFailure(
             'INVALID_CREDENTIALS',
             'Invalid Staff ID or Password.',
+            portalMessage: outcome.portalMessage,
           );
         if (outcome.code == 'LOGIN_NOT_VERIFIED' &&
             activeSessionNotice(message))
-          return failure('ACTIVE_SESSION_EXISTS', message);
-        return failure(outcome.code, message);
+          return _loginFailure(
+            'ACTIVE_SESSION_EXISTS',
+            outcome.message,
+            portalMessage: outcome.portalMessage,
+          );
+        return _loginFailure(
+          outcome.code,
+          outcome.message,
+          portalMessage: outcome.portalMessage,
+        );
       } finally {
         if (!committed) {
           try {
@@ -475,9 +525,10 @@ class StaffAuthManager {
         }
       }
     }
-    return failure(
+    return _loginFailure(
       'LOGIN_FAILED',
       'Staff login failed after multiple attempts.',
+      portalMessage: lastPortalMessage,
     );
   }
 

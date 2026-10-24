@@ -2,6 +2,7 @@ import 'direct/staff_runtime.dart';
 import 'direct/staff_read_service.dart';
 import 'direct/native_print_service.dart';
 import 'direct/leave_apply_service.dart';
+import 'direct/leave_result.dart';
 import 'direct/portal_state.dart';
 import 'direct/http_login.dart' show staffLower;
 import '../shaladarpan/student_service.dart';
@@ -30,6 +31,13 @@ class StaffLoginService {
     return owner.isNotEmpty && owner != staffLower(user);
   }
 
+  static Future<bool> _sameCredentials(Map<String, String> expected) async {
+    final current = await SecureStorageService.getStaffCreds();
+    return directReadsEnabled &&
+        current['id']?.trim() == expected['id']?.trim() &&
+        current['pass'] == expected['pass'];
+  }
+
   static Future<Uint8List?> _directPdf({
     bool format10 = false,
     String? nicId,
@@ -45,7 +53,7 @@ class StaffLoginService {
     final prints =
         await (directPrintProvider?.call() ??
             StaffDirectRuntime.get().then((runtime) => runtime.prints));
-    if (!directReadsEnabled ||
+    if (!await _sameCredentials(credentials) ||
         _foreignSession(prints.registry.current()?.user, user)) {
       throw const StaffPortalError('ACCOUNT_CHANGED', 'Staff login changed.');
     }
@@ -102,7 +110,7 @@ class StaffLoginService {
       final reads =
           await (directReadProvider?.call() ??
               StaffDirectRuntime.get().then((runtime) => runtime.reads));
-      if (!directReadsEnabled ||
+      if (!await _sameCredentials(credentials) ||
           _foreignSession(reads.registry.current()?.user, user))
         return {
           'success': false,
@@ -293,6 +301,7 @@ class StaffLoginService {
   static Future<Map<String, dynamic>> applyLeave(
     Map<String, dynamic> payload,
   ) async {
+    payload = Map<String, dynamic>.from(payload);
     if (directReadsEnabled) {
       final credentials = await SecureStorageService.getStaffCreds();
       final user = credentials['id']?.trim() ?? '';
@@ -300,16 +309,20 @@ class StaffLoginService {
         return {
           'success': false,
           'code': 'SESSION_EXPIRED',
+          'submission_attempted': false,
+          'submitted': false,
           'message': 'Staff session expired.',
         };
       final service =
           await (directLeaveProvider?.call() ??
               StaffDirectRuntime.get().then((runtime) => runtime.leaves));
-      if (!directReadsEnabled ||
+      if (!await _sameCredentials(credentials) ||
           _foreignSession(service.registry.current()?.user, user))
         return {
           'success': false,
           'code': 'ACCOUNT_CHANGED',
+          'submission_attempted': false,
+          'submitted': false,
           'message': 'Staff login changed.',
         };
       final password = credentials['pass'] ?? '';
@@ -319,12 +332,10 @@ class StaffLoginService {
       final current = await SecureStorageService.getStaffCreds();
       if (!directReadsEnabled ||
           current['id']?.trim() != user ||
-          current['pass'] != credentials['pass'])
-        return {
-          'success': false,
-          'code': 'ACCOUNT_CHANGED',
-          'message': 'Staff login changed.',
-        };
+          current['pass'] != credentials['pass']) {
+        final guarded = staffLeaveAccountChanged(result);
+        return {...guarded, 'data': guarded};
+      }
       return {...result, 'data': result};
     }
     final uri = Uri.parse('$_baseUrl/leave/apply');
@@ -345,6 +356,7 @@ class StaffLoginService {
         debugPrint('✅ [StaffService] Leave applied response: $map');
 
         return {
+          ...map,
           'success': map['success'] ?? false,
           'message': map['message'] ?? 'Leave request processed.',
           'data': map,
@@ -359,7 +371,9 @@ class StaffLoginService {
 
       debugPrint('❌ [StaffService] Leave server error: $errorMsg');
 
-      return {'success': false, 'message': errorMsg, 'data': data};
+      final original = _safeMap(data);
+      final detail = _safeMap(original['detail']);
+      return {...(detail.isEmpty ? original : detail), 'success': false, 'message': errorMsg, 'data': data};
     } on FormatException catch (e) {
       debugPrint('❌ [StaffService] Leave JSON exception: $e');
       return {
@@ -423,9 +437,16 @@ class StaffLoginService {
       if (response.statusCode == 200) {
         final map = _safeMap(data);
 
-        final records = map['records'] is List
-            ? List<dynamic>.from(map['records'])
-            : <dynamic>[];
+        final rawRecords = map['records'];
+        if (map['success'] == true && (rawRecords is! List ||
+            rawRecords.any((r) => r is! Map) || map['partial'] == true ||
+            map['complete'] == false || (page == null &&
+              (map['has_more'] == true || (map['total'] is num && map['total'] != rawRecords.length))))) {
+          return {'success': false, 'code': 'INCOMPLETE_HISTORY',
+            'message': 'Leave history could not be verified completely. Refresh history.',
+            'records': <dynamic>[]};
+        }
+        final records = rawRecords is List ? List<dynamic>.from(rawRecords) : <dynamic>[];
 
         final total = map['total'] is num ? map['total'] : records.length;
         final bool hasMore = map['has_more'] is bool
@@ -433,6 +454,7 @@ class StaffLoginService {
             : (pageSize != null && records.length >= pageSize);
 
         return {
+          ...map,
           'success': map['success'] ?? false,
           'records': records,
           'total': total,

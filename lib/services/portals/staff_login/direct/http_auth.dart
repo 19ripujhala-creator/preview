@@ -96,14 +96,27 @@ class StaffHttpAuth {
         },
   ];
   Future<void> persist(StaffHttpSession? session) async {
-    if (session == null || !session.authenticated || session.base == null)
+    if (session == null ||
+        !identical(session, _session) ||
+        !session.authenticated ||
+        session.base == null)
       return;
+    final epoch = _epoch;
     final text = jsonEncode({
       'base': session.base,
       'user': sessionUser(session),
       'cookies': jarCookies(session),
     });
-    await _write(() => storage.write(cookieKey, text));
+    await _write(() async {
+      // A queued write must still belong to this context/generation when it
+      // reaches storage. The old worker may outlive replacement or forget.
+      if (epoch != _epoch ||
+          !identical(session, _session) ||
+          !session.authenticated ||
+          session.base == null)
+        return;
+      await storage.write(cookieKey, text);
+    });
   }
 
   Future<void> install(StaffHttpSession session) async {

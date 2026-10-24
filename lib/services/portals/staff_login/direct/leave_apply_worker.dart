@@ -20,6 +20,7 @@ class StaffLeaveApplyWorker {
   final void Function() check;
   final String url;
   bool submissionAttempted = false;
+  String? _nativeErrorMessage;
   List<String> _scripts = [];
 
   Map<String, dynamic> _failure(String code, String message) => {
@@ -137,7 +138,10 @@ class StaffLeaveApplyWorker {
         }
       }
       if (message != null) _reject('PORTAL_MESSAGE', message);
-      final heading = html.parse(response.text).querySelector('h2');
+      final heading = errorDoc.querySelector('h2, h1');
+      if (heading != null && failure == 'PAGE_NOT_READY') {
+        _nativeErrorMessage = staffText(heading, ' ');
+      }
       _reject(
         failure == 'PAGE_NOT_READY'
             ? 'PORTAL_RESPONSE_ERROR'
@@ -713,6 +717,11 @@ class StaffLeaveApplyWorker {
           e.message,
         ),
         if (e.code == 'PORTAL_MESSAGE') 'message_source': 'portal',
+        if (_nativeErrorMessage == e.message) ...{
+          'message_source': 'portal',
+          'portal_message': e.message,
+          if (submissionAttempted) 'backend_message': 'The leave submission outcome is unconfirmed. Check history before retrying.',
+        },
       };
     } on StaffLeavePayloadError catch (e) {
       return _failure(
