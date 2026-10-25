@@ -1,3 +1,5 @@
+import 'package:shaladarpan/widgets/page_content_motion.dart';
+import 'package:shaladarpan/widgets/route_completion.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -403,7 +405,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
         _pdfProgress = 0.0;
       });
 
-      await Navigator.of(context).push(
+      await pushPageAndWaitForExit(
+        context,
         MaterialPageRoute(
           builder: (_) => Scaffold(
             backgroundColor: Colors.transparent,
@@ -435,7 +438,7 @@ class _MprReportScreenState extends State<MprReportScreen> {
               fit: StackFit.expand,
               children: [
                 _appBackground(),
-                SafeArea(
+                PageContentMotion(child: SafeArea(
                   top: false,
                   child: LayoutBuilder(
                     builder: (context, box) {
@@ -489,7 +492,7 @@ class _MprReportScreenState extends State<MprReportScreen> {
                       );
                     },
                   ),
-                ),
+                )),
               ],
             ),
           ),
@@ -3121,7 +3124,7 @@ class _MprReportScreenState extends State<MprReportScreen> {
             fit: StackFit.expand,
             children: [
               _appBackground(),
-              SafeArea(
+              PageContentMotion(child: SafeArea(
                 top: false,
                 child: LayoutBuilder(
                   builder: (context, viewport) {
@@ -3272,7 +3275,7 @@ class _MprReportScreenState extends State<MprReportScreen> {
                     );
                   },
                 ),
-              ),
+              )),
             ],
           ),
           bottomNavigationBar: _ready ? bottomBar() : null,

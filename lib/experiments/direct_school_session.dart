@@ -9,6 +9,9 @@ import 'direct_student_kpi_service.dart';
 import 'direct_category_enrolment_service.dart';
 import 'direct_monthly_task_service.dart';
 import 'direct_nic_catalog_service.dart';
+import 'direct_format5_service.dart';
+import 'direct_working_days_service.dart';
+import 'direct_monthly_attendance_service.dart';
 import 'direct_native_print_service.dart';
 
 /// Keeps the already authenticated HTTP session alive across screens.
@@ -27,6 +30,12 @@ class DirectSchoolSession {
   static DirectNativePrintService? _nativePrint;
   static DirectNativePrintService? get nativePrint =>
       available ? _nativePrint : null;
+  static DirectMonthlyAttendanceService? _monthlyAttendance;
+  static DirectMonthlyAttendanceService? get monthlyAttendance => available ? _monthlyAttendance : null;
+  static DirectWorkingDaysService? _workingDays;
+  static DirectWorkingDaysService? get workingDays => available ? _workingDays : null;
+  static DirectFormat5Service? _format5;
+  static DirectFormat5Service? get format5 => available ? _format5 : null;
   static DirectNicCatalogService? _nicCatalog;
   static DirectNicCatalogService? get nicCatalog =>
       available ? _nicCatalog : null;
@@ -80,6 +89,9 @@ class DirectSchoolSession {
     _enrolment = DirectCategoryEnrolmentService(auth);
     _monthly = DirectMonthlyTaskService(auth);
     _nicCatalog = DirectNicCatalogService(auth);
+    _format5 = DirectFormat5Service(auth);
+    _workingDays = DirectWorkingDaysService(auth);
+    _monthlyAttendance = DirectMonthlyAttendanceService(auth);
     _nativePrint = DirectNativePrintService(auth);
   }
 
@@ -95,6 +107,9 @@ class DirectSchoolSession {
     _enrolment = null;
     _monthly = null;
     _nicCatalog = null;
+    _format5 = null;
+    _workingDays = null;
+    _monthlyAttendance = null;
     _nativePrint = null;
     _schoolId = '';
   }

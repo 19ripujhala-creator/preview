@@ -37,7 +37,7 @@ class StaffNativePrintService {
         user.isNotEmpty &&
         staffLower(registry.current()?.user ?? '') == staffLower(user);
     try {
-      if (user.isEmpty || (registry.current() != null && !owned()))
+      if (!owned())
         throw const StaffPortalError('ACCOUNT_CHANGED', 'Staff login changed.');
       return await coordinator.run(
         resource: format10 ? 'staff.format10' : 'staff.leave.pdf',

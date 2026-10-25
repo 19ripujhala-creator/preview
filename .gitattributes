@@ -1,0 +1,3 @@
+# Keep framed ASP.NET AJAX captures byte-exact across platforms.
+/test/fixtures/working_days/*.delta binary
+/test/fixtures/monthly_attendance/*.delta binary

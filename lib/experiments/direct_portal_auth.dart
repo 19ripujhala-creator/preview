@@ -373,6 +373,164 @@ class DirectPortalAuth {
     );
   }
 
+  /// Format-5's independently reviewed SchoolStudentProfiles WebForms actions.
+  /// The worker must supply the exact active form state; no arbitrary actions
+  /// or cross-page posts are permitted. Mutation redirects/replays are blocked.
+  Future<AttendanceHttpReply> format5Request(
+    Uri url, {
+    Map<String, Object?>? fields,
+    Uri? referer,
+    bool mutation = false,
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    if (!isVerified || !_allowed(url) ||
+        !RegExp(r'^/SD[1-5]/Home/School/SchoolStudentProfiles_New\.aspx$',
+          caseSensitive: false).hasMatch(url.path) ||
+        url.hasQuery || url.hasFragment) {
+      throw StateError('Format-5 destination blocked');
+    }
+    if (fields == null && mutation) throw StateError('Format-5 GET cannot mutate');
+    if (fields != null) {
+      if (referer == null || referer != url ||
+          fields['__VIEWSTATE'] is! String ||
+          fields['__EVENTVALIDATION'] is! String ||
+          fields['__EVENTTARGET'] != '' ||
+          fields['__EVENTARGUMENT'] != '') {
+        throw StateError('Invalid Format-5 WebForms submission');
+      }
+      final triggered = fields.keys.where((k) =>
+        RegExp(r'\$(?:btnSearch|btnEdit|btnUpdate|btnCancel)(?:\.x)?$',
+          caseSensitive: false).hasMatch(k)).toList();
+      final image = fields.keys.where((k) =>
+        RegExp(r'\$(?:btnEdit|btnUpdate|btnCancel)\.x$',
+          caseSensitive: false).hasMatch(k)).toList();
+      final named = image.isNotEmpty
+          ? image.single.substring(0, image.single.length - 2)
+          : (triggered.length == 1 ? triggered.single : '');
+      final allowed = RegExp(
+        r'^ctl00\$ContentPlaceHolder1\$grdStudentProfile\$ctl\d+\$(btnEdit|btnUpdate|btnCancel)$');
+      final validAction = named == r'ctl00$ContentPlaceHolder1$btnSearch' ||
+          allowed.hasMatch(named);
+      if (!validAction || triggered.length != 1 ||
+          (mutation != named.endsWith('btnUpdate')) ||
+          (image.isNotEmpty && !fields.containsKey('$named.y')) ||
+          (image.isEmpty && named != r'ctl00$ContentPlaceHolder1$btnSearch')) {
+        throw StateError('Unreviewed Format-5 action blocked');
+      }
+      final asyncPost = fields['__ASYNCPOST'] == 'true';
+      if (named != r'ctl00$ContentPlaceHolder1$btnSearch') {
+        if (!asyncPost ||
+            fields[r'ctl00$ScriptManager1'] !=
+                'ctl00\$ContentPlaceHolder1\$UpdPanel|$named') {
+          throw StateError('Format-5 AJAX postback is incomplete');
+        }
+      } else if (asyncPost) {
+        throw StateError('Format-5 Show needs a complete form response');
+      }
+    }
+    if (mutation) MutationDispatch.current?.enterRequest();
+    final ajax = fields?['__ASYNCPOST'] == 'true';
+    final reply = await _send(
+      url,
+      method: fields == null ? 'GET' : 'POST',
+      body: fields == null ? null : utf8.encode(AttendanceForm.encode(fields)),
+      headers: fields == null ? const {} : {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Referer': referer.toString(),
+        if (ajax) 'X-MicrosoftAjax': 'Delta=true',
+        if (ajax) 'X-Requested-With': 'XMLHttpRequest',
+      },
+      timeout: timeout,
+      followRedirects: fields == null,
+      allowPostRedirects: false,
+    );
+    await observeAttendanceUrl(reply.url);
+    return (url: reply.url, status: reply.status, html: reply.text);
+  }
+
+  /// Working Days supports only the captured Show and explicit Submit actions.
+  Future<AttendanceHttpReply> workingDaysRequest(
+    Uri url, {Map<String,Object?>? fields, Uri? referer, bool mutation = false,
+    Duration timeout = const Duration(seconds:30)}) async {
+    const head = r'ctl00$ContentPlaceHolder1$ctl00$';
+    final action = '${head}${mutation ? 'btn_SubmitAll' : 'btnShow'}';
+    if (!isVerified || !_allowed(url) || url.hasQuery || url.hasFragment ||
+        !RegExp(r'^/SD[1-5]/Home/School/RMSA_MonthlySessionsEntry\.aspx$', caseSensitive:false).hasMatch(url.path)) {
+      throw StateError('Working Days destination blocked');
+    }
+    if (fields == null && mutation) throw StateError('Working Days GET cannot mutate');
+    if (fields != null) {
+      final actions = fields.keys.where((key) => RegExp(r'btn|button|lnk',caseSensitive:false).hasMatch(key)).toList();
+      if (referer != url || fields['__VIEWSTATE'] is! String || fields['__EVENTVALIDATION'] is! String ||
+          fields['__EVENTTARGET'] != '' || fields['__EVENTARGUMENT'] != '' ||
+          fields['__ASYNCPOST'] != 'true' ||
+          fields[r'ctl00$ScriptManager1'] != '${head}UpdPanel|$action' ||
+          actions.length != 1 || actions.single != action ||
+          fields[action] != (mutation ? 'Submit' : 'Show')) {
+        throw StateError('Unreviewed Working Days postback blocked');
+      }
+    }
+    if (mutation) MutationDispatch.current?.enterRequest();
+    final ajax = fields?['__ASYNCPOST'] == 'true';
+    final reply = await _send(
+      url,
+      method: fields == null ? 'GET' : 'POST',
+      body: fields == null ? null : utf8.encode(AttendanceForm.encode(fields)),
+      headers: fields == null ? const {} : {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Referer': referer.toString(),
+        if (ajax) 'X-MicrosoftAjax': 'Delta=true',
+        if (ajax) 'X-Requested-With': 'XMLHttpRequest',
+      },
+      timeout: timeout,
+      followRedirects: fields == null,
+      allowPostRedirects: false,
+    );
+    await observeAttendanceUrl(reply.url);
+    return (url: reply.url, status: reply.status, html: reply.text);
+  }
+
+  Future<AttendanceHttpReply> monthlyAttendanceRequest(
+    Uri url, {Map<String,Object?>? fields, Uri? referer, bool mutation = false,
+    Duration timeout = const Duration(seconds:30)}) async {
+    const head = r'ctl00$ContentPlaceHolder1$footer2$';
+    final action = '${head}${mutation ? 'btnsave' : 'btnshow'}';
+    if (!isVerified || !_allowed(url) || url.hasQuery || url.hasFragment ||
+        !RegExp(r'^/SD[1-5]/Home/School/StudentAttendence\.aspx$', caseSensitive:false).hasMatch(url.path)) {
+      throw StateError('Monthly Attendance destination blocked');
+    }
+    if (fields == null && mutation) throw StateError('Monthly Attendance GET cannot mutate');
+    if (fields != null) {
+      final actions = fields.keys.where((key) => RegExp(r'btn|button|lnk',caseSensitive:false).hasMatch(key)).toList();
+      if (referer != url || fields['__VIEWSTATE'] is! String || fields['__EVENTVALIDATION'] is! String ||
+          fields['__EVENTTARGET'] != '' || fields['__EVENTARGUMENT'] != '' ||
+          fields['__ASYNCPOST'] != 'true' ||
+          fields[r'ctl00$ScriptManager1'] != '${head}UpdPanel|$action' ||
+          actions.length != 1 || actions.single != action ||
+          fields[action] != (mutation ? 'Save' : 'उपस्थिति दर्ज़ करें')) {
+        throw StateError('Unreviewed Monthly Attendance postback blocked');
+      }
+    }
+    if (mutation) MutationDispatch.current?.enterRequest();
+    final ajax = fields?['__ASYNCPOST'] == 'true';
+    final reply = await _send(
+      url,
+      method: fields == null ? 'GET' : 'POST',
+      body: fields == null ? null : utf8.encode(AttendanceForm.encode(fields)),
+      headers: fields == null ? const {} : {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Referer': referer.toString(),
+        if (ajax) 'X-MicrosoftAjax': 'Delta=true',
+        if (ajax) 'X-Requested-With': 'XMLHttpRequest',
+      },
+      timeout: timeout,
+      followRedirects: fields == null,
+      allowPostRedirects: false,
+    );
+    await observeAttendanceUrl(reply.url);
+    return (url: reply.url, status: reply.status, html: reply.text);
+  }
+
   /// Read-only NIC catalog: only its reviewed academic-session postback.
   Future<AttendanceHttpReply> nicCatalogRequest(
     Uri url, {

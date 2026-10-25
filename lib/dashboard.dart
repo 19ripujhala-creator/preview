@@ -1,4 +1,5 @@
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:shaladarpan/widgets/route_completion.dart';
+import 'package:shaladarpan/widgets/render_surfaces.dart';
 import 'package:shaladarpan/experiments/direct_school_session.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/student_service.dart';
 import 'package:shaladarpan/widgets/adaptive_layout.dart';
@@ -145,6 +146,51 @@ class _DashboardScreenState extends State<DashboardScreen>
   int _teacherInitialEngine = 0;
   int _teacherSubModuleIndex = 0;
   int _teacherResetTrigger = 0;
+  Widget? _teacherTabCache;
+  (String, int, int, int)? _teacherTabInputs;
+  Widget? _accountTabCache;
+  (String, VoidCallback)? _accountTabInputs;
+
+  Future<void> _onTeacherAttendanceUpdated() async {
+    _checkConnectivityAndQueue();
+    await _fetchAndApplyLiveStaffData();
+  }
+
+  Widget _retainedTeacherTab() {
+    final inputs = (widget.schoolId, _teacherInitialEngine,
+        _teacherSubModuleIndex, _teacherResetTrigger);
+    if (_teacherTabInputs != inputs) {
+      _teacherTabInputs = inputs;
+      _teacherTabCache = Padding(
+        padding: const EdgeInsets.only(bottom: 80.0),
+        child: TeacherTabScreen(
+          key: const ValueKey('teacher_tab_main'),
+          schoolId: widget.schoolId,
+          initialEngineIndex: _teacherInitialEngine,
+          subModuleIndex: _teacherSubModuleIndex,
+          resetTrigger: _teacherResetTrigger,
+          onAttendanceUpdated: _onTeacherAttendanceUpdated,
+        ),
+      );
+    }
+    return _teacherTabCache!;
+  }
+
+  Widget _retainedAccountTab() {
+    final inputs = (widget.schoolId, widget.onLogoutRequested);
+    if (_accountTabInputs != inputs) {
+      _accountTabInputs = inputs;
+      _accountTabCache = Padding(
+        padding: const EdgeInsets.only(bottom: 80.0),
+        child: AccountTabView(
+          schoolId: widget.schoolId,
+          onLogoutRequested: widget.onLogoutRequested,
+        ),
+      );
+    }
+    return _accountTabCache!;
+  }
+
 
   bool _isSyncing = false;
   bool _syncCompleted = false;
@@ -292,12 +338,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     try {
       bool online = StudentService.directAttendanceEnabled ? _isOnline : false;
       try {
-        if (StudentService.directAttendanceEnabled) {
-          // Direct mode has no backend /health; previously _isOnline was never
-          // set back to false, so the offline state could never show.
-          final links = await Connectivity().checkConnectivity();
-          online = links.any((r) => r != ConnectivityResult.none);
-        } else {
+        if (!StudentService.directAttendanceEnabled) {
           final response = await http
               .get(BackendConfig.uri('/health'))
               .timeout(const Duration(seconds: 3));
@@ -308,10 +349,12 @@ class _DashboardScreenState extends State<DashboardScreen>
         unawaited(_fetchLiveRajsimsMdmTileData());
       final pending = await OfflineAttendanceQueue.hasPendingQueue();
       if (!mounted) return;
-      setState(() {
-        _isOnline = online;
-        _hasPendingOfflineAttendance = pending;
-      });
+      if (_isOnline != online || _hasPendingOfflineAttendance != pending) {
+        setState(() {
+          _isOnline = online;
+          _hasPendingOfflineAttendance = pending;
+        });
+      }
     } catch (_) {
       // Preserve queue state when local storage cannot be read.
     } finally {
@@ -339,8 +382,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       }
     }
 
-    // The ranking block above awaits; the screen may have been closed meanwhile.
-    if (!mounted) return;
     final kpiData = data['kpi'];
     if (kpiData is Map && kpiData.isNotEmpty && kpiData['success'] != false) {
       _applyKpiData(Map<String, dynamic>.from(kpiData));
@@ -362,7 +403,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       });
     }
 
-    if (!mounted) return;
     final staffData = data['staff_attendance'];
     if (staffData is Map &&
         staffData.isNotEmpty &&
@@ -375,7 +415,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         await prefs.remove('attendance_already_marked');
       }
       await prefs.setString('cached_staff_attendance', jsonEncode(staffData));
-      if (!mounted) return;
       _updateStaffUIFromData(staffData, isMarked, _todayStr);
     }
 
@@ -898,25 +937,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ),
                     SafeArea(
                       bottom: false,
-                      child: IndexedStack(
+                      child: RetainedTabStack(
                         index: _currentNavIndex,
                         children: [
                           _buildDashboardHome(),
                           if (_visitedTabs.contains(1))
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 80.0),
-                              child: TeacherTabScreen(
-                                key: const ValueKey('teacher_tab_main'),
-                                schoolId: widget.schoolId,
-                                initialEngineIndex: _teacherInitialEngine,
-                                subModuleIndex: _teacherSubModuleIndex,
-                                resetTrigger: _teacherResetTrigger,
-                                onAttendanceUpdated: () async {
-                                  _checkConnectivityAndQueue();
-                                  await _fetchAndApplyLiveStaffData();
-                                },
-                              ),
-                            )
+                            _retainedTeacherTab()
                           else
                             const SizedBox.shrink(),
                           if (_visitedTabs.contains(2))
@@ -934,13 +960,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                           else
                             const SizedBox.shrink(),
                           if (_visitedTabs.contains(4))
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 80.0),
-                              child: AccountTabView(
-                                schoolId: widget.schoolId,
-                                onLogoutRequested: widget.onLogoutRequested,
-                              ),
-                            )
+                            _retainedAccountTab()
                           else
                             const SizedBox.shrink(),
                         ],
@@ -2403,7 +2423,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (_monthlyScreenOpen) return;
     _monthlyScreenOpen = true;
     try {
-      await Navigator.of(context).push(
+      await pushPageAndWaitForExit(
+        context,
         MaterialPageRoute<void>(
           builder: (_) => MonthlyTasksHub(
             schoolId: widget.schoolId,
@@ -2419,9 +2440,13 @@ class _DashboardScreenState extends State<DashboardScreen>
       );
     } finally {
       _monthlyScreenOpen = false;
-      await _restoreLiveRankingStatus();
-      _viffsStatusAttempts = 0;
-      unawaited(_fetchViffsMonthlyStatus());
+      if (mounted) {
+        await _restoreLiveRankingStatus();
+        if (mounted) {
+          _viffsStatusAttempts = 0;
+          unawaited(_fetchViffsMonthlyStatus());
+        }
+      }
     }
   }
 
@@ -2429,7 +2454,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (_monthlyScreenOpen) return;
     _monthlyScreenOpen = true;
     try {
-      await Navigator.of(context).push(
+      await pushPageAndWaitForExit(
+        context,
         MaterialPageRoute<void>(
           builder: (_) => MonthlyTasksScreen(
             schoolId: widget.schoolId,
@@ -2446,9 +2472,13 @@ class _DashboardScreenState extends State<DashboardScreen>
       );
     } finally {
       _monthlyScreenOpen = false;
-      await _restoreLiveRankingStatus();
-      _viffsStatusAttempts = 0;
-      unawaited(_fetchViffsMonthlyStatus());
+      if (mounted) {
+        await _restoreLiveRankingStatus();
+        if (mounted) {
+          _viffsStatusAttempts = 0;
+          unawaited(_fetchViffsMonthlyStatus());
+        }
+      }
     }
   }
 

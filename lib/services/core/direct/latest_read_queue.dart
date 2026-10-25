@@ -19,27 +19,18 @@ class LatestReadQueue {
   void discardPending() => _pending = null;
 
   Future<void> _drain(Completer<void> completion) async {
-    // A failed read must not swallow a newer selection that never ran: keep
-    // draining and report the outcome of the last read that actually executed.
-    Object? failure;
-    StackTrace? failureStack;
-    while (_pending != null) {
-      final read = _pending!;
-      _pending = null;
-      try {
+    try {
+      while (_pending != null) {
+        final read = _pending!;
+        _pending = null;
         await read();
-        failure = null;
-        failureStack = null;
-      } catch (error, stack) {
-        failure = error;
-        failureStack = stack;
       }
-    }
-    _completion = null;
-    if (failure != null) {
-      completion.completeError(failure, failureStack);
-    } else {
       completion.complete();
+    } catch (error, stack) {
+      _pending = null;
+      completion.completeError(error, stack);
+    } finally {
+      _completion = null;
     }
   }
 }

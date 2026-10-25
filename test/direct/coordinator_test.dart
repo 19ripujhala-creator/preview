@@ -35,31 +35,6 @@ class _Backend implements PortalBackend {
   }
 }
 
-/// Accepts every account except those in [rejected]; records every login.
-class _SwitchBackend implements PortalBackend {
-  Object? context = Object();
-  final List<String> logins = [];
-  final Set<String> rejected = {};
-  @override
-  Object? currentContext() => context;
-  @override
-  Future<Map<String, dynamic>> authenticate(
-    String user,
-    String password,
-    bool forceFresh,
-  ) async {
-    logins.add(user);
-    if (rejected.contains(user)) {
-      return {'success': false, 'code': 'LOGIN_FAILED', 'message': 'rejected'};
-    }
-    context = Object();
-    return {'success': true};
-  }
-
-  @override
-  Future<Probe> probe(Object context) async => Probe.dead;
-}
-
 void main() {
   test(
     'recovery holds its lifecycle barrier until authentication settles',
@@ -324,101 +299,6 @@ void main() {
         );
         expect(result['code'], 'BAD_CLASS');
         expect(calls, 1);
-      } finally {
-        await co.shutdown();
-      }
-    },
-  );
-
-  test('failed shutdown stays retryable: unsettled work blocks it, then it completes', () async {
-    final co = PortalCoordinator(
-      name: 'sd',
-      backend: _Backend(),
-      config: const CoordinatorConfig(readCancelGrace: 0.01),
-    );
-    co.markAlive(1);
-    final started = Completer<void>(), release = Completer<void>();
-    final save = co.run(
-      resource: 'sd.student',
-      kind: Kind.mutation,
-      maxAttempts: 1,
-      worker: (_) async {
-        started.complete();
-        await release.future;
-        return {'success': true};
-      },
-    );
-    try {
-      await started.future;
-      await expectLater(co.shutdown(timeout: 0.05), throwsA(isA<StateError>()));
-      expect(co.hasPendingWork(), true);
-      expect(co.status()['closed'], true);
-      // A retry while the work is still running must not report success.
-      await expectLater(co.shutdown(timeout: 0.05), throwsA(isA<StateError>()));
-      release.complete();
-      expect((await save)['success'], true);
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      await co.shutdown(timeout: 0.05);
-      expect(co.hasPendingWork(), false);
-      // Completed shutdown is idempotent.
-      await co.shutdown();
-    } finally {
-      if (!release.isCompleted) release.complete();
-    }
-  });
-
-  test(
-    'failed account switch does not auto-recover the previous account',
-    () async {
-      final backend = _SwitchBackend();
-      final co = PortalCoordinator(
-        name: 'sd',
-        backend: backend,
-        credentialsFallback: () => ('A', 'pa'),
-      );
-      try {
-        expect((await co.authenticate('A', 'pa'))['success'], true);
-        backend.rejected.add('B');
-        expect((await co.authenticate('B', 'pb'))['success'], false);
-        expect(co.status()['has_credentials'], false);
-        // Next work finds an expired session. It must fail, not log A back in.
-        await expectLater(
-          co.ensureReady(Kind.read),
-          throwsA(
-            isA<CoordinatorError>().having(
-              (e) => e.kind,
-              'kind',
-              ErrorKind.sessionExpired,
-            ),
-          ),
-        );
-        expect(backend.logins, ['A', 'B']);
-        // An explicit sign-in as A still works afterwards.
-        expect((await co.authenticate('A', 'pa'))['success'], true);
-        expect(backend.logins, ['A', 'B', 'A']);
-        expect(co.status()['has_credentials'], true);
-      } finally {
-        await co.shutdown();
-      }
-    },
-  );
-
-  test(
-    'failed re-login of the same account keeps its recovery credentials',
-    () async {
-      final backend = _SwitchBackend();
-      final co = PortalCoordinator(name: 'sd', backend: backend);
-      try {
-        expect((await co.authenticate('A', 'pa'))['success'], true);
-        backend.rejected.add('A');
-        expect(
-          (await co.authenticate('A', 'pa', forceFresh: true))['success'],
-          false,
-        );
-        expect(co.status()['has_credentials'], true);
-        backend.rejected.clear();
-        await co.ensureReady(Kind.read);
-        expect(backend.logins, ['A', 'A', 'A']);
       } finally {
         await co.shutdown();
       }

@@ -1,0 +1,175 @@
+1|#||4|0|updatePanel|UpdatePanel1||14859|updatePanel|ContentPlaceHolder1_footer2_UpdPanel|<select class="form-control" id="ContentPlaceHolder1_footer2_ddlsession" name="ctl00$ContentPlaceHolder1$footer2$ddlsession">
+<option value="">--Select Session--</option>
+<option value="2017-18">2017-18</option>
+<option value="2018-19">2018-19</option>
+<option value="2019-20">2019-20</option>
+<option value="2020-21">2020-21</option>
+<option value="2021-22">2021-22</option>
+<option value="2022-23">2022-23</option>
+<option value="2023-24">2023-24</option>
+<option value="2024-25">2024-25</option>
+<option value="2025-26">2025-26</option>
+<option selected="selected" value="2026-27">2026-27</option>
+</select><select class="form-control" id="ContentPlaceHolder1_footer2_ddlclass" name="ctl00$ContentPlaceHolder1$footer2$ddlclass">
+<option value="">-Select Class-</option>
+<option selected="selected" value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+</select><select class="form-control" id="ContentPlaceHolder1_footer2_ddlsection" name="ctl00$ContentPlaceHolder1$footer2$ddlsection">
+<option value="">-Select Section-</option>
+<option selected="selected" value="1">A</option>
+</select><select class="form-control" id="ContentPlaceHolder1_footer2_ddlmonth" name="ctl00$ContentPlaceHolder1$footer2$ddlmonth">
+<option value="1">January</option>
+<option value="2">February</option>
+<option value="3">March</option>
+<option value="4">April</option>
+<option value="5">May</option>
+<option value="6">Jun</option>
+<option value="7">July</option>
+<option value="8">August</option>
+<option selected="selected" value="9">September</option>
+<option value="10">October</option>
+<option value="11">Novermber</option>
+<option value="12">December</option>
+</select><input class="btn btn-block btn-primary" id="ContentPlaceHolder1_footer2_btnshow" name="ctl00$ContentPlaceHolder1$footer2$btnshow" onclick='javascript:WebForm_DoPostBackWithOptions(new WebForm_PostBackOptions("ctl00$ContentPlaceHolder1$footer2$btnshow", "", true, "Mark", "", false, false))' type="submit" value="उपस्थिति दर्ज़ करें"/><table cellpadding="4" cellspacing="0" class="table table-bordered table-striped table-hover CSSTableGenerator" id="ContentPlaceHolder1_footer2_gvattendence" style="color:#333333;border-collapse:collapse;">
+<tr>
+<th scope="col" style="width:5%;">Sr.No.</th><th scope="col" style="width:15%;">SRNO</th><th align="left" scope="col" style="width:50%;">Name</th><th scope="col" style="width:15%;">कुल मासिक कार्य दिवस</th><th scope="col" style="width:15%;">कुल मासिक उपस्थिति</th>
+</tr><tr>
+<td align="center">
+                                                            1
+                                                            <input id="ContentPlaceHolder1_footer2_gvattendence_hdnyearlyprofileid_0" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl02$hdnyearlyprofileid" type="hidden" value="10001"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnstudentprofileid_0" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl02$hdnstudentprofileid" type="hidden" value="20001"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnStuAttID_0" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl02$hdnStuAttID" type="hidden" value="30001"/>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblsrno_0">1001</span>
+</td><td align="left">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblname_0">Test Student 1</span>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblmaxatt_0">22</span>
+</td><td align="center">
+<input id="ContentPlaceHolder1_footer2_gvattendence_txtatt_0" maxlength="2" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl02$txtatt" onkeypress="return isNumberKey(event)" style="width:40%;text-align: center; color: Green; font-weight: bold;" type="text" value="0"/>
+</td>
+</tr><tr>
+<td align="center">
+                                                            2
+                                                            <input id="ContentPlaceHolder1_footer2_gvattendence_hdnyearlyprofileid_1" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl03$hdnyearlyprofileid" type="hidden" value="10002"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnstudentprofileid_1" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl03$hdnstudentprofileid" type="hidden" value="20002"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnStuAttID_1" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl03$hdnStuAttID" type="hidden" value="30002"/>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblsrno_1">1002</span>
+</td><td align="left">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblname_1">Test Student 2</span>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblmaxatt_1">22</span>
+</td><td align="center">
+<input id="ContentPlaceHolder1_footer2_gvattendence_txtatt_1" maxlength="2" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl03$txtatt" onkeypress="return isNumberKey(event)" style="width:40%;text-align: center; color: Green; font-weight: bold;" type="text" value="0"/>
+</td>
+</tr><tr>
+<td align="center">
+                                                            3
+                                                            <input id="ContentPlaceHolder1_footer2_gvattendence_hdnyearlyprofileid_2" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl04$hdnyearlyprofileid" type="hidden" value="10003"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnstudentprofileid_2" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl04$hdnstudentprofileid" type="hidden" value="20003"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnStuAttID_2" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl04$hdnStuAttID" type="hidden" value="30003"/>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblsrno_2">1003</span>
+</td><td align="left">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblname_2">Test Student 3</span>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblmaxatt_2">22</span>
+</td><td align="center">
+<input id="ContentPlaceHolder1_footer2_gvattendence_txtatt_2" maxlength="2" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl04$txtatt" onkeypress="return isNumberKey(event)" style="width:40%;text-align: center; color: Green; font-weight: bold;" type="text" value="0"/>
+</td>
+</tr><tr>
+<td align="center">
+                                                            4
+                                                            <input id="ContentPlaceHolder1_footer2_gvattendence_hdnyearlyprofileid_3" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl05$hdnyearlyprofileid" type="hidden" value="10004"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnstudentprofileid_3" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl05$hdnstudentprofileid" type="hidden" value="20004"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnStuAttID_3" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl05$hdnStuAttID" type="hidden" value="30004"/>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblsrno_3">1004</span>
+</td><td align="left">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblname_3">Test Student 4</span>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblmaxatt_3">22</span>
+</td><td align="center">
+<input id="ContentPlaceHolder1_footer2_gvattendence_txtatt_3" maxlength="2" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl05$txtatt" onkeypress="return isNumberKey(event)" style="width:40%;text-align: center; color: Green; font-weight: bold;" type="text" value="0"/>
+</td>
+</tr><tr>
+<td align="center">
+                                                            5
+                                                            <input id="ContentPlaceHolder1_footer2_gvattendence_hdnyearlyprofileid_4" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl06$hdnyearlyprofileid" type="hidden" value="10005"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnstudentprofileid_4" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl06$hdnstudentprofileid" type="hidden" value="20005"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnStuAttID_4" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl06$hdnStuAttID" type="hidden" value="30005"/>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblsrno_4">1005</span>
+</td><td align="left">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblname_4">Test Student 5</span>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblmaxatt_4">22</span>
+</td><td align="center">
+<input id="ContentPlaceHolder1_footer2_gvattendence_txtatt_4" maxlength="2" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl06$txtatt" onkeypress="return isNumberKey(event)" style="width:40%;text-align: center; color: Green; font-weight: bold;" type="text" value="0"/>
+</td>
+</tr><tr>
+<td align="center">
+                                                            6
+                                                            <input id="ContentPlaceHolder1_footer2_gvattendence_hdnyearlyprofileid_5" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl07$hdnyearlyprofileid" type="hidden" value="10006"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnstudentprofileid_5" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl07$hdnstudentprofileid" type="hidden" value="20006"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnStuAttID_5" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl07$hdnStuAttID" type="hidden" value="30006"/>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblsrno_5">1006</span>
+</td><td align="left">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblname_5">Test Student 6</span>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblmaxatt_5">22</span>
+</td><td align="center">
+<input id="ContentPlaceHolder1_footer2_gvattendence_txtatt_5" maxlength="2" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl07$txtatt" onkeypress="return isNumberKey(event)" style="width:40%;text-align: center; color: Green; font-weight: bold;" type="text" value="0"/>
+</td>
+</tr><tr>
+<td align="center">
+                                                            7
+                                                            <input id="ContentPlaceHolder1_footer2_gvattendence_hdnyearlyprofileid_6" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl08$hdnyearlyprofileid" type="hidden" value="10007"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnstudentprofileid_6" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl08$hdnstudentprofileid" type="hidden" value="20007"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnStuAttID_6" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl08$hdnStuAttID" type="hidden" value="30007"/>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblsrno_6">1007</span>
+</td><td align="left">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblname_6">Test Student 7</span>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblmaxatt_6">22</span>
+</td><td align="center">
+<input id="ContentPlaceHolder1_footer2_gvattendence_txtatt_6" maxlength="2" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl08$txtatt" onkeypress="return isNumberKey(event)" style="width:40%;text-align: center; color: Green; font-weight: bold;" type="text" value="0"/>
+</td>
+</tr><tr>
+<td align="center">
+                                                            8
+                                                            <input id="ContentPlaceHolder1_footer2_gvattendence_hdnyearlyprofileid_7" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl09$hdnyearlyprofileid" type="hidden" value="10008"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnstudentprofileid_7" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl09$hdnstudentprofileid" type="hidden" value="20008"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnStuAttID_7" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl09$hdnStuAttID" type="hidden" value="30008"/>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblsrno_7">1008</span>
+</td><td align="left">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblname_7">Test Student 8</span>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblmaxatt_7">22</span>
+</td><td align="center">
+<input id="ContentPlaceHolder1_footer2_gvattendence_txtatt_7" maxlength="2" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl09$txtatt" onkeypress="return isNumberKey(event)" style="width:40%;text-align: center; color: Green; font-weight: bold;" type="text" value="0"/>
+</td>
+</tr><tr>
+<td align="center">
+                                                            9
+                                                            <input id="ContentPlaceHolder1_footer2_gvattendence_hdnyearlyprofileid_8" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl10$hdnyearlyprofileid" type="hidden" value="10009"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnstudentprofileid_8" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl10$hdnstudentprofileid" type="hidden" value="20009"/>
+<input id="ContentPlaceHolder1_footer2_gvattendence_hdnStuAttID_8" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl10$hdnStuAttID" type="hidden" value="30009"/>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblsrno_8">1009</span>
+</td><td align="left">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblname_8">Test Student 9</span>
+</td><td align="center">
+<span id="ContentPlaceHolder1_footer2_gvattendence_lblmaxatt_8">22</span>
+</td><td align="center">
+<input id="ContentPlaceHolder1_footer2_gvattendence_txtatt_8" maxlength="2" name="ctl00$ContentPlaceHolder1$footer2$gvattendence$ctl10$txtatt" onkeypress="return isNumberKey(event)" style="width:40%;text-align: center; color: Green; font-weight: bold;" type="text" value="0"/>
+</td>
+</tr>
+</table><input class="btn btn-block btn-primary" id="ContentPlaceHolder1_footer2_btnsave" name="ctl00$ContentPlaceHolder1$footer2$btnsave" title="प्रविष्टि सेव करने के लिए सेव का बटन दबाये!" type="submit" value="Save"/><span id="ContentPlaceHolder1_footer2_rfv1" style="display:none;"></span><span id="ContentPlaceHolder1_footer2_RequiredFieldValidator1" style="display:none;"></span><span id="ContentPlaceHolder1_footer2_RequiredFieldValidator2" style="display:none;"></span><span id="ContentPlaceHolder1_footer2_RequiredFieldValidator3" style="display:none;"></span>|21|hiddenField|__VIEWSTATE|fixture-updated-state|26|hiddenField|__EVENTVALIDATION|fixture-updated-validation|24|formAction||./StudentAttendence.aspx|98|expando|document.getElementById('ContentPlaceHolder1_footer2_valsummaryPhase1')['headertext']|"\u003cdiv class=\u0027validationheader\u0027\u003e Please correct the following:\u003c/div\u003e"|6|expando|document.getElementById('ContentPlaceHolder1_footer2_valsummaryPhase1')['validationGroup']|"Mark"|40|expando|document.getElementById('ContentPlaceHolder1_footer2_rfv1')['controltovalidate']|"ContentPlaceHolder1_footer2_ddlsession"|3|expando|document.getElementById('ContentPlaceHolder1_footer2_rfv1')['focusOnError']|"t"|23|expando|document.getElementById('ContentPlaceHolder1_footer2_rfv1')['errormessage']|"Please Select Session"|6|expando|document.getElementById('ContentPlaceHolder1_footer2_rfv1')['display']|"None"|6|expando|document.getElementById('ContentPlaceHolder1_footer2_rfv1')['validationGroup']|"Mark"|39|expando|document.getElementById('ContentPlaceHolder1_footer2_rfv1')['evaluationfunction']|"RequiredFieldValidatorEvaluateIsValid"|2|expando|document.getElementById('ContentPlaceHolder1_footer2_rfv1')['initialvalue']|""|38|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator1')['controltovalidate']|"ContentPlaceHolder1_footer2_ddlclass"|3|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator1')['focusOnError']|"t"|21|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator1')['errormessage']|"Please Select Class"|6|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator1')['display']|"None"|6|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator1')['validationGroup']|"Mark"|39|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator1')['evaluationfunction']|"RequiredFieldValidatorEvaluateIsValid"|2|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator1')['initialvalue']|""|40|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator2')['controltovalidate']|"ContentPlaceHolder1_footer2_ddlsection"|3|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator2')['focusOnError']|"t"|23|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator2')['errormessage']|"Please Select Section"|6|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator2')['display']|"None"|6|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator2')['validationGroup']|"Mark"|39|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator2')['evaluationfunction']|"RequiredFieldValidatorEvaluateIsValid"|2|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator2')['initialvalue']|""|38|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator3')['controltovalidate']|"ContentPlaceHolder1_footer2_ddlmonth"|20|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator3')['errormessage']|"Please Enter Month"|6|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator3')['display']|"None"|6|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator3')['validationGroup']|"Mark"|39|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator3')['evaluationfunction']|"RequiredFieldValidatorEvaluateIsValid"|2|expando|document.getElementById('ContentPlaceHolder1_footer2_RequiredFieldValidator3')['initialvalue']|""|

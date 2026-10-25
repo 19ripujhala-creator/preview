@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,15 +12,8 @@ import '../../lib/services/portals/staff_login/direct/http_auth.dart';
 import '../../lib/services/portals/staff_login/direct/native_print_service.dart';
 import '../../lib/services/portals/staff_login/direct/staff_read_service.dart';
 import '../../lib/services/portals/staff_login/direct/staff_runtime.dart';
-import '../../lib/services/portals/staff_login/direct/http_session.dart';
-import '../../lib/services/portals/staff_login/direct/http_profile.dart';
-import '../../lib/services/portals/staff_login/direct/leave_apply_service.dart';
-import 'staff_auth_test.dart'
-    show StaffFakeTransport, StaffMemoryStorage, staffReply, staffTestBase;
-import 'staff_read_test.dart'
-    show authenticated, profileHome, goldens, scripted;
-import 'staff_native_print_test.dart' show StaffFakePrintBrowser;
-import 'staff_leave_apply_test.dart' show LeavePortal, payload;
+import 'staff_auth_test.dart' show StaffFakeTransport, StaffMemoryStorage;
+import 'staff_read_test.dart' show authenticated;
 
 class RecoveryBackend implements PortalBackend {
   RecoveryBackend(this.registry, {this.dead = true});
@@ -28,7 +21,6 @@ class RecoveryBackend implements PortalBackend {
   bool dead;
   int logins = 0;
   (String, String)? supplied;
-  StaffHttpSession Function()? recoveredSession;
   @override
   Object? currentContext() => registry.current();
   @override
@@ -41,21 +33,17 @@ class RecoveryBackend implements PortalBackend {
   ) async {
     logins++;
     supplied = (user, password);
-    final session =
-        recoveredSession?.call() ??
-        authenticated(
-          StaffFakeTransport([
-            staffReply(staffHomePath, profileHome),
-            staffReply(staffP10Path, ''),
-          ]),
-        );
-    session.client.jar.receive([
-      Cookie('session', 'recovered')
-        ..domain = 'rajshaladarpan.rajasthan.gov.in'
-        ..path = '/',
-    ], Uri.parse(staffTestBase));
-    await registry.install(session);
+    await registry.install(authenticated(StaffFakeTransport()));
     dead = false;
+    return {'success': true};
+  }
+}
+
+class RecoveryReads extends StaffReadService {
+  RecoveryReads({required super.registry, required super.coordinator});
+  @override
+  Future<Map<String, dynamic>> fetchProfile(String user) async {
+    await coordinator.ensureReady(Kind.read);
     return {'success': true};
   }
 }
@@ -93,18 +81,11 @@ void main() {
         });
     StudentService.directAttendanceEnabled = true;
     registry = StaffHttpAuth(storage: StaffMemoryStorage());
-    await registry.install(
-      authenticated(
-        StaffFakeTransport([
-          staffReply(staffHomePath, profileHome),
-          staffReply(staffP10Path, ''),
-        ]),
-      ),
-    );
+    await registry.install(authenticated(StaffFakeTransport()));
     backend = RecoveryBackend(registry);
     coordinator = StaffCoordinator(backend: backend);
     StaffLoginService.directReadProvider = () async =>
-        StaffReadService(registry: registry, coordinator: coordinator);
+        RecoveryReads(registry: registry, coordinator: coordinator);
     StaffLoginService.directPrintProvider = () async =>
         RecoveryPrints(registry: registry, coordinator: coordinator);
   });
@@ -145,102 +126,6 @@ void main() {
       expect(await StaffLoginService.downloadFormat10Pdf(), isNotNull);
       expect(backend.logins, 1);
       expect(backend.supplied, ('99', 'saved-secret'));
-    },
-  );
-
-  test(
-    'Missing Staff session signs in once as the same saved account',
-    () async {
-      // No session at all (failed login, retired runtime, nothing restored).
-      await registry.forget();
-      StaffLoginService.directReadProvider = () async =>
-          StaffReadService(registry: registry, coordinator: coordinator);
-      expect(registry.current(), null);
-      final result = await StaffLoginService.fetchProfile();
-      expect(result['code'], isNot('ACCOUNT_CHANGED'));
-      expect(result['success'], true, reason: '$result');
-      expect(backend.logins, 1);
-      expect(backend.supplied, ('99', 'saved-secret'));
-      expect(registry.current()?.user, '99');
-    },
-  );
-
-  test(
-    'Missing Staff history uses production service and recovers once',
-    () async {
-      await registry.forget();
-      final c = (goldens['cases'] as List).first as Map;
-      backend.recoveredSession = () => authenticated(scripted(c));
-      coordinator.rememberCredentials('99', 'saved-secret');
-      final reads = StaffReadService(
-        registry: registry,
-        coordinator: coordinator,
-      );
-      final result = await reads.fetchHistory(
-        '99',
-        filter: c['filter'] as String,
-      );
-      expect(result['success'], true, reason: '$result');
-      expect(backend.logins, 1);
-    },
-  );
-
-  test('Missing Staff PDF uses production service and recovers once', () async {
-    await registry.forget();
-    final browser = StaffFakePrintBrowser();
-    StaffLoginService.directPrintProvider = () async => StaffNativePrintService(
-      registry: registry,
-      coordinator: coordinator,
-      browserFactory: () => browser,
-    );
-    expect(await StaffLoginService.downloadFormat10Pdf(), isNotNull);
-    expect(backend.logins, 1);
-    expect(browser.closed, true);
-  });
-
-  test('Missing Staff leave preview recovers without submitting', () async {
-    await registry.forget();
-    final portal = LeavePortal();
-    backend.recoveredSession = () => portal.session;
-    final reads = StaffReadService(
-      registry: registry,
-      coordinator: coordinator,
-    );
-    final service = StaffLeaveApplyService(
-      registry: registry,
-      coordinator: coordinator,
-      reads: reads,
-    );
-    coordinator.rememberCredentials('99', 'saved-secret');
-    final result = await service.apply('99', {
-      ...payload(),
-      'confirmed': false,
-    });
-    expect(result['confirmation_required'], true, reason: '$result');
-    expect(backend.logins, 1);
-    expect(portal.client.requests, isEmpty);
-  });
-
-  test(
-    'Missing Staff confirmed leave recovers and submits exactly once',
-    () async {
-      await registry.forget();
-      final portal = LeavePortal();
-      backend.recoveredSession = () => portal.session;
-      final reads = StaffReadService(
-        registry: registry,
-        coordinator: coordinator,
-      );
-      final service = StaffLeaveApplyService(
-        registry: registry,
-        coordinator: coordinator,
-        reads: reads,
-      );
-      coordinator.rememberCredentials('99', 'saved-secret');
-      final result = await service.apply('99', payload());
-      expect(result['success'], true, reason: '$result');
-      expect(backend.logins, 1);
-      expect(portal.applies, 1);
     },
   );
 

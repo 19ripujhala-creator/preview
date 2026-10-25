@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/page_content_motion.dart';
 import 'package:shaladarpan/widgets/adaptive_layout.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -56,7 +57,7 @@ class _MonthlyTasksHubState extends State<MonthlyTasksHub> {
       actions: [IconButton(tooltip: 'Refresh selected form',
         onPressed: _switching ? null : () => _formKeys[_selected].currentState?.refreshForm(),
         icon: const Icon(CupertinoIcons.arrow_clockwise, size: 18, color: _ink))]),
-    body: Column(children: [
+    body: PageContentMotion(child: Column(children: [
       Align(alignment: Alignment.topCenter, child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: AppAdaptive.contentWidth(MediaQuery.sizeOf(context).width)),
         child: Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
@@ -75,6 +76,6 @@ class _MonthlyTasksHubState extends State<MonthlyTasksHub> {
                   active: _selected == 1, onStatus: widget.onStatus)
               : const SizedBox.shrink(),
       ])),
-    ]),
+    ])),
   );
 }

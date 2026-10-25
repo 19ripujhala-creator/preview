@@ -198,24 +198,22 @@ class GenderMaster {
       final sinceSync = current.difference(
         _lastSync[sid] ?? DateTime.fromMillisecondsSinceEpoch(0),
       );
-      final stale = existing.isEmpty || age.isNegative || age > ttl;
-      final missRefresh =
-          missing && (sinceSync.isNegative || sinceSync > missCooldown);
-      if (!(force || stale || missRefresh))
-        return Map<String, String>.from(existing);
+      final stale = existing.isEmpty || age > ttl;
+      final missRefresh = missing && sinceSync > missCooldown;
+      if (!(force || stale || missRefresh)) return existing;
       _lastSync[sid] = current;
       try {
         final fresh = await _fetchWithDeadline(base);
         if (fresh.isNotEmpty) {
           _memory[sid] = fresh;
           await cache.save(file, fresh, now());
-          return Map<String, String>.from(fresh);
+          return fresh;
         }
       } catch (_) {
         /* Source returns the previous cache if refresh fails. */
       }
       OperationCancellation.current?.check();
-      return Map<String, String>.from(existing);
+      return existing;
     });
   }
 }

@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/page_content_motion.dart';
 import 'package:shaladarpan/widgets/adaptive_layout.dart';
 // lib/tabs/student/modules/student_attendance/screens/school_report_screen.dart
 import 'dart:convert';
@@ -10,8 +11,6 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/student_service.dart';
-import 'package:shaladarpan/services/core/direct/attendance_read_scope.dart';
-import 'package:shaladarpan/services/portals/shaladarpan/direct/leave_result_messages.dart';
 const String _font = 'PlusJakartaSans';
 const List<String> _monthsShort = [
   'Jan',
@@ -51,7 +50,6 @@ class _ReportRow {
   final int girls;
   final int absent;
   final int leave;
-  final int unselected;
   const _ReportRow(
     this.className,
     this.section,
@@ -59,7 +57,6 @@ class _ReportRow {
     this.girls,
     this.absent,
     this.leave,
-    [this.unselected = 0]
   );
   int get total =>
       boys +
@@ -83,7 +80,6 @@ class _ReportRow {
       n(j['girls']),
       n(j['absent']),
       n(j['leave']),
-      n(j['unselected'] ?? 0),
     );
   }
 }
@@ -103,16 +99,14 @@ class SchoolReportScreen extends StatefulWidget {
 }
 
 class _SchoolReportScreenState
-    extends State<SchoolReportScreen> with WidgetsBindingObserver {
+    extends State<SchoolReportScreen> {
   bool _loading = true;
   String _error = '';
   double _progress = 0;
   String _loadingMessage = 'Fetching attendance records…';
   int _backendUnits = 0;
   Uint8List? _bytes;
-  final _reportCache = AttendanceReadCache<Map<String, dynamic>>(maxEntries: 1);
-  AttendanceReadScope? _reportScope;
-  int _generation = 0;
+  Map<String, dynamic>? _cachedReport;
   bool _loadInFlight = false;
   String get _portalDate {
     final d = widget.date;
@@ -127,41 +121,7 @@ class _SchoolReportScreenState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _load();
-  }
-
-  @override
-  void didUpdateWidget(covariant SchoolReportScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.date.year == widget.date.year && oldWidget.date.month == widget.date.month && oldWidget.date.day == widget.date.day) return;
-    _generation++;
-    _loadInFlight = false;
-    _reportCache.clear();
-    _reportScope = null;
-    _bytes = null;
-    _load();
-  }
-
-  @override
-  void dispose() {
-    _generation++;
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _checkScope();
-  }
-
-  Future<void> _checkScope() async {
-    if (_reportScope == null || _loading) return;
-    final scope = await StudentService.captureReadScope();
-    if (!mounted || scope == _reportScope) return;
-    _reportCache.clear();
-    _bytes = null;
-    await _load();
   }
 
   Future<Uint8List?> _loadFirstAsset(
@@ -198,9 +158,6 @@ class _SchoolReportScreenState
   Future<void> _load() async {
     if (!mounted || _loadInFlight) return;
     _loadInFlight = true;
-    final generation = ++_generation;
-    final requestedDate = _portalDate;
-    bool current() => mounted && generation == _generation;
     var stage = 'report request';
     setState(() {
       _loading = true;
@@ -211,12 +168,9 @@ class _SchoolReportScreenState
       _bytes = null;
     });
     try {
-      final scope = await StudentService.captureReadScope();
-      if (!current()) return;
-      final res = (scope == null ? null : _reportCache.read(scope, requestedDate)) ??
-        await StudentService.fetchSchoolReport(date: requestedDate,
+      final res = _cachedReport ?? await StudentService.fetchSchoolReport(date: _portalDate,
         onProgress: (completed, total) {
-          if (!current()) return;
+          if (!mounted) return;
           setState(() {
             _backendUnits = total;
             _loadingMessage = total > 0
@@ -225,10 +179,11 @@ class _SchoolReportScreenState
             _progress = math.max(_progress, completed / (total + 3));
           });
         });
-      if (!current()) return;
+      if (!mounted) return;
       if (res['success'] != true) {
         setState(() {
-          _error = LeaveResultMessages.display(res, fallback: 'Could not load the attendance report.');
+          _error = res['message']?.toString() ??
+              'Could not load the attendance report.';
           _loading = false;
         });
         return;
@@ -248,11 +203,7 @@ class _SchoolReportScreenState
         }
         return _ReportRow.fromJson(Map<String, dynamic>.from(entry));
       }).toList();
-      if (scope == null || await StudentService.captureReadScope() != scope) {
-        throw const FormatException('School session or attendance changed. Refresh the report.');
-      }
-      if (!current()) return;
-      _reportCache.write(scope, requestedDate, Map<String, dynamic>.from(jsonDecode(jsonEncode(res)) as Map));
+      _cachedReport = Map<String, dynamic>.from(res);
       stage = 'report images';
       setState(() {
         // Cached or legacy responses can skip streamed progress events.
@@ -269,7 +220,7 @@ class _SchoolReportScreenState
       ]);
       dateIcon = await _loadFirstAsset(['assets/icons/leave.png']);
       // Header logos intentionally omitted: retain readable school identity.
-      if (!current()) return;
+      if (!mounted) return;
       stage = 'PDF generation';
       setState(() {
         _progress = (_backendUnits + 1) / (_backendUnits + 3);
@@ -289,7 +240,7 @@ class _SchoolReportScreenState
         peeoCode:
             '${res['peeoCode'] ?? ''}'.trim(),
         date: _prettyDate(
-          '${res['date'] ?? requestedDate}',
+          '${res['date'] ?? _portalDate}',
         ),
         rows: rows,
         attendanceVerified: res['attendance_status'] == 'marked' &&
@@ -300,19 +251,12 @@ class _SchoolReportScreenState
               '${res['unknownPresent'] ?? 0}',
             ) ??
             0,
-        pendingSelections: rows.fold<int>(0, (n, row) => n + row.unselected),
         leaveIcon: leaveIcon,
         dateIcon: dateIcon,
         integratedLogo: integratedLogo,
         schoolLogo: schoolLogo,
       );
-      if (!current()) return;
-      if (await StudentService.captureReadScope() != scope) {
-        _reportCache.clear();
-        throw const FormatException('School session or attendance changed during PDF creation. Refresh the report.');
-      }
-      if (!current()) return;
-      _reportScope = scope;
+      if (!mounted) return;
       setState(() {
         // Reserve one operation for preview rasterization. The loader disappears
         // only when PdfPreview has renderable pages; PDF bytes alone are not ready.
@@ -324,15 +268,15 @@ class _SchoolReportScreenState
     } catch (error, stack) {
       debugPrint('[SchoolReport] Failed at $stage: $error');
       debugPrintStack(stackTrace: stack);
-      if (!current()) return;
+      if (!mounted) return;
       final detail = error.toString().trim();
       setState(() {
-        _error = 'App: $stage failed: $detail';
+        _error = '$stage failed: $detail';
         _bytes = null;
         _loading = false;
       });
     } finally {
-      if (generation == _generation) _loadInFlight = false;
+      _loadInFlight = false;
     }
   }
 
@@ -347,7 +291,6 @@ class _SchoolReportScreenState
     required List<_ReportRow> rows,
     required int unknownPresent,
     bool attendanceVerified = false,
-    int pendingSelections = 0,
     Uint8List? leaveIcon,
     Uint8List? dateIcon,
     Uint8List? integratedLogo,
@@ -700,11 +643,6 @@ class _SchoolReportScreenState
                 color: PdfColors.grey700,
               ),
             ),
-            if (pendingSelections > 0) ...[
-              pw.SizedBox(height: 3),
-              pw.Text('Selection pending: $pendingSelections. Unselected students are excluded from attendance counts.',
-                style: const pw.TextStyle(fontSize: 8.5, color: PdfColors.grey700)),
-            ],
             if (unknownPresent > 0) ...[
               pw.SizedBox(height: 3),
               pw.Text(
@@ -729,24 +667,19 @@ class _SchoolReportScreenState
       return _buildPdf(
         schoolName: schoolName, village: village, udise: udise, nic: nic,
         officeId: officeId, peeoCode: peeoCode, date: date, rows: rows,
-        unknownPresent: unknownPresent, attendanceVerified: attendanceVerified, pendingSelections: pendingSelections,
+        unknownPresent: unknownPresent, attendanceVerified: attendanceVerified,
       );
     }
   }
 
   Future<void> _share() async {
-    final bytes = _bytes, generation = _generation, filename = _fileName;
-    if (bytes == null) return;
-    final scope = await StudentService.captureReadScope();
-    if (!mounted || generation != _generation) return;
-    if (scope == null || scope != _reportScope) {
-      _reportCache.clear();
-      _bytes = null;
-      await _load();
-      return;
-    }
+    final b = _bytes;
+    if (b == null) return;
     HapticFeedback.selectionClick();
-    await Printing.sharePdf(bytes: bytes, filename: filename);
+    await Printing.sharePdf(
+      bytes: b,
+      filename: _fileName,
+    );
   }
 
   Color get _background => widget.backgroundColor ?? Theme.of(context).scaffoldBackgroundColor;
@@ -765,7 +698,7 @@ class _SchoolReportScreenState
               stops: [0, 0.45, 1],
               colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)],
             )),
-        child: SafeArea(
+        child: PageContentMotion(child: SafeArea(
         child: Column(children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
@@ -823,7 +756,7 @@ class _SchoolReportScreenState
           ),
           Expanded(child: _body()),
         ]),
-        ),
+        )),
       )),
     );
   }
@@ -831,10 +764,8 @@ class _SchoolReportScreenState
   Widget _body() {
     if (_loading) return _ReportLoadingView(progress: _progress, message: _loadingMessage);
     if (_error.isNotEmpty || _bytes == null) return _errorView(_error);
-    final bytes = _bytes!;
     return PdfPreview(
-      key: ValueKey(_generation),
-      build: (_) async => bytes,
+      build: (_) async => _bytes!,
       useActions: false, allowPrinting: false, allowSharing: false,
       canChangePageFormat: false, canChangeOrientation: false, canDebug: false,
       pdfFileName: _fileName,

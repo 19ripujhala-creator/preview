@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/render_surfaces.dart';
 import 'package:shaladarpan/widgets/adaptive_layout.dart';
 // lib/tabs/teacher/teacher.dart
 import 'package:flutter/material.dart';
@@ -346,7 +347,7 @@ class _TeacherTabScreenState extends State<TeacherTabScreen>
           const SizedBox(height: 12),
           // 3. State-Preserving View (IndexedStack prevents wiping form state when switching engines)
           Expanded(
-            child: IndexedStack(
+            child: RetainedTabStack(
               index: _selectedMainEngine,
               children: [
                 ShaladarpanView(

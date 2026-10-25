@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/page_content_motion.dart';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -54,13 +55,13 @@ class NicPdfPreviewScreen extends StatelessWidget {
         ),
       ]),
     body: AdaptiveWorkspace(background: true,
-      child: PdfPreview(build: (_) async => bytes, pdfFileName: filename,
+      child: PageContentMotion(child: PdfPreview(build: (_) async => bytes, pdfFileName: filename,
           initialPageFormat: PdfPageFormat.a4.landscape, canChangeOrientation: false, canChangePageFormat: false,
           allowSharing: false, allowPrinting: false, useActions: false,
           loadingWidget: const Center(child: CupertinoActivityIndicator(radius: 13)),
           scrollViewDecoration: const BoxDecoration(color: Colors.transparent),
           pdfPreviewPageDecoration: const BoxDecoration(color: Colors.white,
-            boxShadow: [BoxShadow(color: Color(0x150F172A), blurRadius: 12, offset: Offset(0, 3))])),
+            boxShadow: [BoxShadow(color: Color(0x150F172A), blurRadius: 12, offset: Offset(0, 3))]))),
     ),
     ),
   );

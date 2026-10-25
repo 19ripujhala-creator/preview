@@ -1,8 +1,10 @@
 // lib/tabs/teacher/modules/shaladarpan/leave_approvals_view.dart
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/leave_approval_service.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/direct/leave_result_messages.dart';
 
@@ -53,7 +55,7 @@ class _LeaveApprovalsViewState extends State<LeaveApprovalsView> {
     bool silent = false,
     bool fresh = true,
   }) async {
-    if (_fetching || _processingIds.isNotEmpty || !mounted) return;
+    if (_fetching || !mounted) return;
     _fetching = true;
     setState(() {
       _isLoading = true;
@@ -120,33 +122,49 @@ class _LeaveApprovalsViewState extends State<LeaveApprovalsView> {
     }).toList();
   }
 
-  // An action owns the screen until its result settles. Only a fresh portal
-  // read replaces records; a verified action never invents a local row status.
+  // 3. Handle Live Approval / Rejection
   Future<void> _handleAction(
     Map<String, dynamic> leave,
     String statusCode,
+    String statusLabel,
   ) async {
-    if (!_hasVerified || _isLoading || _processingIds.isNotEmpty) return;
-    final leaveId = leave['leave_id']?.toString() ?? '';
-    if (leaveId.isEmpty) return;
+    if (!_hasVerified || _isLoading) return;
     _haptic();
-    setState(() {
-      _processingIds.add(leaveId);
-      _hasVerified = false;
-    });
-    try {
-      final res = await LeaveApprovalService.submitLeaveAction(
-        leaveId: leaveId,
-        status: statusCode,
-      );
-      if (!mounted) return;
+    final leaveId = leave["leave_id"]?.toString() ?? '';
+    if (leaveId.isEmpty || _processingIds.contains(leaveId)) return;
+
+    setState(() => _processingIds.add(leaveId));
+
+    final res = await LeaveApprovalService.submitLeaveAction(
+      leaveId: leaveId,
+      status: statusCode, // "1" = Processed/Approved, "2" = Rejected
+    );
+
+    if (mounted) {
       setState(() => _processingIds.remove(leaveId));
-      if (LeaveApprovalService.isActionConfirmed(res, [
-        {'leave_id': leaveId, 'status': statusCode},
-      ])) {
+
+      if (res['success'] == true) {
+        setState(() {
+          leave["status"] = statusLabel;
+        });
+
+        // Re-read the actual portal list. Never synthesize leave status or attendance codes.
         await _fetchFreshLeaves(silent: true);
         if (!mounted) return;
+
+        // Notify parent tab & dashboard to refresh badges and tiles
         widget.onLeaveProcessed?.call();
+
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(LeaveResultMessages.display(res)),
+            backgroundColor: statusCode == "1"
+                ? const Color(0xFF16A34A)
+                : const Color(0xFFDC2626),
+            duration: const Duration(seconds: 2),
+          ),
+        );
       } else {
         setState(() {
           _hasVerified = false;
@@ -155,25 +173,14 @@ class _LeaveApprovalsViewState extends State<LeaveApprovalsView> {
             fallback: 'Leave action result is not confirmed. Refresh before retrying.',
           );
         });
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(LeaveResultMessages.display(res)),
+            backgroundColor: const Color(0xFFDC2626),
+          ),
+        );
       }
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(LeaveResultMessages.display(res)),
-          backgroundColor: res['success'] == true && statusCode == '1'
-              ? const Color(0xFF16A34A)
-              : const Color(0xFFDC2626),
-        ),
-      );
-    } catch (_) {
-      if (mounted)
-        setState(() {
-          _hasVerified = false;
-          _fetchError = 'App: Leave action result could not be confirmed. Refresh before retrying.';
-        });
-    } finally {
-      if (mounted) setState(() => _processingIds.remove(leaveId));
     }
   }
 
@@ -264,7 +271,7 @@ class _LeaveApprovalsViewState extends State<LeaveApprovalsView> {
                     ),
                   ),
 
-                  if (!_hasVerified && !_isLoading && _processingIds.isEmpty)
+                  if (!_hasVerified && !_isLoading)
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -443,35 +450,27 @@ class _LeaveApprovalsViewState extends State<LeaveApprovalsView> {
                                     ),
                                     const SizedBox(height: 14),
                                     if (isProcessing)
-                                      const Padding(
-                                        padding: EdgeInsets.symmetric(
-                                          vertical: 6,
-                                        ),
+                                      const SizedBox(
+                                        height: 30,
                                         child: Row(
                                           children: [
                                             CupertinoActivityIndicator(
                                               radius: 8,
                                             ),
                                             SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                "Submitting to portal...",
-                                                style: TextStyle(
-                                                  fontFamily: kAppFont,
-                                                  fontSize: 11.0,
-                                                  color: Color(0xFF64748B),
-                                                ),
+                                            Text(
+                                              "Submitting to portal...",
+                                              style: TextStyle(
+                                                fontFamily: kAppFont,
+                                                fontSize: 11.0,
+                                                color: Color(0xFF64748B),
                                               ),
                                             ),
                                           ],
                                         ),
                                       )
                                     else if (isPending)
-                                      Wrap(
-                                        spacing: 10,
-                                        runSpacing: 8,
-                                        crossAxisAlignment:
-                                            WrapCrossAlignment.center,
+                                      Row(
                                         children: [
                                           Container(
                                             padding: const EdgeInsets.symmetric(
@@ -493,9 +492,13 @@ class _LeaveApprovalsViewState extends State<LeaveApprovalsView> {
                                               ),
                                             ),
                                           ),
+                                          const Spacer(),
                                           GestureDetector(
-                                            onTap: () =>
-                                                _handleAction(leave, "2"),
+                                            onTap: () => _handleAction(
+                                              leave,
+                                              "2",
+                                              "Rejected",
+                                            ),
                                             behavior: HitTestBehavior.opaque,
                                             child: const Padding(
                                               padding: EdgeInsets.symmetric(
@@ -513,9 +516,13 @@ class _LeaveApprovalsViewState extends State<LeaveApprovalsView> {
                                               ),
                                             ),
                                           ),
+                                          const SizedBox(width: 10),
                                           GestureDetector(
-                                            onTap: () =>
-                                                _handleAction(leave, "1"),
+                                            onTap: () => _handleAction(
+                                              leave,
+                                              "1",
+                                              "Approved",
+                                            ),
                                             behavior: HitTestBehavior.opaque,
                                             child: Container(
                                               padding:

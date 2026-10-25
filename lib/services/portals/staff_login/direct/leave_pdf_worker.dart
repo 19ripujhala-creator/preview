@@ -342,14 +342,8 @@ class LeavePdfWorker extends StaffNativePrintWorker {
         'leave_format': modal,
       };
     } finally {
-      // Cleanup must not replace either a valid native PDF or the original
-      // capture error. The owning service still checks account/cancellation.
-      try {
-        await browser.closePopup();
-      } catch (_) {}
-      try {
-        await dismissPopups();
-      } catch (_) {}
+      await browser.closePopup();
+      await dismissPopups();
     }
   }
 }

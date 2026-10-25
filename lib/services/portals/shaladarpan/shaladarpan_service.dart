@@ -7,7 +7,6 @@ import 'ranking_status_service.dart';
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shaladarpan/services/core/secure_storage_service.dart';
@@ -37,12 +36,9 @@ class ShaladarpanService {
     _staffSnapshotAt.clear();
   }
 
-  static Map<String, dynamic> _copyStaffDocument(Map data) =>
-      Map<String, dynamic>.from(jsonDecode(jsonEncode(data)) as Map);
-
   static void _rememberStaff(String school, Map data) {
     final key = '$school/$_todayStr';
-    _staffSnapshots[key] = _copyStaffDocument(data);
+    _staffSnapshots[key] = Map<String, dynamic>.from(data);
     _staffSnapshotAt[key] = DateTime.now();
   }
 
@@ -383,14 +379,11 @@ class ShaladarpanService {
         prefs.getBool('attendance_submission_hold_${school}_$_todayStr') ==
         true;
     final at = _staffSnapshotAt[key];
-    // A negative age means the device clock moved backwards: never trust it.
-    final snapshotAge = at == null ? null : DateTime.now().difference(at);
     if (!forceRefresh &&
         !held &&
         !_staffMutationInFlight &&
-        snapshotAge != null &&
-        !snapshotAge.isNegative &&
-        snapshotAge < const Duration(seconds: 30) &&
+        at != null &&
+        DateTime.now().difference(at) < const Duration(seconds: 30) &&
         _isCurrentStaffDocument(
           _staffSnapshots[key] ?? {},
           school,
@@ -398,7 +391,7 @@ class ShaladarpanService {
         )) {
       return {
         'success': true,
-        'data': _copyStaffDocument(_staffSnapshots[key]!),
+        'data': Map<String, dynamic>.from(_staffSnapshots[key]!),
       };
     }
     final readKey = '$key/$forceRefresh/$_staffEpoch';
@@ -547,45 +540,13 @@ class ShaladarpanService {
       }
       return data;
     } catch (e) {
-      debugPrint('Staff attendance fetch failed: $e');
-      return {
-        'success': false,
-        'message': 'Staff attendance could not be loaded. Please try again.',
-      };
+      return {'success': false, 'message': 'Network error: $e'};
     }
-  }
-
-  static Map<String, dynamic> _unconfirmedStaffSubmission(
-    Map<String, dynamic> source,
-    String code,
-    String backendMessage,
-  ) {
-    final portal =
-        source['portal_message']?.toString() ??
-        (source['message_source'] == 'portal'
-            ? source['message']?.toString()
-            : null);
-    final hasPortal = portal?.isNotEmpty == true;
-    return {
-      ...source,
-      'success': false,
-      'code': code,
-      'attendance_verified': false,
-      'submission_attempted': source['submission_attempted'] != false,
-      'requires_verification': source['submission_attempted'] != false,
-      'message': hasPortal ? portal : backendMessage,
-      'message_source': hasPortal ? 'portal' : 'backend',
-      if (hasPortal) ...{
-        'portal_message': portal,
-        'backend_message': backendMessage,
-      },
-    };
   }
 
   static Future<Map<String, dynamic>> submitStaffAttendance(
     List<Map<String, dynamic>> staffList, {
     String? schoolId,
-    String? attendanceDate,
   }) async {
     if (_staffMutationInFlight)
       return {
@@ -595,12 +556,7 @@ class ShaladarpanService {
       };
     _staffMutationInFlight = true;
     invalidateStaffSnapshot();
-    var dispatched = false;
     try {
-      // Freeze the reviewed payload before any storage/network await.
-      staffList = (jsonDecode(jsonEncode(staffList)) as List)
-          .map((row) => Map<String, dynamic>.from(row as Map))
-          .toList();
       final prefs = await SharedPreferences.getInstance();
       final effectiveSchoolId = await _getEffectiveSchoolId(schoolId);
       if (effectiveSchoolId.isEmpty)
@@ -618,15 +574,7 @@ class ShaladarpanService {
           'message': 'School account does not match this attendance.',
         };
       }
-      final date = attendanceDate ?? _todayStr;
-      if (date != _todayStr) {
-        return {
-          'success': false,
-          'code': 'STALE_ATTENDANCE',
-          'submission_attempted': false,
-          'message': 'Attendance belongs to a different date. Refresh before submitting.',
-        };
-      }
+      final date = _todayStr;
       final holdKey = 'attendance_submission_hold_${effectiveSchoolId}_$date';
       if (prefs.getBool(holdKey) == true)
         return {
@@ -635,25 +583,7 @@ class ShaladarpanService {
           'message': 'Verify the previous attendance submission on the portal before retrying.',
         };
       // Persist before POST: a closed app must never blindly replay an uncertain lock.
-      if (!await prefs.setBool(holdKey, true)) {
-        await prefs.remove(holdKey);
-        return {
-          'success': false,
-          'code': 'LOCAL_STORAGE_ERROR',
-          'submission_attempted': false,
-          'message':
-              'Submission safety state could not be stored. Nothing was sent.',
-        };
-      }
-      if (date != _todayStr) {
-        await prefs.remove(holdKey);
-        return {
-          'success': false,
-          'code': 'STALE_ATTENDANCE',
-          'submission_attempted': false,
-          'message': 'Attendance date changed. Refresh before submitting.',
-        };
-      }
+      await prefs.setBool(holdKey, true);
       late Map<String, dynamic> data;
       late int responseStatus;
       if (StudentService.directAttendanceEnabled) {
@@ -668,7 +598,6 @@ class ShaladarpanService {
             'message': 'Direct School login is required.',
           };
         }
-        dispatched = true;
         data = await DirectSchoolSession.staffAttendance!.submit(
           staffList,
           attendanceDate: date,
@@ -676,7 +605,6 @@ class ShaladarpanService {
         );
         responseStatus = 200;
       } else {
-        dispatched = true;
         final res = await http
             .post(
               Uri.parse("$_baseUrl/api/shaladarpan/staff/submit"),
@@ -696,35 +624,14 @@ class ShaladarpanService {
           (detail is Map && detail['submission_attempted'] == false))
         await prefs.remove(holdKey);
       final current = await SecureStorageService.getShaladarpanCreds();
-      if (current['id']?.trim() != effectiveSchoolId) {
-        return _unconfirmedStaffSubmission(
-          data,
-          'ACCOUNT_CHANGED',
-          'School account changed. Verify the previous school attendance separately.',
-        );
-      }
+      if (current['id']?.trim() != effectiveSchoolId)
+        return {
+          'success': false,
+          'code': 'ACCOUNT_CHANGED',
+          'message': 'School account changed. Verify the previous school attendance separately.',
+        };
       if (responseStatus == 200) {
         if (isSubmissionConfirmed(data)) {
-          final readback = data['data'] as Map;
-          final expected = staffList
-              .map((row) => row['staffId']?.toString().trim())
-              .toSet();
-          final actual = readback['staff'] is List
-              ? (readback['staff'] as List)
-                    .whereType<Map>()
-                    .map((row) => row['staffId']?.toString().trim())
-                    .toSet()
-              : <String?>{};
-          if (!_isCurrentStaffDocument(readback, effectiveSchoolId, date) ||
-              expected.length != staffList.length ||
-              expected.length != actual.length ||
-              !expected.containsAll(actual)) {
-            return _unconfirmedStaffSubmission(
-              data,
-              'SAVE_UNCONFIRMED',
-              'Submitted school, date or staff identities did not match portal readback. Refresh and verify before retrying.',
-            );
-          }
           await prefs.remove(holdKey);
           await prefs.setString('attendance_verified_date', date);
           await prefs.setBool('attendance_already_marked', true);
@@ -743,11 +650,12 @@ class ShaladarpanService {
           }
         }
         if (data['success'] == true && !isSubmissionConfirmed(data)) {
-          return _unconfirmedStaffSubmission(
-            data,
-            'SAVE_UNCONFIRMED',
-            'Portal attendance has not been confirmed. Refresh before retrying.',
-          );
+          return {
+            'success': false,
+            'code': 'SAVE_UNCONFIRMED',
+            'submission_attempted': true,
+            'message': 'Portal attendance has not been confirmed. Refresh before retrying.',
+          };
         }
         return data;
       }
@@ -755,17 +663,10 @@ class ShaladarpanService {
     } catch (_) {
       return {
         'success': false,
-        'code': dispatched ? 'MUTATION_AMBIGUOUS' : 'LOCAL_STORAGE_ERROR',
-        'submission_attempted': dispatched,
-        'requires_verification': dispatched,
-        'message': dispatched
-            ? 'Submission result is unknown. Verify portal attendance before retrying.'
-            : 'Submission could not be prepared. Nothing was sent.',
+        'code': 'MUTATION_AMBIGUOUS',
+        'message': 'Submission result is unknown. Verify portal attendance before retrying.',
       };
     } finally {
-      // Reject a read admitted during this mutation even if its response arrives
-      // after the mutation settled. It must not replace verified saved state.
-      invalidateStaffSnapshot();
       _staffMutationInFlight = false;
     }
   }

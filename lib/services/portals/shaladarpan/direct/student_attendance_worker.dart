@@ -170,15 +170,11 @@ class _AttendanceDocument {
       if (StudentAttendanceWorker._staleFormText(message)) {
         throw AttendanceWorkerError('PORTAL_RESPONSE_ERROR', message, {
           'form_state_rejected': true,
-          'portal_message': message,
-          'message_source': 'portal',
         });
       }
     }
     final title = StudentAttendanceWorker.text(soup.querySelector('title'));
-    final heading = StudentAttendanceWorker.text(
-      soup.querySelector('h2') ?? soup.querySelector('h1'),
-    );
+    final heading = StudentAttendanceWorker.text(soup.querySelector('h1'));
     if ([
       'server error',
       'runtime error',
@@ -188,19 +184,12 @@ class _AttendanceDocument {
       'invalid postback or callback argument',
       'the state information is invalid',
     ].any((x) => '$title $heading'.toLowerCase().contains(x))) {
-      final message = heading.isNotEmpty ? heading : title;
-      throw AttendanceWorkerError('PORTAL_RESPONSE_ERROR', message, {
-        'portal_message': message,
-        'message_source': 'portal',
-      });
+      throw AttendanceWorkerError(
+        'PORTAL_RESPONSE_ERROR',
+        title.isNotEmpty ? title : heading,
+      );
     }
     if (response.status < 200 || response.status >= 300) {
-      if (heading.isNotEmpty) {
-        throw AttendanceWorkerError('PORTAL_RESPONSE_ERROR', heading, {
-          'portal_message': heading,
-          'message_source': 'portal',
-        });
-      }
       throw AttendanceWorkerError('PORTAL_HTTP', 'HTTP ${response.status}');
     }
     await worker.observeUrl?.call(url);
@@ -1062,8 +1051,6 @@ class StudentAttendanceWorker {
     String? section,
     required bool userConfirmed,
   }) async {
-    // Caller-owned rows must not change while WebForms preflight awaits HTTP.
-    students = students.map((row) => Map<String, Object?>.from(row)).toList();
     if (!userConfirmed) {
       return {
         'success': false,
@@ -1110,11 +1097,6 @@ class StudentAttendanceWorker {
         'attendance_verified': true,
         'verified': true,
         'summary': confirmation['summary'],
-        'students': (confirmation['students'] as List)
-            .map((row) => Map<String, dynamic>.from(row as Map))
-            .toList(),
-        'total': (confirmation['students'] as List).length,
-        'data_verified': confirmation['data_verified'] == true,
         'updatedCount': unchanged ? 0 : updates.changed,
         'portalMessages': portalMessages,
         if (portalMessages.isNotEmpty) ...{

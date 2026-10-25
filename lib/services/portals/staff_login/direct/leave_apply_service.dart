@@ -17,7 +17,6 @@ class StaffLeaveApplyService {
   final StaffHttpAuth registry;
   final PortalCoordinator coordinator;
   final StaffReadService reads;
-  bool _applying = false;
   bool _owned(String user) =>
       user.isNotEmpty &&
       staffLower(registry.current()?.user ?? '') == staffLower(user);
@@ -37,19 +36,10 @@ class StaffLeaveApplyService {
     } on StaffLeavePayloadError catch (e) {
       return _failure(e.code, e.message);
     }
-    if (user.isEmpty || (registry.current() != null && !_owned(user)))
+    if (!_owned(user))
       return _failure('ACCOUNT_CHANGED', 'Staff login changed.');
     final confirmed = data['confirmed'] == true;
-    if (confirmed && _applying) {
-      return _failure(
-        'ACTION_BUSY',
-        'A leave application is already in progress.',
-      );
-    }
-    if (confirmed) {
-      _applying = true;
-      reads.invalidateHistory();
-    }
+    if (confirmed) reads.invalidateHistory();
     try {
       if (!confirmed) {
         await coordinator.ensureReady(Kind.read);
@@ -99,22 +89,12 @@ class StaffLeaveApplyService {
     } on CoordinatorError catch (e) {
       final upstream = e.extra['upstream_response'];
       return {
-        if (upstream is Map) ...Map<String, dynamic>.from(upstream),
         ...e.asDetail(),
-        'submission_attempted': e.kind == ErrorKind.mutationAmbiguous ||
-            (upstream is Map && upstream['submission_attempted'] == true),
-        if (upstream is Map && upstream['message_source'] == 'portal') ...{
+        if (upstream is Map && upstream['message_source'] == 'portal')
           'message_source': 'portal',
-          'portal_message': upstream['portal_message'] ?? upstream['message'],
-          if (upstream['backend_message'] != null || e.extra['coordinator_message'] != null)
-            'backend_message': upstream['backend_message'] ?? e.extra['coordinator_message'],
-        },
       };
     } finally {
-      if (confirmed) {
-        reads.invalidateHistory();
-        _applying = false;
-      }
+      if (confirmed) reads.invalidateHistory();
     }
   }
 }

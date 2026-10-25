@@ -1,3 +1,6 @@
+import 'package:shaladarpan/widgets/page_content_motion.dart';
+import 'package:shaladarpan/widgets/page_transitions.dart';
+import 'package:shaladarpan/widgets/route_completion.dart';
 import 'package:shaladarpan/widgets/adaptive_layout.dart';
 import 'package:shaladarpan/services/core/account_identity.dart';
 
@@ -545,17 +548,17 @@ class _AccountTabViewState extends State<AccountTabView>
   ].join('\n');
 
   void _aboutApp() => Navigator.of(context)
-      .push(CupertinoPageRoute<void>(builder: (_) => const _AboutAppScreen()));
+      .push(appPageRoute<void>(builder: (_) => const _AboutAppScreen()));
 
   void _openReport() => Navigator.of(context).push(
-    CupertinoPageRoute<void>(
+    appPageRoute<void>(
       builder: (_) =>
           ReportIssueScreen(connectionSummary: _connectionSummary()),
     ),
   );
 
   void _openHelp() => Navigator.of(context).push(
-    CupertinoPageRoute<void>(
+    appPageRoute<void>(
       builder: (_) => _HelpCenterScreen(connectionSummary: _connectionSummary),
     ),
   );
@@ -622,8 +625,9 @@ class _AccountTabViewState extends State<AccountTabView>
       final visiblePasswords = <String, bool>{};
       bool saving = false;
       String? error;
-      final savedSuccessfully = await Navigator.of(context).push<bool>(
-        CupertinoPageRoute<bool>(
+      final savedSuccessfully = await pushPageAndWaitForExit<bool>(
+        context,
+        appPageRoute<bool>(
           builder: (sheetContext) => StatefulBuilder(
             builder: (context, update) {
               Widget pair(String title, String idKey, String passKey) {
@@ -800,7 +804,7 @@ class _AccountTabViewState extends State<AccountTabView>
                           ],
                         ),
                       ),
-                      child: SizedBox.expand(
+                      child: PageContentMotion(child: SizedBox.expand(
                         child: Align(
                           alignment: Alignment.topCenter,
                           child: ConstrainedBox(
@@ -998,7 +1002,7 @@ class _AccountTabViewState extends State<AccountTabView>
                             ),
                           ),
                         ),
-                      ),
+                      )),
                     ),
                   ),
                 ),
@@ -1881,7 +1885,7 @@ class _HelpCenterScreenState extends State<_HelpCenterScreen> {
             colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)],
           ),
         ),
-        child: SizedBox.expand(
+        child: PageContentMotion(child: SizedBox.expand(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
             child: Align(
@@ -2001,7 +2005,7 @@ class _HelpCenterScreenState extends State<_HelpCenterScreen> {
                       width: double.infinity,
                       child: FilledButton.icon(
                         onPressed: () => Navigator.of(context).push(
-                          CupertinoPageRoute<void>(
+                          appPageRoute<void>(
                             builder: (_) => ReportIssueScreen(
                               connectionSummary: widget.connectionSummary(),
                             ),
@@ -2054,7 +2058,7 @@ class _HelpCenterScreenState extends State<_HelpCenterScreen> {
               ),
             ),
           ),
-        ),
+        )),
       ),
     );
   }
@@ -2118,7 +2122,7 @@ class _AboutAppScreenState extends State<_AboutAppScreen> {
           colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)],
         ),
       ),
-      child: SizedBox.expand(
+      child: PageContentMotion(child: SizedBox.expand(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
           child: Align(
@@ -2292,7 +2296,7 @@ class _AboutAppScreenState extends State<_AboutAppScreen> {
             ),
           ),
         ),
-      ),
+      )),
     ),
   );
 }

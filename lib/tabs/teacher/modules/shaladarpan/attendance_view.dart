@@ -1,5 +1,6 @@
 // lib/tabs/teacher/modules/shaladarpan/attendance_view.dart
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -7,23 +8,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/shaladarpan_service.dart';
-import 'package:shaladarpan/services/portals/shaladarpan/staff_attendance_status.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/offline_attendance_queue.dart';
 
 const String kAppFont = 'PlusJakartaSans';
 
 class AttendanceView extends StatefulWidget {
   final VoidCallback? onAttendanceUpdated;
-  const AttendanceView({super.key, this.onAttendanceUpdated, this.clock});
-  @visibleForTesting
-  final DateTime Function()? clock;
+  const AttendanceView({super.key, this.onAttendanceUpdated});
 
   @override
   State<AttendanceView> createState() => _AttendanceViewState();
 }
 
-class _AttendanceViewState extends State<AttendanceView>
-    with WidgetsBindingObserver {
+class _AttendanceViewState extends State<AttendanceView> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode(
     debugLabel: 'staff_attendance_search',
@@ -36,7 +33,7 @@ class _AttendanceViewState extends State<AttendanceView>
 
   bool get _attendanceHoursOpen {
     // Submission display rule; the authenticated worker enforces writes. READ remains available.
-    final ist = (widget.clock?.call() ?? DateTime.now()).toUtc().add(
+    final ist = DateTime.now().toUtc().add(
       const Duration(hours: 5, minutes: 30),
     );
     return ist.hour >= 8 && ist.hour < 17;
@@ -58,12 +55,6 @@ class _AttendanceViewState extends State<AttendanceView>
   bool _hasOfflineQueue = false;
   bool _isSyncingQueue = false;
   bool _isRefreshing = false;
-  int _loadVersion = 0;
-  String? _loadedSchool, _loadedDate, _queueError;
-  late String _observedDay;
-  late bool _observedHours;
-  bool get _currentRoster =>
-      _loadedDate == _todayStr && _loadedSchool?.isNotEmpty == true;
 
   OverlayEntry? _currentToastEntry;
 
@@ -72,7 +63,7 @@ class _AttendanceViewState extends State<AttendanceView>
   List<Map<String, dynamic>> _staffList = [];
 
   String get _todayStr {
-    final now = (widget.clock?.call() ?? DateTime.now()).toUtc().add(
+    final now = DateTime.now().toUtc().add(
       const Duration(hours: 5, minutes: 30),
     );
     return "${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
@@ -81,19 +72,24 @@ class _AttendanceViewState extends State<AttendanceView>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _observedDay = _todayStr;
-    _observedHours = _attendanceHoursOpen;
+    // Repaint at window boundaries; resume a fetch when access opens.
+    bool previousOpen = _attendanceHoursOpen;
     _attendanceClockTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      _checkAttendanceClock();
+      if (!mounted) return;
+      final isOpen = _attendanceHoursOpen;
+      if (isOpen != previousOpen) {
+        previousOpen = isOpen;
+        setState(() {});
+        if (isOpen && !_isAlreadyMarked && !_isSubmitting) {
+          _loadCachedOrFetchStaff(forceRefresh: true);
+        }
+      }
     });
     _loadCachedOrFetchStaff();
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    ++_loadVersion;
     _toastTimer?.cancel();
     _attendanceClockTimer?.cancel();
     _currentToastEntry?.remove();
@@ -102,167 +98,11 @@ class _AttendanceViewState extends State<AttendanceView>
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed)
-      _checkAttendanceClock(resumed: true);
-  }
-
-  void _checkAttendanceClock({bool resumed = false}) {
-    if (!mounted || _isSubmitting || _isSyncingQueue) return;
-    final dayChanged = _observedDay != _todayStr;
-    final hoursChanged = _observedHours != _attendanceHoursOpen;
-    _observedDay = _todayStr;
-    _observedHours = _attendanceHoursOpen;
-    if (dayChanged) {
-      setState(() {
-        _staffList = [];
-        _loadedSchool = _loadedDate = null;
-        _isAlreadyMarked = _requiresVerification = false;
-        _portalMarkedAt = _loadError = null;
-        _isLoading = true;
-      });
-    } else if (hoursChanged) {
-      setState(() {});
-    }
-    if (dayChanged ||
-        (resumed && !_isRefreshing && !_isLoading) ||
-        (hoursChanged && _observedHours && !_isAlreadyMarked && !_isLoading)) {
-      unawaited(_loadCachedOrFetchStaff(forceRefresh: true));
-    }
-  }
-
   Future<void> _checkOfflineQueue() async {
-    try {
-      final hasPending = await OfflineAttendanceQueue.hasPendingQueue();
-      if (mounted)
-        setState(() {
-          _hasOfflineQueue = hasPending;
-          _queueError = null;
-        });
-    } catch (_) {
-      if (mounted)
-        setState(() {
-          _hasOfflineQueue = true;
-          _queueError =
-              'Stored draft could not be read. Attendance was not submitted.';
-        });
-    }
-    // Stored drafts never auto-submit, including an unreadable legacy draft.
-  }
+    final hasPending = await OfflineAttendanceQueue.hasPendingQueue();
+    if (mounted) setState(() => _hasOfflineQueue = hasPending);
 
-  Future<void> _reviewStoredDraft() async {
-    if (_isLoading || _isRefreshing || _isSubmitting || _isSyncingQueue) return;
-    try {
-      final draft = await OfflineAttendanceQueue.getQueuedAttendance();
-      if (!mounted || draft == null) return;
-      if (_loadedSchool == null || draft['school_id'] != _loadedSchool) {
-        _showAppleToast(
-          'Stored draft belongs to a different school. Sign in to that school to review it.',
-          icon: CupertinoIcons.exclamationmark_circle,
-          iconColor: const Color(0xFFF59E0B),
-        );
-        return;
-      }
-      final rows = draft['staff_list'] is List
-          ? (draft['staff_list'] as List).whereType<Map>().toList()
-          : <Map>[];
-      String status(Map row) {
-        final code = (row['status_code'] ?? row['attendanceCode'])?.toString();
-        if (code == null || code.isEmpty) {
-          return row['original_status']?.toString() ??
-              'Status could not be identified';
-        }
-        final live = _staffList.where(
-          (r) => r['staffId']?.toString() == row['staffId']?.toString(),
-        );
-        final options = row['options'] is List
-            ? row['options'] as List
-            : live.isNotEmpty
-            ? live.first['options'] as List
-            : const [];
-        final matches = options
-            .whereType<Map>()
-            .where((o) => o['code']?.toString() == code)
-            .toList();
-        return matches.length == 1
-            ? matches.single['label'].toString()
-            : 'Status could not be identified';
-      }
-
-      await showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        builder: (ctx) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(ctx).height * .75,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Stored attendance draft',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'School: ${draft['school_id']} · Date: ${draft['date']}',
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    draft['sync_state'] == 'uncertain'
-                        ? 'Previous submission requires portal verification. This draft will not be resubmitted.'
-                        : draft['date'] != _todayStr
-                        ? 'This draft belongs to an earlier date and cannot be submitted today.'
-                        : 'Review only. Select any required changes in the current attendance form.',
-                  ),
-                  const SizedBox(height: 12),
-                  Flexible(
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: [
-                        for (final row in rows)
-                          ListTile(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              row['name']?.toString() ??
-                                  'Staff ID ${row['staffId']}',
-                            ),
-                            subtitle: Text(status(row)),
-                          ),
-                        if (rows.isEmpty)
-                          const Text(
-                            'No readable employee records in this draft.',
-                          ),
-                      ],
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Close'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    } catch (_) {
-      if (mounted)
-        _showAppleToast(
-          'Stored draft could not be read. Attendance was not submitted.',
-          icon: CupertinoIcons.exclamationmark_circle,
-          iconColor: const Color(0xFFF59E0B),
-        );
-    }
+    // Attendance cannot be updated after lock. Stored drafts never auto-submit.
   }
 
   Future<void> _triggerQueueSync({bool silent = false}) async {
@@ -312,71 +152,84 @@ class _AttendanceViewState extends State<AttendanceView>
   }
 
   Future<void> _fetchLiveStaff({bool forceRefresh = false}) async {
-    final version = ++_loadVersion;
-    final date = _todayStr;
-    bool current() => mounted && version == _loadVersion && date == _todayStr;
-    if (mounted && !_isLoading) setState(() => _isRefreshing = true);
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (!current()) return;
-      final school =
+      final savedSchoolId =
           prefs.getString('saved_school_id') ??
           prefs.getString('saved_shala_id') ??
           prefs.getString('school_id') ??
-          '';
-      if (prefs.getBool('attendance_submission_hold_${school}_$date') == true) {
+          "";
+
+      if (mounted &&
+          prefs.getBool(
+                'attendance_submission_hold_${savedSchoolId}_$_todayStr',
+              ) ==
+              true) {
         setState(() => _requiresVerification = true);
       }
       final res = await ShaladarpanService.fetchStaffAttendance(
-        schoolId: school,
+        schoolId: savedSchoolId,
         forceRefresh: forceRefresh,
       );
-      if (!current()) return;
-      final data = res['data'];
-      if (res['success'] == true &&
-          data is Map &&
-          data['school_id']?.toString() == school &&
-          data['date'] == date) {
-        _loadedSchool = school;
-        _loadedDate = date;
+      if (res['success'] == true && res['data'] != null) {
+        final bool isMarked = ShaladarpanService.isAttendanceConfirmed(
+          res['data'] as Map,
+        );
+
+        if (isMarked) {
+          await prefs.setString('attendance_verified_date', _todayStr);
+          await prefs.setBool('attendance_already_marked', true);
+        }
+
+        if (!mounted) return;
         _requiresVerification =
-            prefs.getBool('attendance_submission_hold_${school}_$date') == true;
+            prefs.getBool(
+              'attendance_submission_hold_${savedSchoolId}_$_todayStr',
+            ) ==
+            true;
         _loadError = null;
-        _applyStaffPayload(
-          data,
-          enforceMarked: ShaladarpanService.isAttendanceConfirmed(data),
+        _applyStaffPayload(res['data'], enforceMarked: isMarked);
+        await prefs.setString(
+          'cached_staff_attendance',
+          jsonEncode(res['data']),
         );
-        // The shared service already persists the verified snapshot/flags.
       } else {
-        setState(() {
-          _staffList = [];
-          _loadedSchool = _loadedDate = null;
-          _isAlreadyMarked = false;
-          _loadError = res['message']?.toString() ?? 'Current school attendance could not be verified. Refresh before submitting.';
-        });
-        _showAppleToast(
-          _loadError!,
-          icon: CupertinoIcons.exclamationmark_circle,
-          iconColor: const Color(0xFFF59E0B),
-        );
+        if (mounted)
+          setState(() {
+            _staffList = [];
+            _isAlreadyMarked = false;
+            _loadError =
+                res['message']?.toString() ??
+                'Could not fetch portal attendance.';
+          });
+        if (mounted)
+          _showAppleToast(
+            res['message']?.toString() ?? 'Could not fetch portal attendance.',
+            icon: CupertinoIcons.exclamationmark_circle,
+            iconColor: const Color(0xFFF59E0B),
+          );
       }
     } catch (_) {
-      if (current())
+      if (mounted)
         setState(() {
           _staffList = [];
-          _loadedSchool = _loadedDate = null;
           _isAlreadyMarked = false;
           _loadError = 'Could not fetch portal attendance.';
         });
-    } finally {
-      if (current()) {
-        setState(() {
-          _isLoading = false;
-          _isRefreshing = false;
-        });
-        unawaited(_checkOfflineQueue());
-      }
+      if (mounted)
+        _showAppleToast(
+          'Could not fetch portal attendance.',
+          icon: CupertinoIcons.exclamationmark_circle,
+          iconColor: const Color(0xFFF59E0B),
+        );
     }
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isRefreshing = false;
+      });
+    }
+    if (mounted) _checkOfflineQueue();
   }
 
   void _applyStaffPayload(dynamic data, {bool? enforceMarked}) {
@@ -453,11 +306,13 @@ class _AttendanceViewState extends State<AttendanceView>
             ?.toString()
             .toLowerCase() ??
         '';
-    return staffAttendanceCategory(
-      text,
-      approvedLeave: row['appliedLeave'] != null,
-      selectionPending: row['editable'] == true && selected.isEmpty,
-    );
+    if (text.contains('absent') || text.contains('अनुपस्थित')) return 'absent';
+    if (text.contains('leave') ||
+        text.contains('अवकाश') ||
+        row['appliedLeave'] != null)
+      return 'leave';
+    if (text.contains('present') || text.contains('उपस्थित')) return 'present';
+    return 'other';
   }
 
   int get _presentCount =>
@@ -466,9 +321,6 @@ class _AttendanceViewState extends State<AttendanceView>
       _staffList.where((s) => _rowCategory(s) == 'leave').length;
   int get _otherCount =>
       _staffList.where((s) => _rowCategory(s) == 'other').length;
-  int get _pendingCount =>
-      _staffList.where((s) => _rowCategory(s) == 'pending').length;
-
   int get _absentCount =>
       _staffList.where((s) => _rowCategory(s) == 'absent').length;
 
@@ -570,19 +422,7 @@ class _AttendanceViewState extends State<AttendanceView>
         _requiresVerification ||
         _isRefreshing)
       return;
-    if (!_currentRoster) return;
-    for (final row in _staffList) {
-      if (row['editable'] == true && _rowCategory(row) == 'pending') {
-        _showAppleToast(
-          'Select attendance status for ${row['name']} before submitting.',
-          icon: CupertinoIcons.exclamationmark_circle,
-          iconColor: const Color(0xFFF59E0B),
-        );
-        return;
-      }
-    }
     _haptic();
-    final reviewedVersion = _loadVersion;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -677,11 +517,8 @@ class _AttendanceViewState extends State<AttendanceView>
                     final s = _staffList[index];
                     final code = s["attendanceCode"];
                     final label = _rowStatus(s);
-                    // Category comes from the portal label (same source as the
-                    // main list); portal option codes are not stable constants.
-                    final category = _rowCategory(s);
-                    final isPresent = category == 'present';
-                    final isCustom = category == 'leave' || category == 'other';
+                    final isPresent = code == "0";
+                    final isCustom = code != "0" && code != "89";
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -796,14 +633,6 @@ class _AttendanceViewState extends State<AttendanceView>
                         _showTimeRestriction();
                         return;
                       }
-                      if (reviewedVersion != _loadVersion || !_currentRoster) {
-                        _showAppleToast(
-                          'Attendance changed during review. Review the current roster again.',
-                          icon: CupertinoIcons.exclamationmark_circle,
-                          iconColor: const Color(0xFFF59E0B),
-                        );
-                        return;
-                      }
                       _executeSubmit();
                     },
                     child: const Text(
@@ -829,9 +658,13 @@ class _AttendanceViewState extends State<AttendanceView>
       _showTimeRestriction();
       return;
     }
-    if (!_canEdit) return;
-    final reviewedSchool = _loadedSchool!;
-    final reviewedDate = _loadedDate!;
+    if (_isSubmitting ||
+        _isSyncingQueue ||
+        _isLoading ||
+        _isAlreadyMarked ||
+        _requiresVerification ||
+        _isRefreshing)
+      return;
     HapticFeedback.mediumImpact();
     setState(() => _isSubmitting = true);
 
@@ -851,22 +684,31 @@ class _AttendanceViewState extends State<AttendanceView>
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedSchoolId = reviewedSchool;
+      final savedSchoolId =
+          prefs.getString('saved_school_id') ??
+          prefs.getString('saved_shala_id') ??
+          prefs.getString('school_id') ??
+          "";
 
       final res = await ShaladarpanService.submitStaffAttendance(
         payload,
         schoolId: savedSchoolId,
-        attendanceDate: reviewedDate,
       );
 
-      if (!mounted || reviewedDate != _todayStr) return;
+      if (!mounted) return;
 
       if (ShaladarpanService.isSubmissionConfirmed(res)) {
         HapticFeedback.lightImpact();
+        await prefs.setString('attendance_verified_date', _todayStr);
+        await prefs.setBool('attendance_already_marked', true);
 
         if (res['data'] != null) {
           final freshData = Map<String, dynamic>.from(res['data']);
           _applyStaffPayload(freshData, enforceMarked: true);
+          await prefs.setString(
+            'cached_staff_attendance',
+            jsonEncode(freshData),
+          );
         }
 
         if (!mounted) return;
@@ -897,14 +739,9 @@ class _AttendanceViewState extends State<AttendanceView>
             ].contains(res['code'])) {
           setState(() => _requiresVerification = true);
         }
-        final portalOrErrorMessage =
-            res['message']?.toString() ??
-            'Attendance could not be confirmed. Refresh before retrying.';
-        final verificationMessage = res['backend_message']?.toString();
         _showAppleToast(
-          verificationMessage?.isNotEmpty == true
-              ? '$portalOrErrorMessage\nApp verification: $verificationMessage'
-              : portalOrErrorMessage,
+          res['message']?.toString() ??
+              'Attendance could not be confirmed. Refresh before retrying.',
           icon: CupertinoIcons.exclamationmark_circle,
           iconColor: const Color(0xFFF59E0B),
         );
@@ -918,10 +755,7 @@ class _AttendanceViewState extends State<AttendanceView>
           iconColor: const Color(0xFFF59E0B),
         );
     } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-        _checkAttendanceClock();
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -931,7 +765,6 @@ class _AttendanceViewState extends State<AttendanceView>
         .map((o) => Map<String, dynamic>.from(o as Map))
         .toList();
     if (options.isEmpty) return;
-    final pickerVersion = _loadVersion;
 
     if (_isAlreadyMarked) return;
     _haptic();
@@ -998,27 +831,28 @@ class _AttendanceViewState extends State<AttendanceView>
                     Color optBg = const Color(0xFFE2E8F0);
                     Color optText = const Color(0xFF1E293B);
 
-                    final category = staffAttendanceCategory(opt['label']);
-                    if (category == 'present') {
+                    if (opt["code"] == "0") {
                       optBg = const Color(0xFF34C759);
                       optText = Colors.white;
-                    } else if (category == 'leave') {
+                    } else if (opt["code"] == "88" || opt["code"] == "89") {
                       optBg = const Color(0xFFFFF59D);
                       optText = const Color(0xFF0F172A);
-                    } else if (category == 'absent') {
+                    } else if (opt["code"] == "90") {
                       optBg = const Color(0xFFFFF5F5);
                       optText = const Color(0xFFE03131);
+                    } else if (opt["code"] != "0") {
+                      optBg = const Color(0xFFFEF3C7);
+                      optText = const Color(0xFFB45309);
                     }
 
                     return GestureDetector(
                       onTap: () {
-                        if (!_canEdit ||
-                            pickerVersion != _loadVersion ||
-                            !_staffList.contains(teacher))
-                          return;
+                        if (!_canEdit) return;
                         _haptic();
                         setState(() {
                           teacher["attendanceCode"] = opt["code"];
+                          if (opt["code"] != "89")
+                            teacher["isApprovedLeave"] = false;
                         });
                         Navigator.pop(context);
                       },
@@ -1072,7 +906,6 @@ class _AttendanceViewState extends State<AttendanceView>
   }
 
   bool get _canEdit =>
-      _currentRoster &&
       _attendanceHoursOpen &&
       !_isAlreadyMarked &&
       !_isSubmitting &&
@@ -1144,7 +977,10 @@ class _AttendanceViewState extends State<AttendanceView>
       for (final row in _staffList) {
         if (row['editable'] != true) continue;
         final options = (row['options'] as List).where((option) {
-          return staffAttendanceCategory(option['label']) == 'present';
+          final label = '${option['label']}'.toLowerCase();
+          return !label.contains('absent') &&
+              !label.contains('अनुपस्थित') &&
+              (label.contains('present') || label.contains('उपस्थित'));
         }).toList();
         if (options.length == 1)
           row['attendanceCode'] = options.single['code'].toString();
@@ -1201,7 +1037,7 @@ class _AttendanceViewState extends State<AttendanceView>
                   excludeSemantics: true,
                   child: Container(
                     padding: EdgeInsets.symmetric(
-                      horizontal: compact ? 6 : 12,
+                      horizontal: compact ? 5 : 12,
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
@@ -1216,44 +1052,50 @@ class _AttendanceViewState extends State<AttendanceView>
                         ),
                       ],
                     ),
-                    child: Builder(
-                      builder: (context) {
-                        final label = Text(
-                          items[i].$1,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: kAppFont,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF64748B),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                items[i].$1,
+                                style: const TextStyle(
+                                  fontFamily: kAppFont,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  '${items[i].$2}',
+                                  style: const TextStyle(
+                                    fontFamily: kAppFont,
+                                    fontSize: 20,
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        );
-                        final count = FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            '${items[i].$2}',
-                            style: const TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 20,
-                              height: 1.2,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF0F172A),
+                        ),
+                        if (constraints.maxWidth >= 350) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            width: compact ? 24 : 32,
+                            height: compact ? 24 : 32,
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: items[i].$3.withOpacity(0.09),
+                              borderRadius: BorderRadius.circular(9),
                             ),
-                          ),
-                        );
-                        final iconSize = compact ? 20.0 : 22.0;
-                        final icon = Container(
-                          width: compact ? 28 : 32,
-                          height: compact ? 28 : 32,
-                          padding: EdgeInsets.all(compact ? 4 : 5),
-                          decoration: BoxDecoration(
-                            color: items[i].$3.withOpacity(0.09),
-                            borderRadius: BorderRadius.circular(9),
-                          ),
-                          child: SizedBox.square(
-                            dimension: iconSize,
                             child: i < 2
                                 ? CustomPaint(
                                     painter: _AttendancePersonIcon(
@@ -1263,48 +1105,12 @@ class _AttendanceViewState extends State<AttendanceView>
                                   )
                                 : Icon(
                                     items[i].$4,
-                                    size: iconSize,
+                                    size: 22,
                                     color: items[i].$3,
                                   ),
                           ),
-                        );
-                        if (compact) {
-                          // The label has the full card width. A separate count
-                          // row leaves space for a readable, contained icon.
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              label,
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Expanded(child: count),
-                                  const SizedBox(width: 4),
-                                  icon,
-                                ],
-                              ),
-                            ],
-                          );
-                        }
-                        return Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  label,
-                                  const SizedBox(height: 3),
-                                  count,
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            icon,
-                          ],
-                        );
-                      },
+                        ],
+                      ],
                     ),
                   ),
                 ),
@@ -1330,30 +1136,6 @@ class _AttendanceViewState extends State<AttendanceView>
         return Column(
           children: [
             _attendanceSummary(),
-            if (_pendingCount > 0)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.pending_actions_rounded,
-                      size: 14,
-                      color: Color(0xFF64748B),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Selection pending: $_pendingCount',
-                        style: const TextStyle(
-                          fontFamily: kAppFont,
-                          fontSize: 11,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             const SizedBox(height: 10),
             // Search Bar
             Padding(
@@ -1473,9 +1255,8 @@ class _AttendanceViewState extends State<AttendanceView>
                             ),
                           ),
                           const SizedBox(height: 1),
-                          Text(
-                            _queueError ??
-                                "Draft retained • Review before submitting",
+                          const Text(
+                            "Draft retained • Review before submitting",
                             style: TextStyle(
                               fontFamily: kAppFont,
                               fontSize: 10.5,
@@ -1487,7 +1268,11 @@ class _AttendanceViewState extends State<AttendanceView>
                       ),
                     ),
                     GestureDetector(
-                      onTap: _reviewStoredDraft,
+                      onTap: () => _showAppleToast(
+                        'Review current portal attendance before submitting a stored draft.',
+                        icon: CupertinoIcons.exclamationmark_circle,
+                        iconColor: const Color(0xFFF59E0B),
+                      ),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -1723,6 +1508,8 @@ class _AttendanceViewState extends State<AttendanceView>
                               ),
                               itemBuilder: (context, index) {
                                 final teacher = filteredStaff[index];
+                                final String currentCode =
+                                    teacher["attendanceCode"];
                                 final bool hasAppliedLeave =
                                     teacher["appliedLeave"] != null;
                                 final bool isApprovedToday =
@@ -1736,19 +1523,23 @@ class _AttendanceViewState extends State<AttendanceView>
                                   0xFFCBD5E1,
                                 );
 
-                                final category = _rowCategory(teacher);
-                                if (category == 'present') {
+                                if (currentCode == "0") {
                                   dropdownBgColor = const Color(0xFFDCFCE7);
                                   dropdownTextColor = const Color(0xFF16A34A);
                                   dropdownBorderColor = const Color(0xFF86EFAC);
-                                } else if (category == 'leave') {
+                                } else if (currentCode == "88" ||
+                                    currentCode == "89") {
                                   dropdownBgColor = const Color(0xFFFFFBEB);
                                   dropdownTextColor = const Color(0xFFD97706);
                                   dropdownBorderColor = const Color(0xFFFDE68A);
-                                } else if (category == 'absent') {
+                                } else if (currentCode == "90") {
                                   dropdownBgColor = const Color(0xFFFEE2E2);
                                   dropdownTextColor = const Color(0xFFDC2626);
                                   dropdownBorderColor = const Color(0xFFFCA5A5);
+                                } else {
+                                  dropdownBgColor = const Color(0xFFFEF3C7);
+                                  dropdownTextColor = const Color(0xFFB45309);
+                                  dropdownBorderColor = const Color(0xFFFCD34D);
                                 }
 
                                 final String fullStatusLabel = _rowStatus(
@@ -2049,15 +1840,13 @@ class _AttendanceViewState extends State<AttendanceView>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
-                            child: Text(
-                              "Showing ${filteredStaff.length.toString().padLeft(2, '0')} of ${_staffList.length.toString().padLeft(2, '0')} employees",
-                              style: const TextStyle(
-                                fontFamily: kAppFont,
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF64748B),
-                              ),
+                          Text(
+                            "Showing ${filteredStaff.length.toString().padLeft(2, '0')} of ${_staffList.length.toString().padLeft(2, '0')} employees",
+                            style: const TextStyle(
+                              fontFamily: kAppFont,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF64748B),
                             ),
                           ),
                         ],

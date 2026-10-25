@@ -1,9 +1,11 @@
+import 'package:shaladarpan/widgets/page_content_motion.dart';
+import 'package:shaladarpan/widgets/route_completion.dart';
+import 'package:shaladarpan/widgets/render_surfaces.dart';
 import 'package:shaladarpan/tabs/rajsims/mpr_report_screen.dart';
 import 'package:shaladarpan/widgets/adaptive_layout.dart';
 
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -536,13 +538,15 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                                     child: _ScaleTouch(
                                       onTap: () {
                                         _haptic();
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
+                                        pushPageAndWaitForExit(
+                    context,
+                    MaterialPageRoute(
                                             builder: (context) =>
                                                 const AddLegacyDistributionScreen(),
                                           ),
-                                        ).then((_) => _loadDataProgressive());
+                                        ).then((_) {
+                                          if (mounted) _loadDataProgressive();
+                                        });
                                       },
                                       child: Container(
                                         height: 36,
@@ -586,13 +590,15 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                                     child: _ScaleTouch(
                                       onTap: () {
                                         _haptic();
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
+                                        pushPageAndWaitForExit(
+                    context,
+                    MaterialPageRoute(
                                             builder: (context) =>
                                                 const AddDistributionScreen(),
                                           ),
-                                        ).then((_) => _loadDataProgressive());
+                                        ).then((_) {
+                                          if (mounted) _loadDataProgressive();
+                                        });
                                       },
                                       child: Container(
                                         height: 36,
@@ -1439,8 +1445,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
             Positioned(
               left: -50,
               top: -40,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 85, sigmaY: 85),
+              child: StaticBlur(sigma: 85,
                 child: Container(
                   width: 260,
                   height: 260,
@@ -1454,8 +1459,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
             Positioned(
               right: -50,
               top: 40,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+              child: StaticBlur(sigma: 90,
                 child: Container(
                   width: 240,
                   height: 240,
@@ -1467,7 +1471,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
               ),
             ),
 
-            SafeArea(
+            PageContentMotion(child: SafeArea(
               bottom: false,
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -2454,7 +2458,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                   );
                 },
               ),
-            ),
+            )),
           ],
         ),
       ),
@@ -3388,8 +3392,7 @@ class _AddLegacyDistributionScreenState
             Positioned(
               left: -50,
               top: -40,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 85, sigmaY: 85),
+              child: StaticBlur(sigma: 85,
                 child: Container(
                   width: 260,
                   height: 260,
@@ -3403,8 +3406,7 @@ class _AddLegacyDistributionScreenState
             Positioned(
               right: -50,
               top: 40,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 90, sigmaY: 90),
+              child: StaticBlur(sigma: 90,
                 child: Container(
                   width: 240,
                   height: 240,
@@ -3416,7 +3418,7 @@ class _AddLegacyDistributionScreenState
               ),
             ),
 
-            SafeArea(
+            PageContentMotion(child: SafeArea(
               bottom: false,
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -4472,7 +4474,7 @@ class _AddLegacyDistributionScreenState
                   );
                 },
               ),
-            ),
+            )),
           ],
         ),
       ),
@@ -5492,14 +5494,16 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
               child: ElevatedButton.icon(
                 onPressed: () {
                   _haptic();
-                  Navigator.push(
+                  pushPageAndWaitForExit(
                     context,
                     MaterialPageRoute(
                       builder: (context) => widget.isLegacy
                           ? const AddLegacyDistributionScreen()
                           : const AddDistributionScreen(),
                     ),
-                  ).then((_) => _fetchDistributionRecords(force: true));
+                  ).then((_) {
+                    if (mounted) _fetchDistributionRecords(force: true);
+                  });
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0F172A),
@@ -5554,8 +5558,7 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
               Positioned(
                 left: -50,
                 top: -40,
-                child: ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 85, sigmaY: 85),
+                child: StaticBlur(sigma: 85,
                   child: Container(
                     width: 260,
                     height: 260,
@@ -5567,7 +5570,7 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
                 ),
               ),
 
-              SafeArea(
+              PageContentMotion(child: SafeArea(
                 child: Column(
                   children: [
                     Padding(
@@ -5900,7 +5903,7 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
                     ),
                   ],
                 ),
-              ),
+              )),
             ],
           ),
         ),

@@ -38,7 +38,6 @@ class _ClassMappingViewState extends State<ClassMappingView> {
   Future<void> _loadCachedThenFetch() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (!mounted) return;
       final cachedJson = prefs.getString(
         "cached_class_mapping_${widget.schoolId}",
       );

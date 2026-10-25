@@ -1,23 +1,32 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shaladarpan/services/core/secure_storage_service.dart';
 import 'package:shaladarpan/services/core/ecosystem_service.dart';
 
-import '../../core/direct/async_primitives.dart';
 import 'shaladarpan_service.dart';
 
 class OfflineAttendanceQueue {
   static const String _queueKey = 'offline_attendance_queue_payload';
   static Future<Map<String, dynamic>>? _sync;
-  static final _storageLock = AsyncMutex();
+  static Future<void> _storageTail = Future<void>.value();
   static String get _todayStr {
     final now = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
-  static Future<T> _serialized<T>(Future<T> Function() operation) =>
-      _storageLock.protect(operation);
+  static Future<T> _serialized<T>(Future<T> Function() operation) {
+    final result = Completer<T>();
+    _storageTail = _storageTail.then((_) async {
+      try {
+        result.complete(await operation());
+      } catch (e, stack) {
+        result.completeError(e, stack);
+      }
+    });
+    return result.future;
+  }
 
   static Future<void> saveToQueue({required String schoolId, required List<Map<String, dynamic>> staffList}) =>
       _serialized(() async {
@@ -44,7 +53,7 @@ class OfflineAttendanceQueue {
             throw StateError('Resolve the existing queued attendance before replacing it.');
           }
         }
-        final stored = await prefs.setString(
+        await prefs.setString(
           _queueKey,
           jsonEncode({
             'date': _todayStr,
@@ -54,10 +63,6 @@ class OfflineAttendanceQueue {
             'staff_list': normalized,
           }),
         );
-        if (!stored) {
-          await prefs.reload();
-          throw StateError('Attendance draft could not be stored.');
-        }
       });
 
   static Future<Map<String, dynamic>?> getQueuedAttendance() => _serialized(() async {
@@ -86,9 +91,7 @@ class OfflineAttendanceQueue {
     if (success) {
       await prefs.remove(_queueKey);
     } else if (uncertain) {
-      if (!await prefs.setString(_queueKey, jsonEncode({...current, 'sync_state': 'uncertain'}))) {
-        throw StateError('Attendance draft safety state could not be stored.');
-      }
+      await prefs.setString(_queueKey, jsonEncode({...current, 'sync_state': 'uncertain'}));
     }
   });
 
@@ -143,7 +146,7 @@ class OfflineAttendanceQueue {
       }
       // Persist uncertainty BEFORE dispatch, including app termination during POST.
       await _settle(queued, false, uncertain: true);
-      final result = await ShaladarpanService.submitStaffAttendance(staff, schoolId: school, attendanceDate: queued['date']?.toString());
+      final result = await ShaladarpanService.submitStaffAttendance(staff, schoolId: school);
       final success = ShaladarpanService.isSubmissionConfirmed(result);
       await _settle(queued, success);
       // Failures remain held for manual portal verification; no blind automatic replay.

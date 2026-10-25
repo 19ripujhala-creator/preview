@@ -1,4 +1,7 @@
+import 'package:shaladarpan/widgets/route_completion.dart';
 import 'package:shaladarpan/widgets/adaptive_layout.dart';
+import 'modules/format5/format5_screen.dart';
+import 'modules/monthly_attendance/monthly_attendance_screen.dart';
 // lib/tabs/student/student.dart
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -97,7 +100,7 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
         if (mounted) setState(() => _nicProgress = progress);
       });
       if (!mounted) return;
-      await Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => NicPdfPreviewScreen(
+      await pushPageAndWaitForExit<void>(context, MaterialPageRoute<void>(builder: (_) => NicPdfPreviewScreen(
         bytes: file.bytes, filename: file.filename, classLabel: label)));
     } catch (error) {
       if (mounted) setState(() => _nicError = error is FormatException ? error.message : '$error');
@@ -111,7 +114,7 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
     _haptic();
     setState(() => _attendanceOpening = true);
     try {
-      await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+      await pushPageAndWaitForExit<void>(context, MaterialPageRoute<void>(
         builder: (_) => const DailyAttendanceSheetScreen(),
       ));
     } finally {
@@ -124,7 +127,7 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
     _haptic();
     setState(() => _reportOpening = true);
     try {
-      await Navigator.of(context).push<void>(MaterialPageRoute<void>(
+      await pushPageAndWaitForExit<void>(context, MaterialPageRoute<void>(
         builder: (_) => SchoolReportScreen(
           date: _reportDate,
           backgroundColor: Scaffold.maybeOf(context)?.widget.backgroundColor ?? Theme.of(context).scaffoldBackgroundColor,
@@ -178,7 +181,7 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
               const SizedBox(height: 12),
               _surface(child: _moduleRow(title: 'Monthly attendance', subtitle: 'Monthly register • Planned',
                 icon: CupertinoIcons.calendar, iconAsset: 'assets/icons/leave.png',
-                onTap: () => _planned('Monthly Attendance'))),
+                onTap: () => Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => const MonthlyAttendanceScreen())))),
               const SizedBox(height: 22),
                 ]),
               ),
@@ -217,7 +220,8 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
                   icon: CupertinoIcons.shield_lefthalf_fill, onTap: () => _planned('Character Certificate')),
                 _rowDivider(),
                 _moduleRow(title: 'Format 5', subtitle: 'Student profile ledger',
-                  icon: CupertinoIcons.doc_plaintext, onTap: () => _planned('Format 5')),
+                  icon: CupertinoIcons.doc_plaintext, onTap: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(builder: (_) => const Format5Screen()))),
                 _rowDivider(),
                 _moduleRow(title: 'Format 9', subtitle: 'Cumulative academic record',
                   icon: CupertinoIcons.folder, onTap: () => _planned('Format 9')),

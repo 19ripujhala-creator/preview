@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/page_content_motion.dart';
 import 'package:shaladarpan/widgets/adaptive_layout.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/viffs_status_service.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/ranking_status_service.dart';
@@ -573,7 +574,7 @@ abstract class MonthlyTasksScreenState extends State<MonthlyTasksScreen> {
         actions: [IconButton(tooltip: 'Read latest portal form', onPressed: _busy ? null : () async { if (await _discard()) _load(refresh: true); }, icon: const Icon(CupertinoIcons.arrow_clockwise, size: 18))]),
       body: Container(decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
         stops: [0, .45, 1], colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)])),
-        child: SizedBox.expand(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        child: PageContentMotion(child: SizedBox.expand(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: BoxConstraints(maxWidth: AppAdaptive.contentWidth(MediaQuery.sizeOf(context).width) - 32),
             child: Form(key: _formKey, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
@@ -663,7 +664,7 @@ abstract class MonthlyTasksScreenState extends State<MonthlyTasksScreen> {
               ],
             ])),
           )),
-        )),
+        ))),
       ),
     )),
   );

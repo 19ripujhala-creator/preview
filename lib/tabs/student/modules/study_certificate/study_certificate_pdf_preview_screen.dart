@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/page_content_motion.dart';
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -65,7 +66,7 @@ class StudyCertificatePdfPreviewScreen extends StatelessWidget {
       )),
     ),
     body: AdaptiveWorkspace(background: true,
-      child: LayoutBuilder(builder: (context, viewport) {
+      child: PageContentMotion(child: LayoutBuilder(builder: (context, viewport) {
         // Fit a complete portrait page on larger screens; phones retain
         // their readable full-width preview. Only display sizing changes.
         final pageRatio = PdfPageFormat.a4.width / PdfPageFormat.a4.height;
@@ -93,7 +94,7 @@ class StudyCertificatePdfPreviewScreen extends StatelessWidget {
             ),
           ),
         );
-      }),
+      })),
     ),
     ),
   );

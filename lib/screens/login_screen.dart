@@ -1206,24 +1206,6 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
 
                         const SizedBox(height: 10),
 
-                        if (!kDebugMode && !kIsWeb && _currentStep == 2)
-                          OutlinedButton.icon(
-                            onPressed:
-                                _directRajsimsRunning ||
-                                    _directStaffRunning ||
-                                    _directLoginRunning ||
-                                    _directTestRunning ||
-                                    _isLoading
-                                ? null
-                                : _testDirectRajsimsLogin,
-                            icon: const Icon(Icons.info_outline),
-                            label: Text(
-                              _directRajsimsRunning
-                                  ? 'Checking RajSIMS login…'
-                                  : 'Check RajSIMS login',
-                            ),
-                          ),
-
                         if (kDebugMode && !kIsWeb) ...[
                           SizedBox(
                             width: double.infinity,

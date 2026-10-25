@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/render_surfaces.dart';
 // lib/tabs/teacher/modules/stafflogin/staff_login_view.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
@@ -373,7 +374,7 @@ class _StaffLoginViewState extends State<StaffLoginView> {
               padding: EdgeInsets.symmetric(
                 horizontal: _selectedStaffModuleIndex == 2 ? 0.0 : 16.0,
               ),
-              child: IndexedStack(
+              child: RetainedTabStack(
                 index: _selectedStaffModuleIndex,
                 children: [
                   LeaveApplyView(currentUser: _currentUser),

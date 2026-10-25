@@ -3,7 +3,6 @@
 import 'dart:io';
 
 import '../../../core/direct/coordinator.dart';
-import '../../../core/direct/runtime_slot.dart';
 import 'auth_manager.dart';
 import 'captcha_onnx.dart';
 
@@ -68,12 +67,15 @@ class SchoolDirectRuntime {
   final SchoolAuthManager auth;
   final SchoolOnnxCaptcha captcha;
   final PortalCoordinator coordinator;
-  static final _slot = RuntimeSlot<SchoolDirectRuntime>(
-    create: _create,
-    close: (runtime) => runtime._closeSafely(),
-  );
+  static Future<SchoolDirectRuntime>? _instance;
+  static Future<void>? _retiring;
+  Future<void>? _close;
 
-  static Future<SchoolDirectRuntime> get() => _slot.get();
+  static Future<SchoolDirectRuntime> get() async {
+    final retiring = _retiring;
+    if (retiring != null) await retiring;
+    return _instance ??= _create();
+  }
 
   static Future<SchoolDirectRuntime> _create() async {
     final captcha = SchoolOnnxCaptcha();
@@ -97,10 +99,23 @@ class SchoolDirectRuntime {
     return SchoolDirectRuntime._(auth, captcha, actual);
   }
 
-  /// Never creates a new session manager while an unsettled old operation could
-  /// still persist cookies: a failed retirement keeps its barrier, and the next
-  /// [get] / [close] retries it (see [RuntimeSlot]).
-  Future<void> close() => _slot.retire(this);
+  Future<void> close() {
+    if (_close != null) return _close!;
+    final pending = _closeSafely();
+    _close = pending;
+    _retiring = pending;
+    pending.then<void>(
+      (_) {
+        _instance = null;
+        _retiring = null;
+      },
+      onError: (Object _, StackTrace __) {
+        // Retain the failed retirement barrier: never create a new session manager
+        // while an unsettled old operation could still persist cookies.
+      },
+    );
+    return pending;
+  }
 
   Future<void> _closeSafely() async {
     await coordinator.shutdown();

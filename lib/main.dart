@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/page_transitions.dart';
 import 'services/portals/rajsims/direct/rajsims_runtime.dart';
 
 // C:\shaladarpan_app\lib\main.dart (or your main file path)
@@ -49,6 +50,7 @@ class RajShalaMobileApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Shaladarpan Ecosystem Automation',
       theme: ThemeData(
+        pageTransitionsTheme: desktopPageTransitions,
         fontFamily: 'PlusJakartaSans',
         textTheme: const TextTheme(
           headlineSmall: TextStyle(
@@ -101,6 +103,9 @@ class RajShalaMobileApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFD3D9E1),
         splashFactory: NoSplash.splashFactory,
         highlightColor: Colors.transparent,
+      ),
+      builder: (context, child) => AppNavigationBackdrop(
+        child: child ?? const SizedBox.shrink(),
       ),
       home: const AppRootCoordinator(),
     );
@@ -258,18 +263,8 @@ class AppRootCoordinatorState extends State<AppRootCoordinator>
     StudentService.directAttendanceEnabled = false;
     DirectSchoolSession.reset();
     EcosystemService.reset();
-    // A retirement that is still waiting on unsettled work reports failure; it
-    // is retried by the next login, so it must not surface as an unhandled error.
-    unawaited(
-      StaffDirectRuntime.reset().catchError((Object _) {
-        debugPrint('Staff runtime is still settling; retried on next login.');
-      }),
-    );
-    unawaited(
-      RajsimsDirectRuntime.reset().catchError((Object _) {
-        debugPrint('RajSIMS runtime is still settling; retried on next login.');
-      }),
-    );
+    unawaited(StaffDirectRuntime.reset());
+    unawaited(RajsimsDirectRuntime.reset());
     NetworkSyncDispatcher().dispose();
     SyncCoordinator.dispose();
     FocusManager.instance.primaryFocus?.unfocus();

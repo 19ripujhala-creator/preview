@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/page_content_motion.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -140,7 +141,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
     body: Container(
       decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
         stops: [0, .45, 1], colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)])),
-      child: SizedBox.expand(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: PageContentMotion(child: SizedBox.expand(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         child: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 680),
           child: Container(padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: _border)),
@@ -192,7 +193,7 @@ class _ReportIssueScreenState extends State<ReportIssueScreen> {
             ])),
           ),
         )),
-      )),
+      ))),
     ),
   ));
 }

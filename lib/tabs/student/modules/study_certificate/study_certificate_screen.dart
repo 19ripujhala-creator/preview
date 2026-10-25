@@ -1,3 +1,5 @@
+import 'package:shaladarpan/widgets/page_content_motion.dart';
+import 'package:shaladarpan/widgets/route_completion.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -41,7 +43,7 @@ class _StudyCertificateScreenState extends State<StudyCertificateScreen> {
       final file = await StudentStudyCertificateService.download(srNo: sr, expectedSchool: school,
         onProgress: (value) { if (mounted) setState(() => _progress = value); });
       if (!mounted) return;
-      await Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) =>
+      await pushPageAndWaitForExit<void>(context, MaterialPageRoute<void>(builder: (_) =>
         StudyCertificatePdfPreviewScreen(bytes: file.bytes, filename: file.filename, srLabel: 'SR : $sr')));
     } catch (error) {
       if (mounted) setState(() => _error = error is FormatException ? error.message : '$error');
@@ -65,7 +67,7 @@ class _StudyCertificateScreenState extends State<StudyCertificateScreen> {
         ]),
       ))),
     ),
-    body: AdaptiveWorkspace(background: true, child: SingleChildScrollView(
+    body: AdaptiveWorkspace(background: true, child: PageContentMotion(child: SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       child: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 480),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -129,6 +131,6 @@ class _StudyCertificateScreenState extends State<StudyCertificateScreen> {
           ),
         ]),
       )),
-    )),
+    ))),
   ));
 }

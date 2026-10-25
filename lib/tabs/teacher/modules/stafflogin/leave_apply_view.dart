@@ -1,3 +1,5 @@
+import 'package:shaladarpan/widgets/page_content_motion.dart';
+import 'package:shaladarpan/widgets/page_transitions.dart';
 import 'package:shaladarpan/widgets/adaptive_layout.dart';
 // lib/tabs/teacher/modules/stafflogin/leave_apply_view.dart
 import 'dart:async';
@@ -10,8 +12,6 @@ import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
 import 'package:shaladarpan/services/portals/staff_login/staff_login_service.dart';
-import 'package:shaladarpan/services/portals/staff_login/direct/leave_result.dart';
-import 'package:shaladarpan/services/portals/staff_login/direct/leave_payload.dart' as staff_payload;
 
 const String kAppFont = 'PlusJakartaSans';
 
@@ -33,50 +33,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
   int _historyRequest = 0;
   String? _historyError;
   bool _isSubmittingLeave = false;
-  bool _requestDialogOpen = false, _reviewingLeave = false;
-  int _viewEpoch = 0;
-  final Set<Route<dynamic>> _ownedDialogs = {};
-  void _trackDialog(BuildContext ctx, int epoch) {
-    final route = ModalRoute.of(ctx);
-    if (route == null || epoch != _viewEpoch || !_ownedDialogs.add(route)) return;
-    unawaited(route.popped.then((_) => _ownedDialogs.remove(route)));
-  }
-  void _closeOwnedDialogs() {
-    final routes = _ownedDialogs.toList().reversed.toList();
-    _ownedDialogs.clear();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      for (final route in routes) {
-        final navigator = route.navigator;
-        if (navigator != null && navigator.mounted && route.isActive) {
-          navigator.removeRoute(route);
-        }
-      }
-    });
-  }
-  String _owner(Map<String, String> user) {
-    for (final key in ['nicId', 'nic_id', 'staffLoginId', 'staffId', 'username', 'id']) {
-      final value = user[key]?.trim() ?? '';
-      if (value.isNotEmpty && value != '--') return value.toLowerCase();
-    }
-    return '';
-  }
-
-  @override
-  void didUpdateWidget(covariant LeaveApplyView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_owner(oldWidget.currentUser) == _owner(widget.currentUser)) return;
-    _viewEpoch++;
-    _historyRequest++;
-    _myLeaveHistory = [];
-    _acceptedLeaveTiming.clear();
-    _generatingPdfId = null;
-    _downloadProgress = 0;
-    unawaited(_pdfProgressSubscription?.cancel());
-    _pdfProgressSubscription = null;
-    _closeOwnedDialogs();
-    _requestDialogOpen = _reviewingLeave = false;
-    _loadLiveLeaveHistory(filter: _activeFilter, refresh: true);
-  }
   final Map<String, Map<String, dynamic>> _acceptedLeaveTiming = {};
   String _leaveTimingKey(dynamic type, dynamic from, dynamic to) =>
       '${type ?? ""}|${from ?? ""}|${to ?? ""}';
@@ -86,8 +42,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
 
   @override
   void dispose() {
-    _viewEpoch++;
-    _closeOwnedDialogs();
     _historyRequest++;
     unawaited(_pdfProgressSubscription?.cancel());
     for (final timer in _toastTimers) {
@@ -208,9 +162,7 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
       if (!mounted || request != _historyRequest) return;
       if (res['success'] != true) {
         final message = res['message']?.toString().trim() ?? '';
-        setState(() => _historyError = staffLeaveDisplayMessage({
-          ...res, 'message': message.isEmpty ? 'Leave history could not be confirmed. Refresh history.' : message,
-        }));
+        setState(() => _historyError = message);
         return;
       }
       final records = res['records'];
@@ -222,7 +174,7 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
     } catch (e) {
       if (!mounted || request != _historyRequest) return;
       final message = e is FormatException ? e.message : e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
-      setState(() => _historyError = 'App: ${message.trim()}');
+      setState(() => _historyError = message.trim());
     } finally {
       if (mounted && request == _historyRequest) {
         setState(() => _isLoadingHistory = false);
@@ -284,51 +236,24 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
 
     double? days = double.tryParse((raw["days"] ?? raw["total_days"] ?? raw["TotalDays"] ?? "").toString());
     if (days != null && (!days.isFinite || days <= 0)) days = null;
+
+    final acceptedTiming = _acceptedLeaveTiming[_leaveTimingKey(
+        raw["leave_type_id"] ?? matchedType["code"], fromStr, toStr)];
+    if (days == null && acceptedTiming != null) {
+      days = (acceptedTiming["days"] as num).toDouble();
+    }
     final bool daysFromPortal = days != null;
-    final typeCode = raw["leave_type_id"]?.toString() ?? matchedType["code"]?.toString();
-    final acceptedTiming = _acceptedLeaveTiming[_leaveTimingKey(typeCode, fromStr, toStr)];
-    days ??= (acceptedTiming?["days"] as num?)?.toDouble();
-    final startDate = _parseDmyDate(fromStr), endDate = _parseDmyDate(toStr);
-    final sameDay = startDate != null && endDate != null && DateUtils.isSameDay(startDate, endDate);
-    String? durationCode(dynamic value) => switch (value?.toString().trim().toLowerCase()) {
-      '1' || 'full' || 'full day' => '1',
-      '2' || 'half' || 'half day' => '2',
-      _ => null,
-    };
-    String? periodCode(dynamic value) => switch (value?.toString().trim().toLowerCase()) {
-      '1' || 'forenoon' || 'fn' || 'before noon' => '1',
-      '2' || 'afternoon' || 'an' || 'after noon' => '2',
-      _ => null,
-    };
-    final fromDuration = durationCode(raw['from_duration']);
-    final toDuration = durationCode(raw['to_duration']);
-    var duration = durationCode(raw['duration']) ?? acceptedTiming?['duration']?.toString();
-    var period = periodCode(raw['dayType'] ?? raw['day_type']) ?? acceptedTiming?['dayType']?.toString();
-    Map<String, dynamic>? preview;
-    if (fromDuration != null && toDuration != null) {
-      duration = fromDuration == '2' || toDuration == '2' ? '2' : '1';
-      period = fromDuration == '2'
-        ? periodCode(raw['from_day_type'] ?? raw['day_type'] ?? raw['dayType'])
-        : periodCode(raw['to_day_type'] ?? raw['day_type'] ?? raw['dayType']);
-      preview = staff_payload.previewStaffLeave({...raw, 'leave_type_id': typeCode});
-    } else if (duration == '1' || (duration == '2' && period != null)) {
-      preview = staff_payload.previewStaffLeave({
-        'from_date': fromStr, 'to_date': toStr, 'leave_type_id': typeCode,
-        'from_duration': duration == '2' && (sameDay || period == '2') ? 'Half' : 'Full',
-        'to_duration': duration == '2' && (sameDay || period == '1') ? 'Half' : 'Full',
-        'day_type': duration == '2' ? period : null,
-      });
+    double? calendarDays;
+    final startDate = _parseDmyDate(fromStr);
+    final endDate = _parseDmyDate(toStr);
+    if (startDate != null && endDate != null) {
+      final span = DateTime.utc(endDate.year, endDate.month, endDate.day)
+          .difference(DateTime.utc(startDate.year, startDate.month, startDate.day)).inDays + 1;
+      if (span > 0) calendarDays = span.toDouble();
     }
-    if (preview?['success'] == true) {
-      days ??= (preview!['preview']['total_days'] as num).toDouble();
-    }
-    if (typeCode == '12' && sameDay) {
-      duration = '2';
-      days ??= 0.5;
-    }
-    // Calendar dates alone cannot distinguish a half-day CL from a full day.
-    // Missing portal timing remains unknown rather than becoming a saved count.
-    if (sameDay && days == 0.5) duration = '2';
+    final durationRaw = raw["duration"]?.toString().trim().toLowerCase();
+    final durationCode = ["2", "half", "half day"].contains(durationRaw) ? "2"
+        : ["1", "full", "full day"].contains(durationRaw) ? "1" : null;
 
     final rawReason = (raw["reason"] ?? raw["leave_reason"] ?? raw["reason_name"] ?? "--").toString().trim();
     final matchedReason = _resolveLeaveReason(raw["reason_id"] ?? raw["reasonCode"], rawReason);
@@ -342,13 +267,12 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
       "typeName": matchedType["label"] ?? rawType,
       "from_date": fromStr,
       "to_date": toStr,
-      "days": days,
+      "days": days ?? calendarDays,
       "daysFromPortal": daysFromPortal,
       "dateRange": dateRange,
       "status": status,
-      "duration": duration,
-      "dayType": period,
-      "timingEditable": !(fromDuration == '2' && toDuration == '2' && !sameDay),
+      "duration": durationCode ?? acceptedTiming?["duration"],
+      "dayType": raw["dayType"]?.toString() ?? acceptedTiming?["dayType"]?.toString(),
       "from_duration": raw["from_duration"],
       "to_duration": raw["to_duration"],
       "from_day_type": raw["from_day_type"],
@@ -364,7 +288,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
   Future<void> _openInAppPdfViewer(Map<String, dynamic> item) async {
     final String itemId = item["id"]?.toString() ?? "";
     if (!mounted || _generatingPdfId != null) return;
-    final epoch = _viewEpoch;
 
     setState(() {
       _generatingPdfId = itemId;
@@ -373,7 +296,7 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
     HapticFeedback.mediumImpact();
 
     final progressSubscription = Stream.periodic(const Duration(milliseconds: 100), (i) => i).listen((tick) {
-      if (!mounted || epoch != _viewEpoch || _generatingPdfId != itemId) return;
+      if (!mounted || _generatingPdfId != itemId) return;
       setState(() {
         if (_downloadProgress < 0.35) {
           _downloadProgress += 0.04;
@@ -401,7 +324,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
       );
 
       await progressSubscription.cancel();
-      if (!mounted || epoch != _viewEpoch) return;
 
       if (pdfBytes == null || pdfBytes.length < 5 || String.fromCharCodes(pdfBytes.take(5)) != '%PDF-') {
         throw Exception("The portal did not return a valid PDF.");
@@ -413,17 +335,16 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
         await Future.delayed(const Duration(milliseconds: 220));
       }
 
-      if (!mounted || epoch != _viewEpoch) return;
+      if (!mounted) return;
 
       Navigator.push(
         context,
-        CupertinoPageRoute(
+        appPageRoute(
           builder: (context) => ModernLeavePdfPreviewScreen(pdfBytes: pdfBytes, item: item),
         ),
       );
     } catch (e) {
       await progressSubscription.cancel();
-      if (!mounted || epoch != _viewEpoch) return;
       _showAppleToast(
         "${e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '')}",
         icon: CupertinoIcons.exclamationmark_triangle_fill,
@@ -431,7 +352,7 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
     } finally {
       await progressSubscription.cancel();
       if (identical(_pdfProgressSubscription, progressSubscription)) _pdfProgressSubscription = null;
-      if (mounted && epoch == _viewEpoch) {
+      if (mounted) {
         setState(() {
           _generatingPdfId = null;
           _downloadProgress = 0.0;
@@ -493,8 +414,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
   }
 
   Future<DateTime?> _pickMinimalDate(BuildContext ctx, DateTime initial, DateTime first, DateTime last) async {
-    if (!ctx.mounted || !_requestDialogOpen) return null;
-    final epoch = _viewEpoch;
     DateTime displayedMonth = DateTime(initial.year, initial.month);
     DateTime selectedDate = initial;
 
@@ -503,7 +422,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
       barrierDismissible: false,
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (context) {
-        _trackDialog(context, epoch);
         return Theme(
           data: ThemeData.light(useMaterial3: true).copyWith(
             splashFactory: NoSplash.splashFactory,
@@ -779,16 +697,12 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
     required List<Map<String, dynamic>> items,
     required String? selectedCode,
     required Function(String code, String label) onSelect,
-    int? ownerEpoch,
   }) {
-    final epoch = ownerEpoch ?? _viewEpoch;
-    if (!mounted || epoch != _viewEpoch) return;
     showDialog(
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black.withValues(alpha: 0.4),
       builder: (context) {
-        _trackDialog(context, epoch);
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -833,7 +747,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                       final bool isSelected = item["code"] == selectedCode;
                       return InkWell(
                         onTap: () {
-                          if (!mounted || epoch != _viewEpoch) return;
                           onSelect(item["code"]!, item["label"]!);
                           Navigator.pop(context);
                         },
@@ -880,13 +793,7 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
   }
 
   Future<void> _openRequestLeaveDialog({Map<String, dynamic>? existingRecord}) async {
-    if (!mounted || _isSubmittingLeave || _requestDialogOpen) return;
-    final epoch = _viewEpoch;
-    if (existingRecord?['timingEditable'] == false) {
-      _showAppleToast('App: This leave has separate half-day endpoints. Edit it on the portal to preserve both periods.',
-        icon: CupertinoIcons.exclamationmark_triangle_fill);
-      return;
-    }
+    if (!mounted || _isSubmittingLeave) return;
     if (existingRecord != null &&
         (_parseDmyDate(existingRecord['from_date']?.toString()) == null || _parseDmyDate(existingRecord['to_date']?.toString()) == null)) {
       _showAppleToast(
@@ -914,14 +821,13 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
     final String originalFromDateStr = existingRecord?["from_date"] ?? _formatDate(fromDate);
     final String originalToDateStr = existingRecord?["to_date"] ?? _formatDate(toDate);
 
-    String duration = existingRecord?["duration"] ?? (selectedTypeCode == "12" ? "2" : existingRecord == null ? "1" : "0");
-    String dayType = existingRecord?["dayType"] ?? (existingRecord == null ? "1" : "0");
+    String duration = existingRecord?["duration"] ?? (selectedTypeCode == "12" ? "2" : "1");
+    String dayType = existingRecord?["dayType"] ?? "1";
     bool headquarterLeaveReq = existingRecord?["headquarter"] ?? false;
     final TextEditingController addressController = TextEditingController(text: existingRecord?["address"] ?? "");
     final TextEditingController remarkController = TextEditingController(text: existingRecord?["remark"] ?? "");
 
     String? validationError;
-    _requestDialogOpen = true;
 
     try {
       await showDialog(
@@ -929,7 +835,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
         barrierDismissible: false,
         barrierColor: Colors.black.withValues(alpha: 0.4),
         builder: (context) {
-          _trackDialog(context, epoch);
           return Theme(
             data: ThemeData.light(useMaterial3: true).copyWith(
               colorScheme: const ColorScheme(
@@ -948,7 +853,7 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
             child: StatefulBuilder(
               builder: (context, setModalState) {
                 double calculateDays() {
-                  if (fromDate == null || toDate == null || !{'1', '2'}.contains(duration)) return 0.0;
+                  if (fromDate == null || toDate == null) return 0.0;
                   final start = DateTime.utc(fromDate!.year, fromDate!.month, fromDate!.day);
                   final end = DateTime.utc(toDate!.year, toDate!.month, toDate!.day);
                   final span = end.difference(start).inDays + 1;
@@ -1062,7 +967,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                   behavior: HitTestBehavior.opaque,
                                   onTap: () {
                                     _openFigmaSelectorDialog(
-                                      ownerEpoch: epoch,
                                       title: "Select Leave Reason",
                                       items: _leaveReasons,
                                       selectedCode: selectedReasonCode,
@@ -1113,7 +1017,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                   behavior: HitTestBehavior.opaque,
                                   onTap: () {
                                     _openFigmaSelectorDialog(
-                                      ownerEpoch: epoch,
                                       title: "Select Leave Type",
                                       items: _leaveTypes,
                                       selectedCode: selectedTypeCode,
@@ -1293,7 +1196,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                             behavior: HitTestBehavior.opaque,
                                             onTap: () {
                                               _openFigmaSelectorDialog(
-                                      ownerEpoch: epoch,
                                                 title: "Select Duration",
                                                 items: _durationOptions,
                                                 selectedCode: duration,
@@ -1321,7 +1223,7 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                                 children: [
                                                   Expanded(
                                                     child: Text(
-                                                      duration == "2" ? "Half day" : duration == "1" ? "Full day" : "Select duration",
+                                                      duration == "2" ? "Half day" : "Full day",
                                                       style: const TextStyle(
                                                         fontFamily: kAppFont,
                                                         fontSize: 12.5,
@@ -1376,7 +1278,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                     behavior: HitTestBehavior.opaque,
                                     onTap: () {
                                       _openFigmaSelectorDialog(
-                                      ownerEpoch: epoch,
                                         title: "Select Day Type",
                                         items: _dayTypeOptions,
                                         selectedCode: dayType,
@@ -1396,7 +1297,7 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                         children: [
                                           Expanded(
                                             child: Text(
-                                              dayType == "2" ? "Afternoon" : dayType == "1" ? "Forenoon" : "Select period",
+                                              dayType == "2" ? "Afternoon" : "Forenoon",
                                               style: const TextStyle(fontFamily: kAppFont, fontSize: 12.5, color: Color(0xFF0F172A)),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -1501,8 +1402,8 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                         const Divider(height: 1, color: Color(0xFFE2E8F0)),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                          child: Wrap(
-                            alignment: WrapAlignment.end, spacing: 12, runSpacing: 10,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               OutlinedButton(
                                 onPressed: () => Navigator.pop(context),
@@ -1521,13 +1422,10 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 12),
                               ElevatedButton(
                                 onPressed: () async {
-                                  if (_isSubmittingLeave || _reviewingLeave || epoch != _viewEpoch) return;
-                                  if (!{'1', '2'}.contains(duration) || (duration == '2' && !{'1', '2'}.contains(dayType))) {
-                                    setModalState(() => validationError = 'App: Select the leave duration and half-day period before review.');
-                                    return;
-                                  }
+                                  if (_isSubmittingLeave) return;
                                   if (selectedReasonCode == null) {
                                     setModalState(() => validationError = "Please select Leave Reason.");
                                     return;
@@ -1560,22 +1458,16 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                     setModalState(() => validationError = "Check the leave dates. HCL must use one date.");
                                     return;
                                   }
-                                  final selectedLeaveType = _leaveTypes.where((t) => t["code"] == selectedTypeCode);
-                                  if (selectedLeaveType.isEmpty) {
-                                    setModalState(() => validationError = "Please select a valid leave type.");
-                                    return;
-                                  }
-                                  final String finalFull = selectedLeaveType.first["label"];
+                                  final String finalType = _leaveTypes.firstWhere((t) => t["code"] == selectedTypeCode)["short"];
+                                  final String finalFull = _leaveTypes.firstWhere((t) => t["code"] == selectedTypeCode)["label"];
                                   final String formattedDays = calculatedDays % 1 == 0
                                       ? calculatedDays.toInt().toString()
                                       : calculatedDays.toString();
 
-                                  _reviewingLeave = true;
                                   bool? confirmAction = await showDialog<bool>(
                                     context: context,
                                     barrierDismissible: false,
                                     builder: (BuildContext ctx) {
-                                      _trackDialog(ctx, epoch);
                                       return Dialog(
                                         backgroundColor: Colors.transparent,
                                         insetPadding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1661,8 +1553,8 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                                 ),
                                               ),
                                               const SizedBox(height: 22),
-                                              Wrap(
-                                                alignment: WrapAlignment.end, spacing: 10, runSpacing: 8,
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.end,
                                                 children: [
                                                   OutlinedButton(
                                                     onPressed: () => Navigator.pop(ctx, false),
@@ -1681,6 +1573,7 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                                       ),
                                                     ),
                                                   ),
+                                                  const SizedBox(width: 10),
                                                   ElevatedButton(
                                                     onPressed: () => Navigator.pop(ctx, true),
                                                     style: ElevatedButton.styleFrom(
@@ -1704,8 +1597,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                     },
                                   );
 
-                                  if (epoch != _viewEpoch) return;
-                                  _reviewingLeave = false;
                                   if (!context.mounted || !mounted || confirmAction != true || _isSubmittingLeave) return;
                                   _isSubmittingLeave = true;
 
@@ -1750,7 +1641,7 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                     final response = await StaffLoginService.applyLeave(payload);
 
                                     closeLoader();
-                                    if (!context.mounted || !mounted || epoch != _viewEpoch) return;
+                                    if (!context.mounted || !mounted) return;
 
                                     if (response['success'] == true) {
                                       if (existingRecord != null) {
@@ -1765,19 +1656,22 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                         "dayType": duration == "2" ? dayType : null,
                                       };
                                       if (navigator.mounted && formRoute?.isCurrent == true) navigator.pop();
-                                      _showAppleToast(staffLeaveDisplayMessage(response));
+                                      _showAppleToast(
+                                        response['message'] ??
+                                            (existingRecord != null ? "Leave updated successfully" : "$finalType applied successfully"),
+                                      );
                                       // 🚀 FIX: Stay on whichever tab (Pending/All) the user is currently
                                       // viewing instead of always forcing a full "all" reload — keeps the
                                       // fast Pending tab fast even right after an apply/edit action.
                                       await _loadLiveLeaveHistory(filter: _activeFilter, refresh: true);
                                     } else {
-                                      setModalState(() => validationError = staffLeaveDisplayMessage(response));
+                                      setModalState(() => validationError = response['message'] ?? "Leave request failed on server.");
                                     }
                                   } catch (e) {
                                     closeLoader();
-                                    if (!context.mounted || !mounted || epoch != _viewEpoch) return;
+                                    if (!context.mounted || !mounted) return;
                                     setModalState(
-                                      () => validationError = "App: Request result could not be confirmed. Refresh history before retrying.",
+                                      () => validationError = "Request result could not be confirmed. Refresh history before retrying.",
                                     );
                                   } finally {
                                     closeLoader();
@@ -1809,9 +1703,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
         },
       );
     } finally {
-      if (epoch == _viewEpoch) {
-        _requestDialogOpen = _reviewingLeave = false;
-      }
       await Future<void>.delayed(const Duration(milliseconds: 300));
       addressController.dispose();
       remarkController.dispose();
@@ -1857,38 +1748,71 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(color: Colors.white,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE2E8F0))),
-                    child: LayoutBuilder(builder: (context, box) {
-                      final details = Row(children: [
-                        Container(width: 44, height: 44,
-                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFFE2E8F0))),
-                          child: const Icon(CupertinoIcons.paperplane_fill, color: Color(0xFF0F172A), size: 18)),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: const Icon(CupertinoIcons.paperplane_fill, color: Color(0xFF0F172A), size: 18),
+                        ),
                         const SizedBox(width: 12),
-                        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('Apply New Leave', style: TextStyle(fontFamily: kAppFont, fontSize: 14,
-                            fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
-                          SizedBox(height: 2),
-                          Text('Submit casual, medical or special leaves.', maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontFamily: kAppFont, fontSize: 11, color: Color(0xFF64748B))),
-                        ])),
-                      ]);
-                      final request = ElevatedButton(
-                        onPressed: () => _openRequestLeaveDialog(),
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9), elevation: 0),
-                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(CupertinoIcons.add, size: 13, color: Colors.white), SizedBox(width: 4),
-                          Text('Request Leave', style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w700)),
-                        ]));
-                      return box.maxWidth < 420
-                        ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            details, const SizedBox(height: 12), Align(alignment: Alignment.centerRight, child: request)])
-                        : Row(children: [Expanded(child: details), const SizedBox(width: 8), request]);
-                    }),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                "Apply New Leave",
+                                style: TextStyle(
+                                  fontFamily: kAppFont,
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                "Submit casual, medical or special leaves.",
+                                style: TextStyle(fontFamily: kAppFont, fontSize: 11.0, color: Color(0xFF64748B)),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () => _openRequestLeaveDialog(),
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStateProperty.all(const Color(0xFF0F172A)),
+                            foregroundColor: WidgetStateProperty.all(Colors.white),
+                            shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                            padding: WidgetStateProperty.all(const EdgeInsets.symmetric(horizontal: 12, vertical: 9)),
+                            elevation: WidgetStateProperty.all(0),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(CupertinoIcons.add, size: 13, color: Colors.white),
+                              SizedBox(width: 4),
+                              Text(
+                                "Request Leave",
+                                style: TextStyle(fontFamily: kAppFont, fontSize: 11.5, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -1902,24 +1826,21 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          child: Wrap(
-                            spacing: 12, runSpacing: 10,
-                            alignment: WrapAlignment.spaceBetween,
-                            crossAxisAlignment: WrapCrossAlignment.center,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
-                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   _buildLeaveAssetIcon(size: 18, color: const Color(0xFF0F172A)),
                                   const SizedBox(width: 8),
-                                  const Flexible(child: Text(
+                                  const Text(
                                     "Recent leave requests",
                                     style: TextStyle(
                                       fontFamily: kAppFont,
                                       fontSize: 13.5,
                                       fontWeight: FontWeight.w700,
                                       color: Color(0xFF0F172A),
-                                    )),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1927,7 +1848,6 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                 padding: const EdgeInsets.all(2.5),
                                 decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(8)),
                                 child: Row(
-                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     // 🚀 FIX: "All" tab now actually triggers the full,
                                     // multi-page "All Applications" portal scrape (with
@@ -2048,13 +1968,14 @@ class _LeaveApplyViewState extends State<LeaveApplyView> {
                                       final bool isPending = status.toLowerCase() == "pending";
                                       final double daysVal = (item["days"] as num?)?.toDouble() ?? 0.0;
                                       final String daysLabel = daysVal <= 0
-                                          ? "Duration unavailable"
+                                          ? "--"
                                           : daysVal % 1 == 0
                                           ? "${daysVal.toInt()} ${daysVal == 1 ? 'day' : 'days'}"
                                           : "$daysVal days";
-                                      final String durationTypeLabel = item["duration"] == "2" ? "Half day"
-                                          : item["duration"] == "1" ? "Full day"
-                                          : daysVal > 0 && daysVal % 1 != 0 ? "Half day" : "";
+                                      final String durationTypeLabel = daysVal > 0
+                                          ? (daysVal % 1 != 0 ? "Half day" : "Full day")
+                                          : item["duration"] == "2" ? "Half day"
+                                          : item["duration"] == "1" ? "Full day" : "";
 
                                       Color statusBg = const Color(0xFFFEF3C7);
                                       Color statusFg = const Color(0xFFD97706);
@@ -2538,7 +2459,7 @@ class ModernLeavePdfPreviewScreen extends StatelessWidget {
             ),
 
             // 📄 PDF Preview with Transparent Scroll View
-            SafeArea(
+            PageContentMotion(child: SafeArea(
               bottom: false,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 74.0),
@@ -2562,7 +2483,7 @@ class ModernLeavePdfPreviewScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
+            )),
 
             // 🛑 FIX 2: Zero Container for Buttons (No outer white box, direct floating buttons)
             Positioned(

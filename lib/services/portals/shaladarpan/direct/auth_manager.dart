@@ -11,8 +11,6 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
 import '../../../core/direct/async_primitives.dart';
-import '../portal_state.dart'
-    show documentFailure, validateSchoolDocument, SchoolDocumentError;
 import 'school_http.dart';
 import 'server_manager.dart';
 
@@ -58,7 +56,6 @@ class SchoolAuthManager {
   static const maxCaptchaAttempts = 5;
   static const _activeKey = 'rajshala.direct.sd.active';
   static const _cookieKey = 'rajshala.direct.sd.cookies';
-  static const _sessionKey = 'rajshala.direct.sd.session_v2';
   static const _successMarkers = [
     'home_new.aspx',
     'dashboard',
@@ -127,60 +124,35 @@ class SchoolAuthManager {
 
   Future<void> initialize() => _initialization ??= _load();
   Future<void> _load() async {
-    // A present snapshot is authoritative, including a signed-out snapshot.
-    // Never revive legacy state after a corrupt or unreadable current record.
-    String? saved;
     try {
-      saved = await storage.read(_sessionKey);
-    } catch (_) {
-      return;
-    }
-    if (saved != null) {
-      try {
-        final state = jsonDecode(saved);
-        if (state is! Map || state['version'] != 2) return;
-        final active = Map<String, String>.from(state['active'] as Map);
-        final cookies = Map<String, String>.from(state['cookies'] as Map);
-        _active.addAll(active);
-        _cookies = (active['user'] ?? '').isEmpty ? {} : cookies;
-      } catch (_) {
-        _active.clear();
-        _cookies = {};
-        return;
-      }
-    } else {
-      // Accept the previous two-record format on upgrade. All subsequent writes
-      // bind account metadata and cookies in one secure-storage value.
-      try {
-        final active = await storage.read(_activeKey);
-        if (active != null) {
-          final data = jsonDecode(active);
-          if (data is Map) {
-            for (final entry in data.entries) {
-              if (entry.value != null && entry.value.toString().isNotEmpty) {
-                _active[entry.key.toString()] = entry.value.toString();
-              }
+      final active = await storage.read(_activeKey);
+      if (active != null) {
+        final data = jsonDecode(active);
+        if (data is Map) {
+          for (final entry in data.entries) {
+            if (entry.value != null && entry.value.toString().isNotEmpty) {
+              _active[entry.key.toString()] = entry.value.toString();
             }
           }
         }
-      } catch (_) {
-        /* Python treats missing/unreadable state as no saved state. */
       }
-      try {
-        final cookies = await storage.read(_cookieKey);
-        if (cookies != null) {
-          _cookies = Map<String, String>.from(jsonDecode(cookies) as Map);
-        }
-      } catch (_) {
-        _cookies = {};
-      }
-      if (activeSchoolId.isEmpty) _cookies = {};
+    } catch (_) {
+      /* Python treats missing/unreadable state as no saved state. */
     }
-    final needsId = activeSchoolId.isNotEmpty &&
+    try {
+      final cookies = await storage.read(_cookieKey);
+      if (cookies != null) {
+        _cookies = Map<String, String>.from(jsonDecode(cookies) as Map);
+      }
+    } catch (_) {
+      _cookies = {};
+    }
+    if (activeSchoolId.isNotEmpty &&
         _cookies.isNotEmpty &&
-        (_active['session_id'] ?? '').isEmpty;
-    if (needsId) _active['session_id'] = _newSessionId();
-    if (saved == null || needsId) await _persist();
+        (_active['session_id'] ?? '').isEmpty) {
+      _active['session_id'] = _newSessionId();
+      await _persist(_activeKey, _active);
+    }
   }
 
   String _newSessionId() {
@@ -191,18 +163,16 @@ class SchoolAuthManager {
     ).join();
   }
 
-  String _sessionSnapshot() => jsonEncode({
-    'version': 2,
-    'active': Map<String, String>.of(_active),
-    'cookies': Map<String, String>.of(_cookies),
-  });
-
-  Future<void> _persist({(String, String)? expected}) {
-    final frozen = _sessionSnapshot();
+  Future<void> _persist(
+    String key,
+    Map<String, String> data, {
+    (String, String)? expected,
+  }) {
+    final frozen = jsonEncode(Map<String, String>.of(data));
     final operation = _writes.then((_) async {
       if (expected != null && sessionIdentity != expected) return;
       try {
-        await storage.write(_sessionKey, frozen);
+        await storage.write(key, frozen);
       } catch (_) {
         /* Working Python persistence failures are nonfatal. */
       }
@@ -217,20 +187,16 @@ class SchoolAuthManager {
     if (base.isEmpty) return;
     _active['server_base'] = base;
     if (user != null) {
-      if (_active['user'] != user) {
-        _active.remove('session_id');
-        _cookies = {};
-        _retireAuthenticatedClient();
-      }
+      if (_active['user'] != user) _active.remove('session_id');
       _active['user'] = user;
     }
-    await _persist();
+    await _persist(_activeKey, _active);
   }
 
   Future<void> saveSessionCookies(Map<String, String> cookies) async {
     await initialize();
     _cookies = Map.of(cookies);
-    await _persist();
+    await _persist(_cookieKey, _cookies);
   }
 
   Map<String, String> loadSessionCookies() => Map.of(_cookies);
@@ -247,18 +213,7 @@ class SchoolAuthManager {
     _retireAuthenticatedClient();
     _active.clear();
     _cookies.clear();
-    final forgotten = _sessionSnapshot();
     final delete = _writes.then((_) async {
-      try {
-        // Keep an authoritative empty record even if legacy deletion fails.
-        await storage.write(_sessionKey, forgotten);
-      } catch (_) {
-        try {
-          await storage.delete(_sessionKey);
-        } catch (_) {
-          /* Storage failures remain nonfatal. */
-        }
-      }
       for (final key in [_activeKey, _cookieKey]) {
         try {
           await storage.delete(key);
@@ -300,7 +255,7 @@ class SchoolAuthManager {
         final snapshot = owner.jar.snapshot(responseUrl);
         if (snapshot.isEmpty && owner.jar.snapshot().isNotEmpty) return;
         _cookies = snapshot;
-        await _persist(expected: identity);
+        await _persist(_cookieKey, snapshot, expected: identity);
       },
     );
     _clientIdentity = identity;
@@ -357,11 +312,6 @@ class SchoolAuthManager {
     if (_deadMarkers.any(path.contains) ||
         soup.querySelector('#bodyContent_txtUName, #txtUserId') != null) {
       return SchoolProbe.dead;
-    }
-    // A Home URL or leftover logout control cannot prove a healthy session
-    // when the existing document classifier identifies a portal error.
-    if (documentFailure(home['url'], home['text'] as String?) != null) {
-      return SchoolProbe.unknown;
     }
     dom.Element? label;
     var logout = false;
@@ -575,16 +525,11 @@ class SchoolAuthManager {
         OperationCancellation.current?.check();
         final landed = posted.url.toString();
         if (_successMarkers.any(landed.toLowerCase().contains)) {
-          try {
-            validateSchoolDocument(posted.url, posted.text, posted.statusCode);
-          } on SchoolDocumentError catch (error) {
-            return error.result;
-          }
           final node = extractServerBase(landed, nodeBase);
           await saveActiveServerBase(node, user: user);
           await saveSessionCookies(client.jar.snapshot());
           _active['session_id'] = _newSessionId();
-          await _persist();
+          await _persist(_activeKey, _active);
           _retireAuthenticatedClient();
           rememberCredentials?.call(user, password);
           progress?.call(100, 'Portal Live on HOME!');
@@ -652,13 +597,12 @@ class SchoolAuthManager {
     if (user.isEmpty || password.isEmpty) {
       return _fail('NO_CREDENTIALS', 'School ID aur password required hain.');
     }
+    rememberCredentials?.call(user, password);
     final clock = Stopwatch()..start();
-    if (!forceFresh && activeSchoolId == user && sessionIdentity != null) {
+    if (!forceFresh && activeSchoolId == user) {
       progress?.call(20, 'Checking saved session...');
-      final verdict = await probeContext();
-      if (verdict == SchoolProbe.alive) {
+      if (await probeContext() == SchoolProbe.alive) {
         final node = activeServerBase;
-        rememberCredentials?.call(user, password);
         progress?.call(100, 'Portal live (saved session).');
         return {
           'success': true,
@@ -668,12 +612,6 @@ class SchoolAuthManager {
           'latency': 0,
           'message': 'Saved session reused.',
         };
-      }
-      if (verdict != SchoolProbe.dead) {
-        return _fail(
-          'SESSION_UNCERTAIN',
-          'Saved session could not be verified. Please try again shortly.',
-        );
       }
     }
     await forgetSavedSession();

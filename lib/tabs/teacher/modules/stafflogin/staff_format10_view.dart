@@ -1,3 +1,4 @@
+import 'package:shaladarpan/widgets/page_content_motion.dart';
 import 'package:shaladarpan/widgets/adaptive_layout.dart';
 import 'dart:async';
 import 'dart:typed_data';
@@ -365,10 +366,7 @@ class _StaffFormat10ViewState extends State<StaffFormat10View> {
     if (_isDownloading || _isViewing) return;
 
     final nicId = widget.currentUser['nicId'];
-    // Portal names can contain characters that are illegal in file names.
-    final safeName = "${widget.currentUser['name'] ?? 'Staff'}_${nicId ?? 'Doc'}"
-        .replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1F]+'), '_');
-    final fileName = "Format10_$safeName.pdf";
+    final fileName = "Format10_${widget.currentUser['name'] ?? 'Staff'}_${nicId ?? 'Doc'}.pdf";
 
     setState(() {
       if (isDownloadOnly) {
@@ -424,11 +422,8 @@ class _StaffFormat10ViewState extends State<StaffFormat10View> {
       }
     } catch (e) {
       _stopSimulatedProgress();
-      debugPrint('Format-10 failed: $e');
-      // The user may have left the screen; Overlay.of(context) would throw.
-      if (!mounted) return;
       _showAppleToast(
-        message: "Could not prepare Format-10. Please try again.",
+        message: "Error: $e",
         icon: CupertinoIcons.exclamationmark_triangle_fill,
         iconColor: const Color(0xFFEF4444),
       );
@@ -838,7 +833,7 @@ class _Format10PreviewScreen extends StatelessWidget {
                 ],
               ),
             ),
-            SafeArea(
+            PageContentMotion(child: SafeArea(
               bottom: false,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 74.0),
@@ -866,7 +861,7 @@ class _Format10PreviewScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
+            )),
             Positioned(
               left: 20,
               right: 20,

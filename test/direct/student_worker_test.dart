@@ -146,18 +146,6 @@ Future<Map<String, dynamic>> save(
   userConfirmed: confirmed,
 );
 
-void expectSaveWithProof(Map<String, dynamic> result, String golden) {
-  final expectedRead = jsonDecode(fixture('python_worker_read.json')) as Map;
-  expect(result['students'], expectedRead['students']);
-  expect(result['total'], expectedRead['total']);
-  expect(result['data_verified'], true);
-  final originalFields = Map<String, dynamic>.from(result)
-    ..remove('students')
-    ..remove('total')
-    ..remove('data_verified');
-  expect(originalFields, jsonDecode(fixture(golden)));
-}
-
 void main() {
   test(
     'existing service adapter retains full worker responses and snapshots',
@@ -181,7 +169,7 @@ void main() {
         students: students,
         userConfirmed: true,
       );
-      expectSaveWithProof(result.response, 'python_worker_save.json');
+      expect(result.response, jsonDecode(fixture('python_worker_save.json')));
       expect(result.verified, true);
       expect(portal.saves, 1);
     },
@@ -237,7 +225,7 @@ void main() {
     () async {
       final portal = FakePortal();
       final result = await save(portal);
-      expectSaveWithProof(result, 'python_worker_save.json');
+      expect(result, jsonDecode(fixture('python_worker_save.json')));
       expect(portal.saves, 1);
       expect(portal.gets, 2);
       final payload =
@@ -253,7 +241,7 @@ void main() {
   test('already marked and unchanged register never sends a SAVE', () async {
     final portal = FakePortal(marked: true);
     final result = await save(portal);
-    expectSaveWithProof(result, 'python_worker_unchanged.json');
+    expect(result, jsonDecode(fixture('python_worker_unchanged.json')));
     expect(portal.saves, 0);
   });
 

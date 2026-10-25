@@ -567,8 +567,10 @@ class EcosystemService {
       login('shaladarpan', () async {
         final user = credentials['school_id']!,
             password = credentials['school_password']!;
-        // The coordinator checks credentials and lifecycle before reusing a
-        // session; matching School ID alone cannot establish readiness.
+        if (DirectSchoolSession.ready && DirectSchoolSession.schoolId == user) {
+          StudentService.directAttendanceEnabled = true;
+          return {'success': true, 'message': 'School session retained.'};
+        }
         final outcome = await DirectPortalAuth.automaticLogin(
               user: user,
               password: password,

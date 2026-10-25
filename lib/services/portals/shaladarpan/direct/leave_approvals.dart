@@ -115,21 +115,7 @@ class LeaveApprovalsWorker {
 
   Future<_Page> _checked(LeaveHttpReply response, String key) async {
     _check(key);
-    try {
-      validateSchoolDocument(response.url, response.html, response.status);
-    } on SchoolDocumentError catch (error) {
-      if (error.code == 'PAGE_NOT_READY' &&
-          response.url.scheme == 'https' &&
-          response.url.host == 'rajshaladarpan.rajasthan.gov.in' &&
-          html.parse(response.html).querySelector('h2, h1') != null) {
-        throw SchoolDocumentError({
-          ...error.result,
-          'portal_message': error.message,
-          'message_source': 'portal',
-        });
-      }
-      rethrow;
-    }
+    validateSchoolDocument(response.url, response.html, response.status);
     if (response.url.scheme != 'https' ||
         response.url.host != 'rajshaladarpan.rajasthan.gov.in' ||
         !RegExp(
@@ -347,8 +333,6 @@ class LeaveApprovalsWorker {
   }
 
   Future<Map<String, dynamic>> fetch() async {
-    _review = null;
-    _reviewKey = null;
     try {
       final key = sessionKey(), school = schoolId().trim();
       final loaded = await _load(key, school);
@@ -362,12 +346,7 @@ class LeaveApprovalsWorker {
       return loaded.data;
     } catch (error) {
       return {
-        ...LeaveResultMessages.attach(
-          failure(error),
-          error is SchoolDocumentError
-              ? LeaveResultMessages.portalTexts(error.result)
-              : const [],
-        ),
+        ...failure(error),
         'pending_count': null,
         'applications': <Object>[],
       };
@@ -782,9 +761,6 @@ class LeaveApprovalsWorker {
         'refresh_required': pendingError,
       });
     } catch (error) {
-      if (error is SchoolDocumentError) {
-        portalMessages.addAll(LeaveResultMessages.portalTexts(error.result));
-      }
       if (attempted) {
         try {
           final observed = _observed(
