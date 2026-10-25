@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shaladarpan/experiments/direct_portal_auth.dart';
@@ -173,6 +174,16 @@ class _Auth extends DirectPortalAuth {
   }
 }
 
+class _Navigation extends NavigatorObserver {
+  ModalRoute<dynamic>? lastPage;
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is ModalRoute<dynamic>) lastPage = route;
+  }
+}
+
+late _Navigation navigation;
+
 Future<void> _launch(
   WidgetTester t,
   _Auth auth, {
@@ -192,6 +203,7 @@ Future<void> _launch(
     }
     await loader.load();
   });
+  navigation = _Navigation();
   t.view.devicePixelRatio = 1;
   t.view.physicalSize = size;
   DirectSchoolSession.attach(auth, '123');
@@ -199,7 +211,12 @@ Future<void> _launch(
     DefaultAssetBundle(
       bundle: _Assets(),
       child: MaterialApp(
-        theme: ThemeData(pageTransitionsTheme: desktopPageTransitions),
+        navigatorObservers: [navigation],
+        theme: ThemeData(
+          pageTransitionsTheme: desktopPageTransitions,
+          // This fixture bundle omits compiled Material ripple shaders.
+          splashFactory: NoSplash.splashFactory,
+        ),
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context)
               .copyWith(textScaler: TextScaler.linear(textScale)),
@@ -210,6 +227,40 @@ Future<void> _launch(
     ),
   );
   await t.pumpAndSettle();
+}
+
+/// Finish navigation without waiting for the deliberately blocked Edit request
+/// (and its repeating progress indicator). Native route durations differ.
+Future<void> finishTransition(
+  WidgetTester t,
+  ModalRoute<dynamic> route, {
+  bool reverse = false,
+}) async {
+  var exited = false;
+  if (reverse) route.completed.then((_) => exited = true);
+  final duration = reverse
+      ? route.reverseTransitionDuration
+      : route.transitionDuration;
+  final step = duration ~/ 10 + const Duration(milliseconds: 1);
+  for (var frame = 0; frame < 40; frame++) {
+    if (reverse ? exited : route.animation!.isCompleted) break;
+    await t.pump(step);
+  }
+  expect(
+    reverse ? exited : route.animation!.isCompleted,
+    isTrue,
+    reason:
+        'The selected platform route must finish while Edit remains pending.',
+  );
+  await t.pump();
+}
+
+Future<ModalRoute<dynamic>> finishEditTransition(WidgetTester t) async {
+  await t.pump();
+  final route = navigation.lastPage!;
+  expect(route.isFirst, isFalse);
+  await finishTransition(t, route);
+  return route;
 }
 
 Future<void> showStudents(WidgetTester t) async {
@@ -349,8 +400,7 @@ void main() {
         await _launch(t, auth, size: const Size(1920, 1080));
         await showStudents(t);
         await t.tap(find.text('Sample Student'));
-        await t.pump();
-        await t.pump(const Duration(milliseconds: 260));
+        await finishEditTransition(t);
         expect(auth.editGate!.isCompleted, isFalse);
         expect(find.text('Edit Student Profile'), findsOneWidget);
         expect(find.text('Sample Student'), findsOneWidget);
@@ -392,6 +442,12 @@ void main() {
         await cleanup(t);
       }
     },
+
+    variant: const TargetPlatformVariant({
+      TargetPlatform.windows,
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
   );
   testWidgets('cached Edit and deferred fields fit 320px at large text scale', (
     t,
@@ -432,12 +488,11 @@ void main() {
           scrollable: find.byType(Scrollable).first,
         );
         await t.tap(find.text('Edit'));
-        await t.pump();
-        await t.pump(const Duration(milliseconds: 260));
+        final route = await finishEditTransition(t);
         expect(find.text('Edit Student Profile'), findsOneWidget);
         await t.tap(find.text('Cancel'));
         await t.pump();
-        await t.pump(const Duration(milliseconds: 250));
+        await finishTransition(t, route, reverse: true);
         expect(find.text('Edit Student Profile'), findsNothing);
         final count = auth.requests;
         await t.tap(find.text('Sample Student'));
@@ -457,6 +512,12 @@ void main() {
         await cleanup(t);
       }
     },
+
+    variant: const TargetPlatformVariant({
+      TargetPlatform.windows,
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
   );
   testWidgets(
     'delayed Edit cannot enable fields after the school session changes',
@@ -957,7 +1018,7 @@ void main() {
     } finally {
       await cleanup(t);
     }
-  });
+  }, variant: TargetPlatformVariant.desktop());
   testWidgets(
     'portal close glyph is excluded and success can be dismissed on small screens',
     (t) async {
