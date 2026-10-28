@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../screens/school_report_screen.dart';
+import '../attendance_edit_policy.dart';
 
 const String kAppFont = 'PlusJakartaSans';
 
@@ -113,8 +114,19 @@ Future<DateTime?> showCustomCalendarDialog({
           final int daysInMonth = DateUtils.getDaysInMonth(year, month);
           final int firstWeekday = DateTime(year, month, 1).weekday;
           const List<String> monthNames = [
-            "", "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
+            "",
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
           ];
           final List<int> yearsList = List.generate(31, (i) => 2015 + i);
 
@@ -132,7 +144,7 @@ Future<DateTime?> showCustomCalendarDialog({
                     color: Colors.black.withOpacity(0.12),
                     blurRadius: 20,
                     offset: const Offset(0, 6),
-                  )
+                  ),
                 ],
               ),
               child: Column(
@@ -147,8 +159,13 @@ Future<DateTime?> showCustomCalendarDialog({
                         color: Colors.white,
                         elevation: 3,
                         offset: const Offset(0, 30),
-                        constraints: const BoxConstraints(maxHeight: 200, maxWidth: 130),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        constraints: const BoxConstraints(
+                          maxHeight: 200,
+                          maxWidth: 130,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         itemBuilder: (context) => [
                           for (int i = 1; i <= 12; i++)
                             PopupMenuItem<int>(
@@ -159,8 +176,12 @@ Future<DateTime?> showCustomCalendarDialog({
                                 style: TextStyle(
                                   fontFamily: kAppFont,
                                   fontSize: 12.5,
-                                  fontWeight: i == month ? FontWeight.w700 : FontWeight.w500,
-                                  color: i == month ? const Color(0xFFEF4444) : const Color(0xFF0F172A),
+                                  fontWeight: i == month
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: i == month
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFF0F172A),
                                 ),
                               ),
                             ),
@@ -168,7 +189,11 @@ Future<DateTime?> showCustomCalendarDialog({
                         onSelected: (val) {
                           setDialogState(() {
                             final maxDays = DateUtils.getDaysInMonth(year, val);
-                            tempDate = DateTime(year, val, tempDate.day > maxDays ? maxDays : tempDate.day);
+                            tempDate = DateTime(
+                              year,
+                              val,
+                              tempDate.day > maxDays ? maxDays : tempDate.day,
+                            );
                           });
                         },
                         child: Row(
@@ -184,7 +209,11 @@ Future<DateTime?> showCustomCalendarDialog({
                               ),
                             ),
                             const SizedBox(width: 2),
-                            const Icon(Icons.arrow_drop_down_rounded, size: 22, color: Color(0xFFEF4444)),
+                            const Icon(
+                              Icons.arrow_drop_down_rounded,
+                              size: 22,
+                              color: Color(0xFFEF4444),
+                            ),
                           ],
                         ),
                       ),
@@ -193,8 +222,13 @@ Future<DateTime?> showCustomCalendarDialog({
                         color: Colors.white,
                         elevation: 3,
                         offset: const Offset(0, 30),
-                        constraints: const BoxConstraints(maxHeight: 200, maxWidth: 95),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        constraints: const BoxConstraints(
+                          maxHeight: 200,
+                          maxWidth: 95,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         itemBuilder: (context) => [
                           for (final y in yearsList)
                             PopupMenuItem<int>(
@@ -205,16 +239,27 @@ Future<DateTime?> showCustomCalendarDialog({
                                 style: TextStyle(
                                   fontFamily: kAppFont,
                                   fontSize: 12.5,
-                                  fontWeight: y == year ? FontWeight.w700 : FontWeight.w500,
-                                  color: y == year ? const Color(0xFFEF4444) : const Color(0xFF0F172A),
+                                  fontWeight: y == year
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: y == year
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFF0F172A),
                                 ),
                               ),
                             ),
                         ],
                         onSelected: (val) {
                           setDialogState(() {
-                            final maxDays = DateUtils.getDaysInMonth(val, month);
-                            tempDate = DateTime(val, month, tempDate.day > maxDays ? maxDays : tempDate.day);
+                            final maxDays = DateUtils.getDaysInMonth(
+                              val,
+                              month,
+                            );
+                            tempDate = DateTime(
+                              val,
+                              month,
+                              tempDate.day > maxDays ? maxDays : tempDate.day,
+                            );
                           });
                         },
                         child: Row(
@@ -230,7 +275,11 @@ Future<DateTime?> showCustomCalendarDialog({
                               ),
                             ),
                             const SizedBox(width: 2),
-                            const Icon(Icons.arrow_drop_down_rounded, size: 22, color: Color(0xFFEF4444)),
+                            const Icon(
+                              Icons.arrow_drop_down_rounded,
+                              size: 22,
+                              color: Color(0xFFEF4444),
+                            ),
                           ],
                         ),
                       ),
@@ -241,13 +290,69 @@ Future<DateTime?> showCustomCalendarDialog({
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: const [
-                      Text("Mo", style: TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
-                      Text("Tu", style: TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
-                      Text("We", style: TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
-                      Text("Th", style: TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
-                      Text("Fr", style: TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
-                      Text("Sa", style: TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
-                      Text("Su", style: TextStyle(fontFamily: kAppFont, fontSize: 10.0, fontWeight: FontWeight.w600, color: Color(0xFF94A3B8))),
+                      Text(
+                        "Mo",
+                        style: TextStyle(
+                          fontFamily: kAppFont,
+                          fontSize: 10.0,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
+                      Text(
+                        "Tu",
+                        style: TextStyle(
+                          fontFamily: kAppFont,
+                          fontSize: 10.0,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
+                      Text(
+                        "We",
+                        style: TextStyle(
+                          fontFamily: kAppFont,
+                          fontSize: 10.0,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
+                      Text(
+                        "Th",
+                        style: TextStyle(
+                          fontFamily: kAppFont,
+                          fontSize: 10.0,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
+                      Text(
+                        "Fr",
+                        style: TextStyle(
+                          fontFamily: kAppFont,
+                          fontSize: 10.0,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
+                      Text(
+                        "Sa",
+                        style: TextStyle(
+                          fontFamily: kAppFont,
+                          fontSize: 10.0,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
+                      Text(
+                        "Su",
+                        style: TextStyle(
+                          fontFamily: kAppFont,
+                          fontSize: 10.0,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -255,19 +360,28 @@ Future<DateTime?> showCustomCalendarDialog({
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 7,
-                      mainAxisSpacing: 2.5,
-                      crossAxisSpacing: 2.5,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          mainAxisSpacing: 2.5,
+                          crossAxisSpacing: 2.5,
+                        ),
                     itemCount: daysInMonth + (firstWeekday - 1),
                     itemBuilder: (context, index) {
-                      if (index < firstWeekday - 1) return const SizedBox.shrink();
+                      if (index < firstWeekday - 1)
+                        return const SizedBox.shrink();
                       final int day = index - (firstWeekday - 2);
-                      final DateTime currentCellDate = DateTime(year, month, day);
+                      final DateTime currentCellDate = DateTime(
+                        year,
+                        month,
+                        day,
+                      );
 
-                      final bool isDisabled = currentCellDate.isAfter(DateTime.now());
-                      final bool isSelected = currentCellDate.year == tempDate.year &&
+                      final bool isDisabled = currentCellDate.isAfter(
+                        attendanceToday(),
+                      );
+                      final bool isSelected =
+                          currentCellDate.year == tempDate.year &&
                           currentCellDate.month == tempDate.month &&
                           currentCellDate.day == tempDate.day;
 
@@ -275,11 +389,15 @@ Future<DateTime?> showCustomCalendarDialog({
                         behavior: HitTestBehavior.opaque,
                         onTap: isDisabled
                             ? null
-                            : () => setDialogState(() => tempDate = currentCellDate),
+                            : () => setDialogState(
+                                () => tempDate = currentCellDate,
+                              ),
                         child: Container(
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: isSelected ? const Color(0xFFEF4444) : Colors.transparent,
+                            color: isSelected
+                                ? const Color(0xFFEF4444)
+                                : Colors.transparent,
                             shape: BoxShape.circle,
                           ),
                           child: Text(
@@ -287,12 +405,14 @@ Future<DateTime?> showCustomCalendarDialog({
                             style: TextStyle(
                               fontFamily: kAppFont,
                               fontSize: 11.0,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                               color: isDisabled
                                   ? const Color(0xFFCBD5E1)
                                   : isSelected
-                                      ? Colors.white
-                                      : const Color(0xFF1E293B),
+                                  ? Colors.white
+                                  : const Color(0xFF1E293B),
                             ),
                           ),
                         ),
@@ -308,11 +428,23 @@ Future<DateTime?> showCustomCalendarDialog({
                         onPressed: () => Navigator.pop(context, null),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFFCBD5E1)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           minimumSize: const Size(48, 28),
                         ),
-                        child: const Text("Cancel", style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, color: Color(0xFF64748B))),
+                        child: const Text(
+                          "Cancel",
+                          style: TextStyle(
+                            fontFamily: kAppFont,
+                            fontSize: 10.5,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 6),
                       ElevatedButton(
@@ -320,12 +452,24 @@ Future<DateTime?> showCustomCalendarDialog({
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0F172A),
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           minimumSize: const Size(38, 28),
                           elevation: 0,
                         ),
-                        child: const Text("OK", style: TextStyle(fontFamily: kAppFont, fontSize: 10.5, fontWeight: FontWeight.w700)),
+                        child: const Text(
+                          "OK",
+                          style: TextStyle(
+                            fontFamily: kAppFont,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ],
                   ),

@@ -13,6 +13,8 @@ import 'package:shaladarpan/services/portals/shaladarpan/student_service.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/direct/student_attendance_worker.dart';
 import 'package:shaladarpan/tabs/student/modules/student_attendance/screens/daily_attendance_sheet_screen.dart';
 
+import 'package:shaladarpan/tabs/student/modules/student_attendance/attendance_edit_policy.dart';
+
 import 'student_worker_test.dart' show FakeAuth, FakePortal, date;
 
 class _Assets extends CachingAssetBundle {
@@ -183,7 +185,7 @@ void main() {
       p.marked = marked;
       await t.tap(find.byKey(const ValueKey('attendance-date-picker')));
       await t.pumpAndSettle();
-      final now = DateTime.now();
+      final now = attendanceToday();
       if (now.day > 1) {
         await t.tap(
           find.descendant(

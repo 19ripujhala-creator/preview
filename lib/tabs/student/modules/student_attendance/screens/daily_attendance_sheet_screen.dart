@@ -285,7 +285,7 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
 
   String _errorMessage = '';
 
-  DateTime _selectedDate = DateTime.now();
+  DateTime _selectedDate = attendanceToday();
   String _query = '';
   Timer? _dayBoundaryTimer;
 
@@ -1722,7 +1722,7 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
   }
 
   Widget _buildDailyAttendanceHeader() {
-    final isToday = _sameDay(_selectedDate, DateTime.now());
+    final isToday = _sameDay(_selectedDate, attendanceToday());
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
