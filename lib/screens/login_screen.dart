@@ -15,7 +15,6 @@ import 'package:shaladarpan/experiments/direct_portal_auth.dart';
 import 'package:shaladarpan/services/portals/staff_login/direct/staff_runtime.dart';
 import 'package:shaladarpan/services/portals/rajsims/direct/rajsims_runtime.dart';
 
-import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
 
@@ -392,7 +391,42 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
 
   late AnimationController _progressController;
 
-  late VideoPlayerController _videoController;
+  VideoPlayerController? _videoController;
+
+  bool get _supportsOptionalVideo =>
+      kIsWeb ||
+      defaultTargetPlatform == TargetPlatform.android ||
+      defaultTargetPlatform == TargetPlatform.iOS ||
+      defaultTargetPlatform == TargetPlatform.macOS;
+
+  Future<void> _initOptionalVideo() async {
+    if (!_supportsOptionalVideo) return;
+    VideoPlayerController? controller;
+    try {
+      controller = VideoPlayerController.asset(
+        'assets/images/fpo@1x.mp4',
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      );
+      await controller.initialize();
+    } catch (_) {
+      return;
+    }
+    if (!mounted) {
+      unawaited(controller.dispose().catchError((_) {}));
+      return;
+    }
+    _videoController = controller;
+    try {
+      await controller.setLooping(true);
+      await controller.setVolume(0.0);
+      await controller.play();
+      if (!mounted || !identical(_videoController, controller)) return;
+      setState(() => _isVideoReady = true);
+      Future.delayed(const Duration(milliseconds: 60), () {
+        if (mounted && _isVideoReady) setState(() => _showVideo = true);
+      });
+    } catch (_) {}
+  }
 
   bool _isVideoReady = false;
 
@@ -447,8 +481,9 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
       _wizardController.jumpToPage(0);
     }
 
-    if (_isVideoReady && !_videoController.value.isPlaying) {
-      _videoController.play();
+    final video = _videoController;
+    if (_isVideoReady && video != null && !video.value.isPlaying) {
+      unawaited(video.play().catchError((_) {}));
     }
   }
 
@@ -458,27 +493,7 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
 
     _credentialsLoaded = _loadSavedCredentials();
 
-    _videoController =
-        VideoPlayerController.asset(
-            'assets/images/fpo@1x.mp4',
-
-            videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-          )
-          ..initialize().then((_) {
-            if (mounted) {
-              _videoController.setLooping(true);
-
-              _videoController.setVolume(0.0);
-
-              _videoController.play();
-
-              setState(() => _isVideoReady = true);
-
-              Future.delayed(const Duration(milliseconds: 60), () {
-                if (mounted) setState(() => _showVideo = true);
-              });
-            }
-          });
+    unawaited(_initOptionalVideo());
 
     _progressController = AnimationController(
       vsync: this,
@@ -570,7 +585,11 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
 
     _wizardController.dispose();
 
-    _videoController.dispose();
+    final video = _videoController;
+    _videoController = null;
+    if (video != null) {
+      unawaited(video.dispose().catchError((_) {}));
+    }
 
     _progressController.dispose();
 
@@ -784,7 +803,11 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
 
       HapticFeedback.mediumImpact();
 
-      if (_isVideoReady) await _videoController.pause();
+      if (_isVideoReady && _videoController != null) {
+        try {
+          await _videoController!.pause();
+        } catch (_) {}
+      }
 
       if (!mounted) return;
 
@@ -1018,12 +1041,12 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
 
                               curve: Curves.easeOut,
 
-                              child: _isVideoReady
+                              child: _isVideoReady && _videoController != null
                                   ? AspectRatio(
                                       aspectRatio:
-                                          _videoController.value.aspectRatio,
+                                          _videoController!.value.aspectRatio,
 
-                                      child: VideoPlayer(_videoController),
+                                      child: VideoPlayer(_videoController!),
                                     )
                                   : const SizedBox.shrink(),
                             ),

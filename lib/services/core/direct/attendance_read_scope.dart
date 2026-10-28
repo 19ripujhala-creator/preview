@@ -72,6 +72,18 @@ class AttendanceReadCache<T> {
     _entries[key] = (at: _elapsed(), value: value);
   }
 
+  bool rebaseAfterVerifiedSave(AttendanceReadScope before, AttendanceReadScope after, int expectedRevision) {
+    if (_scope != before || before.school != after.school ||
+        !identical(before.session, after.session) || before.identity != after.identity ||
+        after.revision != expectedRevision || after.revision <= before.revision) {
+      clear(); return false;
+    }
+    _scope = after; // Preserve original timestamps; this is display data only.
+    return true;
+  }
+  void removeWhere(bool Function(String, T) predicate) =>
+      _entries.removeWhere((key, entry) => predicate(key, entry.value));
+
   Iterable<T> get values => _entries.values.map((entry) => entry.value);
 
   void clear() {

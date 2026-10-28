@@ -270,6 +270,11 @@ class SchoolHttpClient {
     }
   }
 
+  int _activityRevision = 0;
+  Object? get idleActivityStamp => _requests == 0 && !_retired && !_closed
+      ? (this, _activityRevision)
+      : null;
+
   Future<SchoolHttpReply> get(String url, {Duration? timeout}) =>
       request('GET', resolve(url), timeout: timeout);
 
@@ -332,6 +337,9 @@ class SchoolHttpClient {
     ),
     method: method,
     path: initial.path,
+    source: PortalDiagnostics.sourceForHost(initial.host),
+    transport: 'pooled',
+    deadlineMs: (timeout ?? this.timeout).inMilliseconds,
     status: (reply) => reply.statusCode,
   );
 
@@ -353,6 +361,7 @@ class SchoolHttpClient {
     final stopCancellation = cancellation?.listen(
       () => activeRequest?.abort(const OperationCancelled()),
     );
+    _activityRevision++;
     _requests++;
     final limit = timeout ?? this.timeout;
     var url = initial;
@@ -365,7 +374,14 @@ class SchoolHttpClient {
         if (!_allowUrl(url))
           throw StateError('Blocked non-portal URL/redirect.');
         if (verb == 'POST') MutationDispatch.current?.startDispatch();
-        final request = await _http.openUrl(verb, url).timeout(limit);
+        final request = await PortalDiagnostics.measure(
+          PortalPhase.httpOpen,
+          () => _http.openUrl(verb, url).timeout(limit),
+          method: verb,
+          path: url.path,
+          hop: redirects,
+          deadlineMs: limit.inMilliseconds,
+        );
         activeRequest = request;
         cancellation?.check();
         request.followRedirects = false;
@@ -377,7 +393,15 @@ class SchoolHttpClient {
         }
         late HttpClientResponse response;
         try {
-          response = await request.close().timeout(limit);
+          response = await PortalDiagnostics.measure(
+            PortalPhase.httpResponseHeaders,
+            () => request.close().timeout(limit),
+            method: verb,
+            path: url.path,
+            hop: redirects,
+            deadlineMs: limit.inMilliseconds,
+            status: (reply) => reply.statusCode,
+          );
         } on TimeoutException catch (error, stack) {
           request.abort(error, stack);
           rethrow;
@@ -398,7 +422,13 @@ class SchoolHttpClient {
         if (response.headers[HttpHeaders.setCookieHeader] != null &&
             onCookies != null) {
           try {
-            await onCookies!(this, url);
+            await PortalDiagnostics.measure(
+              PortalPhase.httpCookiePersistence,
+              () => onCookies!(this, url),
+              method: verb,
+              path: url.path,
+              hop: redirects,
+            );
           } catch (_) {
             // Python persistence failures do not discard a portal response.
           }
@@ -416,7 +446,14 @@ class SchoolHttpClient {
             !blockedPostReplay &&
             const [301, 302, 303, 307, 308].contains(response.statusCode) &&
             location != null) {
-          await response.drain<void>().timeout(limit);
+          await PortalDiagnostics.measure(
+            PortalPhase.httpResponseBody,
+            () => response.drain<void>().timeout(limit),
+            method: verb,
+            path: url.path,
+            hop: redirects,
+            deadlineMs: limit.inMilliseconds,
+          );
           if (redirects == 20) throw StateError('Too many redirects.');
           final next = url.resolve(location);
           if (!_allowUrl(next))
@@ -440,9 +477,25 @@ class SchoolHttpClient {
           continue;
         }
         final bytes = BytesBuilder(copy: false);
-        await for (final chunk in response.timeout(limit)) {
-          cancellation?.check();
-          bytes.add(chunk);
+        try {
+          await PortalDiagnostics.measure(
+            PortalPhase.httpResponseBody,
+            () async {
+              await for (final chunk in response.timeout(limit)) {
+                cancellation?.check();
+                bytes.add(chunk);
+              }
+            },
+            method: verb,
+            path: url.path,
+            hop: redirects,
+            deadlineMs: limit.inMilliseconds,
+          );
+        } on TimeoutException catch (error, stack) {
+          // A body timeout must release the underlying request, just like a
+          // header timeout. Never leave a half-read response owning the socket.
+          request.abort(error, stack);
+          rethrow;
         }
         return SchoolHttpReply(
           url,
@@ -456,6 +509,7 @@ class SchoolHttpClient {
       stopCancellation?.call();
       if (cancellation?.cancelled == true)
         activeRequest?.abort(const OperationCancelled());
+      _activityRevision++;
       _requests--;
       _closeIfIdle();
     }

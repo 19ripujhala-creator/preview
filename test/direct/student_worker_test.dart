@@ -146,7 +146,125 @@ Future<Map<String, dynamic>> save(
   userConfirmed: confirmed,
 );
 
+class InitialSummaryPortal extends FakePortal {
+  @override
+  String entry() => super.entry().replaceFirst('</form>', '''
+    <input id="ContentPlaceHolder1_txtdate" name="ctl00\$ContentPlaceHolder1\$txtdate" value="$date">
+    <input id="ContentPlaceHolder1_btn_Show" name="ctl00\$ContentPlaceHolder1\$btn_Show" type="submit" value="Show">
+    </form>''');
+
+  bool usableTokens = true;
+  String initialDate = date;
+  @override
+  Future<AttendanceHttpReply> request(
+    Uri url, {
+    Map<String, Object?>? fields,
+    Uri? referer,
+    bool mutation = false,
+  }) async {
+    final reply = await super.request(
+      url,
+      fields: fields,
+      referer: referer,
+      mutation: mutation,
+    );
+    if (fields != null) return reply;
+    var page = summary().replaceAll(date, initialDate);
+    if (!usableTokens) page = page.replaceAll('PAGE_EVENTVALIDATION', '');
+    return (url: reply.url, status: reply.status, html: page);
+  }
+}
+
+Map<String,dynamic> saveContractFixture(String name) => {
+  ...Map<String,dynamic>.from(jsonDecode(fixture(name)) as Map),
+  'verified_students': jsonDecode(fixture('python_worker_read.json'))['students'],
+};
+
 void main() {
+  test('unusable initial date falls back to explicit Show', () async {
+    final p = InitialSummaryPortal()..initialDate = 'not-a-date';
+    expect(
+      (await p.worker.fetchStudentAttendanceList(
+        classId: '1',
+        attendanceDate: date,
+      ))['success'],
+      true,
+    );
+    expect(p.requests, hasLength(3));
+  });
+
+  test(
+    'fresh matching GET summary skips duplicate Show but fetches roster',
+    () async {
+      final p = InitialSummaryPortal();
+      final r = await p.worker.fetchStudentAttendanceList(
+        classId: '1',
+        attendanceDate: date,
+        section: '1A',
+      );
+      expect(r['success'], true);
+      expect(r['data_verified'], true);
+      expect(r['students'], hasLength(2));
+      expect(p.requests, hasLength(2));
+      expect(
+        (p.requests.last['fields'] as Map)['__READ_ONLY_ACTION'],
+        'CLASS_ENTRY',
+      );
+      expect(p.saves, 0);
+    },
+  );
+  test('different GET date still sends Show with the requested date', () async {
+    final p = InitialSummaryPortal()..initialDate = '09/10/2026';
+    final r = await p.worker.fetchStudentAttendanceList(
+      classId: '1',
+      attendanceDate: date,
+    );
+    expect(r['success'], true);
+    expect(p.requests, hasLength(3));
+    expect(
+      (p.requests[1]['fields'] as Map)[r'ctl00$ContentPlaceHolder1$txtdate'],
+      date,
+    );
+  });
+  test('missing fresh GET tokens keeps ordinary Show workflow', () async {
+    final p = InitialSummaryPortal()..usableTokens = false;
+    expect(
+      (await p.worker.fetchStudentAttendanceList(
+        classId: '1',
+        attendanceDate: date,
+      ))['success'],
+      true,
+    );
+    expect(p.requests, hasLength(3));
+  });
+  test(
+    'a cached summary never skips fresh Show even with matching date',
+    () async {
+      final p = InitialSummaryPortal();
+      final w = StudentAttendanceWorker(
+        request: p.request,
+        baseUrl: () => Uri.parse(portalBase),
+        sessionIdentity: () => 'same-session',
+      );
+      await w.fetchStudentAttendanceList(classId: '1', attendanceDate: date);
+      final n = p.requests.length;
+      await w.fetchStudentAttendanceList(classId: '1', attendanceDate: date);
+      expect(p.requests.length - n, 2);
+      expect((p.requests[n]['fields'] as Map)['__READ_ONLY_ACTION'], 'SHOW');
+    },
+  );
+  test(
+    'optimized initial summary preserves single Save and fresh verification',
+    () async {
+      final p = InitialSummaryPortal();
+      final r = await save(p);
+      expect(r['success'], true);
+      expect(r['attendance_verified'], true);
+      expect(p.saves, 1);
+      expect(p.requests, hasLength(5));
+    },
+  );
+
   test(
     'existing service adapter retains full worker responses and snapshots',
     () async {
@@ -169,7 +287,7 @@ void main() {
         students: students,
         userConfirmed: true,
       );
-      expect(result.response, jsonDecode(fixture('python_worker_save.json')));
+      expect(result.response, saveContractFixture('python_worker_save.json'));
       expect(result.verified, true);
       expect(portal.saves, 1);
     },
@@ -225,7 +343,7 @@ void main() {
     () async {
       final portal = FakePortal();
       final result = await save(portal);
-      expect(result, jsonDecode(fixture('python_worker_save.json')));
+      expect(result, saveContractFixture('python_worker_save.json'));
       expect(portal.saves, 1);
       expect(portal.gets, 2);
       final payload =
@@ -241,7 +359,7 @@ void main() {
   test('already marked and unchanged register never sends a SAVE', () async {
     final portal = FakePortal(marked: true);
     final result = await save(portal);
-    expect(result, jsonDecode(fixture('python_worker_unchanged.json')));
+    expect(result, saveContractFixture('python_worker_unchanged.json'));
     expect(portal.saves, 0);
   });
 

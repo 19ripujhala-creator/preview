@@ -54,8 +54,12 @@ class DirectStudentKpiService {
   }
 
   Future<Map<String, dynamic>> fetchDashboard() async {
+    await attendance.waitForForeground();
     final school = auth.authenticatedSchoolId;
     try {
+      if (attendance.hasFreshSessionForm) {
+        auth.coordinator?.markAlive();
+      }
       await auth.coordinator?.ensureReady(Kind.read);
     } on CoordinatorError catch (e) {
       return {'success': false, 'code': e.kind.code, 'message': e.message};
@@ -78,7 +82,7 @@ class DirectStudentKpiService {
     );
     final date =
         '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
-    final summary = await attendance.fetchClassSummaryResponse(date: date);
+    final summary = await attendance.fetchClassSummaryResponse(date: date, background: true);
     if (!auth.isVerified ||
         school != auth.authenticatedSchoolId ||
         key != auth.schoolSessionIdentity) {

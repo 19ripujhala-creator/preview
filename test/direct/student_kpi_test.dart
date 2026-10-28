@@ -100,7 +100,7 @@ class KpiAttendance extends DirectStudentAttendanceService {
   };
   void Function()? onRead;
   @override
-  Future<Map<String, dynamic>> fetchClassSummaryResponse({String? date}) async {
+  Future<Map<String, dynamic>> fetchClassSummaryResponse({String? date, bool background = false}) async {
     reads++;
     expect(date, matches(RegExp(r'^\d{2}/\d{2}/\d{4}$')));
     onRead?.call();
@@ -114,6 +114,20 @@ class KpiGateAuth extends DirectPortalAuth {
 }
 
 void main() {
+  test('dashboard waits outside attendance lock until all foreground owners release', () async {
+    final auth = KpiGateAuth();
+    final attendance = KpiAttendance(auth);
+    final kpi = DirectStudentKpiService(auth, attendance);
+    final a = attendance.acquireForeground(), b = attendance.acquireForeground();
+    var completed = false;
+    final pending = kpi.fetchDashboard().then((r) { completed = true; return r; });
+    await Future<void>.delayed(Duration.zero);
+    expect(completed, false); expect(attendance.reads, 0);
+    a(); a(); expect(attendance.foregroundActive, true);
+    b(); await pending; expect(completed, true);
+    expect(attendance.foregroundActive, false);
+  });
+
   for (final mode in [
     'normal',
     'image',

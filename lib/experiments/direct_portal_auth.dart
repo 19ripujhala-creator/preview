@@ -1,3 +1,5 @@
+import '../services/core/direct/portal_diagnostics.dart';
+
 // Compatibility adapter for existing direct-login/attendance signatures.
 // Automatic login uses the shared native School runtime; manual diagnostics remain available.
 import 'dart:async';
@@ -76,6 +78,9 @@ class DirectPortalAuth {
 
   SchoolDirectRuntime? _runtime;
   String? _boundSchoolId;
+  Map<String, String>? _identityCookies;
+  String _cookieDigest = '';
+  Object? get schoolIdleActivityStamp => _runtime?.auth.idleActivityStamp;
   PortalCoordinator? get coordinator => _runtime?.coordinator;
   String? get authenticatedSchoolId {
     final runtime = _runtime;
@@ -98,11 +103,21 @@ class DirectPortalAuth {
             entry.name: entry.value,
         };
     if (cookies.isEmpty) return '';
-    final names = cookies.keys.toList()..sort();
-    final digest = sha256.convert(
-      utf8.encode(jsonEncode({for (final name in names) name: cookies[name]})),
-    );
-    return '${authenticatedSchoolId ?? ''}/${coordinator?.generation}/$digest';
+    final previous = _identityCookies;
+    if (previous == null ||
+        previous.length != cookies.length ||
+        cookies.entries.any((entry) => previous[entry.key] != entry.value)) {
+      final names = cookies.keys.toList()..sort();
+      _cookieDigest = sha256
+          .convert(
+            utf8.encode(
+              jsonEncode({for (final name in names) name: cookies[name]}),
+            ),
+          )
+          .toString();
+      _identityCookies = Map.of(cookies);
+    }
+    return '${authenticatedSchoolId ?? ''}/${coordinator?.generation}/$_cookieDigest';
   }
 
   /// Ephemeral browser handoff used only inside a coordinated native print.
@@ -383,35 +398,54 @@ class DirectPortalAuth {
     bool mutation = false,
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    if (!isVerified || !_allowed(url) ||
-        !RegExp(r'^/SD[1-5]/Home/School/SchoolStudentProfiles_New\.aspx$',
-          caseSensitive: false).hasMatch(url.path) ||
-        url.hasQuery || url.hasFragment) {
+    if (!isVerified ||
+        !_allowed(url) ||
+        !RegExp(
+          r'^/SD[1-5]/Home/School/SchoolStudentProfiles_New\.aspx$',
+          caseSensitive: false,
+        ).hasMatch(url.path) ||
+        url.hasQuery ||
+        url.hasFragment) {
       throw StateError('Format-5 destination blocked');
     }
-    if (fields == null && mutation) throw StateError('Format-5 GET cannot mutate');
+    if (fields == null && mutation)
+      throw StateError('Format-5 GET cannot mutate');
     if (fields != null) {
-      if (referer == null || referer != url ||
+      if (referer == null ||
+          referer != url ||
           fields['__VIEWSTATE'] is! String ||
           fields['__EVENTVALIDATION'] is! String ||
           fields['__EVENTTARGET'] != '' ||
           fields['__EVENTARGUMENT'] != '') {
         throw StateError('Invalid Format-5 WebForms submission');
       }
-      final triggered = fields.keys.where((k) =>
-        RegExp(r'\$(?:btnSearch|btnEdit|btnUpdate|btnCancel)(?:\.x)?$',
-          caseSensitive: false).hasMatch(k)).toList();
-      final image = fields.keys.where((k) =>
-        RegExp(r'\$(?:btnEdit|btnUpdate|btnCancel)\.x$',
-          caseSensitive: false).hasMatch(k)).toList();
+      final triggered = fields.keys
+          .where(
+            (k) => RegExp(
+              r'\$(?:btnSearch|btnEdit|btnUpdate|btnCancel)(?:\.x)?$',
+              caseSensitive: false,
+            ).hasMatch(k),
+          )
+          .toList();
+      final image = fields.keys
+          .where(
+            (k) => RegExp(
+              r'\$(?:btnEdit|btnUpdate|btnCancel)\.x$',
+              caseSensitive: false,
+            ).hasMatch(k),
+          )
+          .toList();
       final named = image.isNotEmpty
           ? image.single.substring(0, image.single.length - 2)
           : (triggered.length == 1 ? triggered.single : '');
       final allowed = RegExp(
-        r'^ctl00\$ContentPlaceHolder1\$grdStudentProfile\$ctl\d+\$(btnEdit|btnUpdate|btnCancel)$');
-      final validAction = named == r'ctl00$ContentPlaceHolder1$btnSearch' ||
+        r'^ctl00\$ContentPlaceHolder1\$grdStudentProfile\$ctl\d+\$(btnEdit|btnUpdate|btnCancel)$',
+      );
+      final validAction =
+          named == r'ctl00$ContentPlaceHolder1$btnSearch' ||
           allowed.hasMatch(named);
-      if (!validAction || triggered.length != 1 ||
+      if (!validAction ||
+          triggered.length != 1 ||
           (mutation != named.endsWith('btnUpdate')) ||
           (image.isNotEmpty && !fields.containsKey('$named.y')) ||
           (image.isEmpty && named != r'ctl00$ContentPlaceHolder1$btnSearch')) {
@@ -434,12 +468,15 @@ class DirectPortalAuth {
       url,
       method: fields == null ? 'GET' : 'POST',
       body: fields == null ? null : utf8.encode(AttendanceForm.encode(fields)),
-      headers: fields == null ? const {} : {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'Referer': referer.toString(),
-        if (ajax) 'X-MicrosoftAjax': 'Delta=true',
-        if (ajax) 'X-Requested-With': 'XMLHttpRequest',
-      },
+      headers: fields == null
+          ? const {}
+          : {
+              'Content-Type':
+                  'application/x-www-form-urlencoded; charset=UTF-8',
+              'Referer': referer.toString(),
+              if (ajax) 'X-MicrosoftAjax': 'Delta=true',
+              if (ajax) 'X-Requested-With': 'XMLHttpRequest',
+            },
       timeout: timeout,
       followRedirects: fields == null,
       allowPostRedirects: false,
@@ -450,22 +487,42 @@ class DirectPortalAuth {
 
   /// Working Days supports only the captured Show and explicit Submit actions.
   Future<AttendanceHttpReply> workingDaysRequest(
-    Uri url, {Map<String,Object?>? fields, Uri? referer, bool mutation = false,
-    Duration timeout = const Duration(seconds:30)}) async {
+    Uri url, {
+    Map<String, Object?>? fields,
+    Uri? referer,
+    bool mutation = false,
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     const head = r'ctl00$ContentPlaceHolder1$ctl00$';
     final action = '${head}${mutation ? 'btn_SubmitAll' : 'btnShow'}';
-    if (!isVerified || !_allowed(url) || url.hasQuery || url.hasFragment ||
-        !RegExp(r'^/SD[1-5]/Home/School/RMSA_MonthlySessionsEntry\.aspx$', caseSensitive:false).hasMatch(url.path)) {
+    if (!isVerified ||
+        !_allowed(url) ||
+        url.hasQuery ||
+        url.hasFragment ||
+        !RegExp(
+          r'^/SD[1-5]/Home/School/RMSA_MonthlySessionsEntry\.aspx$',
+          caseSensitive: false,
+        ).hasMatch(url.path)) {
       throw StateError('Working Days destination blocked');
     }
-    if (fields == null && mutation) throw StateError('Working Days GET cannot mutate');
+    if (fields == null && mutation)
+      throw StateError('Working Days GET cannot mutate');
     if (fields != null) {
-      final actions = fields.keys.where((key) => RegExp(r'btn|button|lnk',caseSensitive:false).hasMatch(key)).toList();
-      if (referer != url || fields['__VIEWSTATE'] is! String || fields['__EVENTVALIDATION'] is! String ||
-          fields['__EVENTTARGET'] != '' || fields['__EVENTARGUMENT'] != '' ||
+      final actions = fields.keys
+          .where(
+            (key) =>
+                RegExp(r'btn|button|lnk', caseSensitive: false).hasMatch(key),
+          )
+          .toList();
+      if (referer != url ||
+          fields['__VIEWSTATE'] is! String ||
+          fields['__EVENTVALIDATION'] is! String ||
+          fields['__EVENTTARGET'] != '' ||
+          fields['__EVENTARGUMENT'] != '' ||
           fields['__ASYNCPOST'] != 'true' ||
           fields[r'ctl00$ScriptManager1'] != '${head}UpdPanel|$action' ||
-          actions.length != 1 || actions.single != action ||
+          actions.length != 1 ||
+          actions.single != action ||
           fields[action] != (mutation ? 'Submit' : 'Show')) {
         throw StateError('Unreviewed Working Days postback blocked');
       }
@@ -476,12 +533,15 @@ class DirectPortalAuth {
       url,
       method: fields == null ? 'GET' : 'POST',
       body: fields == null ? null : utf8.encode(AttendanceForm.encode(fields)),
-      headers: fields == null ? const {} : {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'Referer': referer.toString(),
-        if (ajax) 'X-MicrosoftAjax': 'Delta=true',
-        if (ajax) 'X-Requested-With': 'XMLHttpRequest',
-      },
+      headers: fields == null
+          ? const {}
+          : {
+              'Content-Type':
+                  'application/x-www-form-urlencoded; charset=UTF-8',
+              'Referer': referer.toString(),
+              if (ajax) 'X-MicrosoftAjax': 'Delta=true',
+              if (ajax) 'X-Requested-With': 'XMLHttpRequest',
+            },
       timeout: timeout,
       followRedirects: fields == null,
       allowPostRedirects: false,
@@ -491,22 +551,42 @@ class DirectPortalAuth {
   }
 
   Future<AttendanceHttpReply> monthlyAttendanceRequest(
-    Uri url, {Map<String,Object?>? fields, Uri? referer, bool mutation = false,
-    Duration timeout = const Duration(seconds:30)}) async {
+    Uri url, {
+    Map<String, Object?>? fields,
+    Uri? referer,
+    bool mutation = false,
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
     const head = r'ctl00$ContentPlaceHolder1$footer2$';
     final action = '${head}${mutation ? 'btnsave' : 'btnshow'}';
-    if (!isVerified || !_allowed(url) || url.hasQuery || url.hasFragment ||
-        !RegExp(r'^/SD[1-5]/Home/School/StudentAttendence\.aspx$', caseSensitive:false).hasMatch(url.path)) {
+    if (!isVerified ||
+        !_allowed(url) ||
+        url.hasQuery ||
+        url.hasFragment ||
+        !RegExp(
+          r'^/SD[1-5]/Home/School/StudentAttendence\.aspx$',
+          caseSensitive: false,
+        ).hasMatch(url.path)) {
       throw StateError('Monthly Attendance destination blocked');
     }
-    if (fields == null && mutation) throw StateError('Monthly Attendance GET cannot mutate');
+    if (fields == null && mutation)
+      throw StateError('Monthly Attendance GET cannot mutate');
     if (fields != null) {
-      final actions = fields.keys.where((key) => RegExp(r'btn|button|lnk',caseSensitive:false).hasMatch(key)).toList();
-      if (referer != url || fields['__VIEWSTATE'] is! String || fields['__EVENTVALIDATION'] is! String ||
-          fields['__EVENTTARGET'] != '' || fields['__EVENTARGUMENT'] != '' ||
+      final actions = fields.keys
+          .where(
+            (key) =>
+                RegExp(r'btn|button|lnk', caseSensitive: false).hasMatch(key),
+          )
+          .toList();
+      if (referer != url ||
+          fields['__VIEWSTATE'] is! String ||
+          fields['__EVENTVALIDATION'] is! String ||
+          fields['__EVENTTARGET'] != '' ||
+          fields['__EVENTARGUMENT'] != '' ||
           fields['__ASYNCPOST'] != 'true' ||
           fields[r'ctl00$ScriptManager1'] != '${head}UpdPanel|$action' ||
-          actions.length != 1 || actions.single != action ||
+          actions.length != 1 ||
+          actions.single != action ||
           fields[action] != (mutation ? 'Save' : 'उपस्थिति दर्ज़ करें')) {
         throw StateError('Unreviewed Monthly Attendance postback blocked');
       }
@@ -517,12 +597,15 @@ class DirectPortalAuth {
       url,
       method: fields == null ? 'GET' : 'POST',
       body: fields == null ? null : utf8.encode(AttendanceForm.encode(fields)),
-      headers: fields == null ? const {} : {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'Referer': referer.toString(),
-        if (ajax) 'X-MicrosoftAjax': 'Delta=true',
-        if (ajax) 'X-Requested-With': 'XMLHttpRequest',
-      },
+      headers: fields == null
+          ? const {}
+          : {
+              'Content-Type':
+                  'application/x-www-form-urlencoded; charset=UTF-8',
+              'Referer': referer.toString(),
+              if (ajax) 'X-MicrosoftAjax': 'Delta=true',
+              if (ajax) 'X-Requested-With': 'XMLHttpRequest',
+            },
       timeout: timeout,
       followRedirects: fields == null,
       allowPostRedirects: false,
@@ -1016,12 +1099,33 @@ class DirectPortalAuth {
       )) {
         throw StateError('Mutation control blocked');
       }
-      if (navigationFields['__READ_ONLY_ACTION'] != 'SHOW' &&
-          navigationFields['__READ_ONLY_ACTION'] != 'CLASS_ENTRY') {
+      final readAction = navigationFields['__READ_ONLY_ACTION'];
+      if (readAction == 'BACK' &&
+          (!navigationFields.containsKey(
+                r'ctl00$ContentPlaceHolder1$btnback',
+              ) ||
+              '${navigationFields['__EVENTTARGET'] ?? ''}'.isNotEmpty)) {
+        throw StateError('Only the native attendance Back control is allowed');
+      }
+      if (readAction != 'SHOW' &&
+          readAction != 'CLASS_ENTRY' &&
+          readAction != 'BACK') {
         throw StateError('Only approved read-navigation actions allowed');
       }
       final fields = Map<String, Object?>.from(navigationFields)
         ..remove('__READ_ONLY_ACTION');
+      if (fields['__ASYNCPOST'] == 'true') {
+        final control = readAction == 'CLASS_ENTRY'
+            ? '${fields['__EVENTTARGET'] ?? ''}'
+            : readAction == 'BACK'
+            ? r'ctl00$ContentPlaceHolder1$btnback'
+            : r'ctl00$ContentPlaceHolder1$btn_Show';
+        if (control.isEmpty ||
+            fields[r'ctl00$ScriptManager1'] !=
+                'ctl00\$ContentPlaceHolder1\$upPnl|$control') {
+          throw StateError('Unapproved attendance AJAX panel/control');
+        }
+      }
       final payload = AttendanceForm.encode(fields);
       final reply = await _send(
         url,
@@ -1030,6 +1134,9 @@ class DirectPortalAuth {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Referer': (referer ?? url).toString(),
+          if (fields['__ASYNCPOST'] == 'true') 'X-MicrosoftAjax': 'Delta=true',
+          if (fields['__ASYNCPOST'] == 'true')
+            'X-Requested-With': 'XMLHttpRequest',
         },
       );
       return (url: reply.url, status: reply.status, html: reply.text);
@@ -1112,6 +1219,10 @@ class DirectPortalAuth {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Referer': referer.toString(),
+        if (payloadFields['__ASYNCPOST'] == 'true') ...{
+          'X-MicrosoftAjax': 'Delta=true',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
       },
     );
     return (url: response.url, status: response.status, html: response.text);
@@ -1119,6 +1230,8 @@ class DirectPortalAuth {
 
   Uint8List? get captchaImage => _captcha;
   void close() {
+    _identityCookies = null;
+    _cookieDigest = '';
     final runtime = _runtime;
     if (runtime != null) {
       // The old signature stays synchronous; retirement drains in the background.
@@ -1227,15 +1340,53 @@ class DirectPortalAuth {
         reply.headers,
       );
     }
+    return PortalDiagnostics.measure(
+      PortalPhase.httpRequest,
+      () => _sendDirect(
+        initial,
+        method: method,
+        body: body,
+        headers: headers,
+        timeout: timeout,
+        followRedirects: followRedirects,
+        allowPostRedirects: allowPostRedirects,
+        cookieJar: cookieJar,
+      ),
+      method: method,
+      path: initial.path,
+      source: PortalDiagnostics.sourceForHost(initial.host),
+      transport: 'direct',
+      deadlineMs: (timeout ?? const Duration(seconds: 15)).inMilliseconds,
+      status: (reply) => reply.status,
+    );
+  }
+
+  Future<_Reply> _sendDirect(
+    Uri initial, {
+    required String method,
+    List<int>? body,
+    required Map<String, String> headers,
+    Duration? timeout,
+    required bool followRedirects,
+    required bool allowPostRedirects,
+    SchoolCookieJar? cookieJar,
+  }) async {
     var url = initial;
     var verb = method;
     var data = body;
     for (var hops = 0; hops <= 5; hops++) {
       if (!_allowed(url)) throw StateError('Blocked non-portal URL/redirect');
       if (verb == 'POST') MutationDispatch.current?.startDispatch();
-      final req = await _http
-          .openUrl(verb, url)
-          .timeout(timeout ?? const Duration(seconds: 12));
+      final req = await PortalDiagnostics.measure(
+        PortalPhase.httpOpen,
+        () => _http
+            .openUrl(verb, url)
+            .timeout(timeout ?? const Duration(seconds: 12)),
+        method: verb,
+        path: url.path,
+        hop: hops,
+        deadlineMs: (timeout ?? const Duration(seconds: 12)).inMilliseconds,
+      );
       req.followRedirects = false;
       req.headers.set(
         HttpHeaders.userAgentHeader,
@@ -1254,8 +1405,14 @@ class DirectPortalAuth {
         req.contentLength = data.length;
         req.add(data);
       }
-      final res = await req.close().timeout(
-        timeout ?? const Duration(seconds: 15),
+      final res = await PortalDiagnostics.measure(
+        PortalPhase.httpResponseHeaders,
+        () => req.close().timeout(timeout ?? const Duration(seconds: 15)),
+        method: verb,
+        path: url.path,
+        hop: hops,
+        deadlineMs: (timeout ?? const Duration(seconds: 15)).inMilliseconds,
+        status: (reply) => reply.statusCode,
       );
       _storeCookies(res, url);
       cookieJar?.receive(res.cookies, url);
@@ -1267,7 +1424,13 @@ class DirectPortalAuth {
           !blockedPostReplay &&
           [301, 302, 303, 307, 308].contains(res.statusCode)) {
         final location = res.headers.value(HttpHeaders.locationHeader);
-        await res.drain<void>();
+        await PortalDiagnostics.measure(
+          PortalPhase.httpResponseBody,
+          () => res.drain<void>(),
+          method: verb,
+          path: url.path,
+          hop: hops,
+        );
         if (location == null) throw StateError('Redirect missing Location');
         final next = url.resolve(location);
         if (!_allowed(next)) throw StateError('Blocked non-portal redirect');
@@ -1283,14 +1446,23 @@ class DirectPortalAuth {
       res.headers.forEach((name, values) {
         responseHeaders[name.toLowerCase()] = List.of(values);
       });
-      await for (final chunk in res.timeout(
-        timeout ?? const Duration(seconds: 15),
-      )) {
-        if (builder.length + chunk.length > _maxBytes) {
-          throw StateError('Response too large');
-        }
-        builder.add(chunk);
-      }
+      await PortalDiagnostics.measure(
+        PortalPhase.httpResponseBody,
+        () async {
+          await for (final chunk in res.timeout(
+            timeout ?? const Duration(seconds: 15),
+          )) {
+            if (builder.length + chunk.length > _maxBytes) {
+              throw StateError('Response too large');
+            }
+            builder.add(chunk);
+          }
+        },
+        method: verb,
+        path: url.path,
+        hop: hops,
+        deadlineMs: (timeout ?? const Duration(seconds: 15)).inMilliseconds,
+      );
       return _Reply(
         url,
         res.statusCode,

@@ -44,16 +44,24 @@ class StaffReadService {
       (user, coordinator.generation, _epoch, filter);
   List<dynamic> _copy(List<dynamic> rows) =>
       jsonDecode(jsonEncode(rows)) as List<dynamic>;
-  Future<Map<String, dynamic>> fetchProfile(String user) async {
+  Future<Map<String, dynamic>> fetchProfile(String user) =>
+      _profile(user, identityOnly: false);
+  Future<Map<String, dynamic>> fetchIdentity(String user) =>
+      _profile(user, identityOnly: true);
+  Future<Map<String, dynamic>> _profile(
+    String user, {
+    required bool identityOnly,
+  }) async {
     if (!_owned(user))
       return _failure('ACCOUNT_CHANGED', 'Staff login changed.');
     try {
       final result = await coordinator.run(
         resource: 'staff.home',
         kind: Kind.read,
-        worker: (_) => bridge.fetchProfile(),
+        worker: (_) =>
+            identityOnly ? bridge.fetchIdentity() : bridge.fetchProfile(),
         timeout: 45,
-        label: 'staff_profile',
+        label: identityOnly ? 'staff_identity' : 'staff_profile',
       );
       if (!_owned(user))
         return _failure('ACCOUNT_CHANGED', 'Staff login changed.');

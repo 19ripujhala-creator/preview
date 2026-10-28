@@ -63,57 +63,60 @@ Map<String, String> staffP10Fields(String text) {
   };
 }
 
-Future<Map<String, dynamic>> fetchStaffHttpProfile(StaffHttpSession session) =>
-    session.exclusive(() async {
-      if (!session.authenticated ||
-          session.base == null ||
-          (session.user ?? '').isEmpty)
-        throw const StaffHttpError(
-          'SESSION_EXPIRED',
-          'Staff session is not authenticated.',
-        );
-      final base = session.base!;
-      final home = await session.client.get('$base$staffHomePath');
-      if (!staffSameNode(base, home.url.toString()) ||
-          !authenticatedStaffHome(home))
-        throw const StaffHttpError(
-          'SESSION_NOT_VERIFIED',
-          'Staff Home did not verify the active session.',
-        );
-      final profile = staffProfileFields(home.text, session.user!);
-      // Only a transport failure is recoverable. Portal errors remain authoritative.
-      try {
-        final p10 = await session.client.get('$base$staffP10Path');
-        if (!staffSameNode(base, p10.url.toString()))
-          throw const StaffHttpError(
-            'INVALID_REDIRECT',
-            'P10 redirected outside the Staff Portal node.',
-          );
-        if (p10.statusCode != 200)
-          throw StaffHttpError(
-            'PORTAL_RESPONSE_ERROR',
-            'P10 returned HTTP ${p10.statusCode}.',
-          );
-        if (html
-                .parse(p10.text)
-                .querySelector('#txt_Username, #txtUPNswd, #btn_StaffLogin') !=
-            null)
-          throw const StaffHttpError(
-            'SESSION_NOT_VERIFIED',
-            'P10 returned the Staff login form.',
-          );
-        if (p10.text.toLowerCase().contains('server error in'))
-          throw const StaffHttpError(
-            'PORTAL_RESPONSE_ERROR',
-            'P10 returned a server error.',
-          );
-        profile.addAll(staffP10Fields(p10.text));
-      } on StaffHttpError {
-        rethrow;
-      } on IOException {
-        profile.addAll(staffP10Fields(''));
-      } on TimeoutException {
-        profile.addAll(staffP10Fields(''));
-      }
-      return {'success': true, 'profile': profile};
-    });
+Future<Map<String, dynamic>> fetchStaffHttpProfile(
+  StaffHttpSession session, {
+  bool includeP10 = true,
+}) => session.exclusive(() async {
+  if (!session.authenticated ||
+      session.base == null ||
+      (session.user ?? '').isEmpty)
+    throw const StaffHttpError(
+      'SESSION_EXPIRED',
+      'Staff session is not authenticated.',
+    );
+  final base = session.base!;
+  final home = await session.client.get('$base$staffHomePath');
+  if (!staffSameNode(base, home.url.toString()) ||
+      !authenticatedStaffHome(home))
+    throw const StaffHttpError(
+      'SESSION_NOT_VERIFIED',
+      'Staff Home did not verify the active session.',
+    );
+  final profile = staffProfileFields(home.text, session.user!);
+  if (!includeP10) return {'success': true, 'profile': profile};
+  // Only a transport failure is recoverable. Portal errors remain authoritative.
+  try {
+    final p10 = await session.client.get('$base$staffP10Path');
+    if (!staffSameNode(base, p10.url.toString()))
+      throw const StaffHttpError(
+        'INVALID_REDIRECT',
+        'P10 redirected outside the Staff Portal node.',
+      );
+    if (p10.statusCode != 200)
+      throw StaffHttpError(
+        'PORTAL_RESPONSE_ERROR',
+        'P10 returned HTTP ${p10.statusCode}.',
+      );
+    if (html
+            .parse(p10.text)
+            .querySelector('#txt_Username, #txtUPNswd, #btn_StaffLogin') !=
+        null)
+      throw const StaffHttpError(
+        'SESSION_NOT_VERIFIED',
+        'P10 returned the Staff login form.',
+      );
+    if (p10.text.toLowerCase().contains('server error in'))
+      throw const StaffHttpError(
+        'PORTAL_RESPONSE_ERROR',
+        'P10 returned a server error.',
+      );
+    profile.addAll(staffP10Fields(p10.text));
+  } on StaffHttpError {
+    rethrow;
+  } on IOException {
+    profile.addAll(staffP10Fields(''));
+  } on TimeoutException {
+    profile.addAll(staffP10Fields(''));
+  }
+  return {'success': true, 'profile': profile};
+});

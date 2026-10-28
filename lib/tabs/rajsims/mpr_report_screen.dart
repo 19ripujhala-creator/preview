@@ -1,5 +1,8 @@
+import 'mpr_page_frame.dart';
+
 import 'package:shaladarpan/widgets/page_content_motion.dart';
 import 'package:shaladarpan/widgets/route_completion.dart';
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -163,7 +166,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
           f('incharge_name').text = profile['incharge_name']?.toString() ?? '';
         }
         if (f('incharge_mobile').text.isEmpty) {
-          f('incharge_mobile').text = profile['incharge_mobile']?.toString() ?? '';
+          f('incharge_mobile').text =
+              profile['incharge_mobile']?.toString() ?? '';
         }
       }
 
@@ -180,7 +184,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
           upper: enrolled('upper_primary') > 0,
         );
 
-        final tablets = ViffsStatusService.requiredCategories(schoolId) ?? const <String>[];
+        final tablets =
+            ViffsStatusService.requiredCategories(schoolId) ?? const <String>[];
         final statuses = <Map<String, dynamic>>[];
         for (final tablet in tablets) {
           final status = ViffsStatusService.periodTabletStatus(
@@ -192,18 +197,25 @@ class _MprReportScreenState extends State<MprReportScreen> {
           if (status != null) statuses.add(status);
         }
 
-        final available = tablets.isNotEmpty &&
+        final available =
+            tablets.isNotEmpty &&
             statuses.length == tablets.length &&
-            statuses.every((r) =>
-                r['locked'] == true &&
-                r['boys'] is num &&
-                r['girls'] is num);
+            statuses.every(
+              (r) =>
+                  r['locked'] == true && r['boys'] is num && r['girls'] is num,
+            );
 
         final boys = available
-            ? statuses.fold<int>(0, (sum, r) => sum + (r['boys'] as num).toInt())
+            ? statuses.fold<int>(
+                0,
+                (sum, r) => sum + (r['boys'] as num).toInt(),
+              )
             : 0;
         final girls = available
-            ? statuses.fold<int>(0, (sum, r) => sum + (r['girls'] as num).toInt())
+            ? statuses.fold<int>(
+                0,
+                (sum, r) => sum + (r['girls'] as num).toInt(),
+              )
             : 0;
 
         _viffs = {
@@ -226,7 +238,9 @@ class _MprReportScreenState extends State<MprReportScreen> {
         f('working_days').text = '${_monthly!['served_days']}';
       }
       if (f('report_date').text.isEmpty) {
-        f('report_date').text = _formatReportDate(DateUtils.dateOnly(DateTime.now()));
+        f('report_date').text = _formatReportDate(
+          DateUtils.dateOnly(DateTime.now()),
+        );
       }
     } catch (e) {
       _errors['Report'] = '$e';
@@ -243,8 +257,7 @@ class _MprReportScreenState extends State<MprReportScreen> {
       String? group;
       if (name.contains('pre-primary to 5')) {
         if (enrolled('pre_primary') > 0 && enrolled('primary') > 0) {
-          _errors['Meal categories'] =
-              'Portal combines Pre-primary and Primary meals. Separate verified totals are required.';
+          _errors['Meal categories'] = 'Portal combines Pre-primary and Primary meals. Separate verified totals are required.';
           continue;
         }
         group = enrolled('pre_primary') > 0 ? 'pre_primary' : 'primary';
@@ -426,9 +439,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
                     );
                   } catch (e) {
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('$e')),
-                      );
+                      ScaffoldMessenger.of(context)
+                          .showSnackBar(mprPageNotice(context, '$e'));
                     }
                   }
                 },
@@ -438,61 +450,63 @@ class _MprReportScreenState extends State<MprReportScreen> {
               fit: StackFit.expand,
               children: [
                 _appBackground(),
-                PageContentMotion(child: SafeArea(
-                  top: false,
-                  child: LayoutBuilder(
-                    builder: (context, box) {
-                      final isPhone = box.maxWidth < 600;
-                      final previewWidth = isPhone
-                          ? box.maxWidth
-                          : box.maxWidth < 900
-                              ? 720.0
-                              : 820.0;
+                PageContentMotion(
+                  child: SafeArea(
+                    top: false,
+                    child: LayoutBuilder(
+                      builder: (context, box) {
+                        final isPhone = box.maxWidth < 600;
+                        final previewWidth = isPhone
+                            ? box.maxWidth
+                            : box.maxWidth < 900
+                            ? 720.0
+                            : 820.0;
 
-                      return Align(
-                        alignment: Alignment.topCenter,
-                        child: SizedBox(
-                          width: previewWidth,
-                          height: box.maxHeight,
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              isPhone ? 8 : 12,
-                              0,
-                              isPhone ? 8 : 12,
-                              isPhone ? 8 : 12,
-                            ),
-                            child: PdfPreview(
-                              build: (_) async => bytes,
-                              useActions: false,
-                              allowPrinting: false,
-                              allowSharing: false,
-                              canChangeOrientation: false,
-                              canChangePageFormat: false,
-                              pdfFileName:
-                                  'MPR_$_year-${_month.toString().padLeft(2, '0')}.pdf',
-                              loadingWidget: const Center(
-                                child: CupertinoActivityIndicator(radius: 13),
+                        return Align(
+                          alignment: Alignment.topCenter,
+                          child: SizedBox(
+                            width: previewWidth,
+                            height: box.maxHeight,
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                isPhone ? 8 : 12,
+                                0,
+                                isPhone ? 8 : 12,
+                                isPhone ? 8 : 12,
                               ),
-                              scrollViewDecoration: const BoxDecoration(
-                                color: Colors.transparent,
-                              ),
-                              pdfPreviewPageDecoration: const BoxDecoration(
-                                color: Colors.white,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Color(0x180F172A),
-                                    blurRadius: 14,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
+                              child: PdfPreview(
+                                build: (_) async => bytes,
+                                useActions: false,
+                                allowPrinting: false,
+                                allowSharing: false,
+                                canChangeOrientation: false,
+                                canChangePageFormat: false,
+                                pdfFileName:
+                                    'MPR_$_year-${_month.toString().padLeft(2, '0')}.pdf',
+                                loadingWidget: const Center(
+                                  child: CupertinoActivityIndicator(radius: 13),
+                                ),
+                                scrollViewDecoration: const BoxDecoration(
+                                  color: Colors.transparent,
+                                ),
+                                pdfPreviewPageDecoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Color(0x180F172A),
+                                      blurRadius: 14,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
-                )),
+                ),
               ],
             ),
           ),
@@ -504,9 +518,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
           _generating = false;
           _pdfProgress = 0.0;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(mprPageNotice(context, '$e'));
       }
     } finally {
       if (mounted && _generating) {
@@ -532,10 +545,21 @@ class _MprReportScreenState extends State<MprReportScreen> {
     fontWeight: FontWeight.w500,
     color: ink,
   );
-  static const double _h = 38; // compact mobile-first input/dropdown/date height
+  static const double _h =
+      38; // compact mobile-first input/dropdown/date height
   static const monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   int _page = 0;
   String? _invalidKey;
@@ -579,58 +603,54 @@ class _MprReportScreenState extends State<MprReportScreen> {
     String? hint,
     bool readonly = false,
     bool invalidField = false,
-  }) =>
-      InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(
-          fontSize: 13,
-          height: 1.15,
-          letterSpacing: 0,
-          color: Color(0xFF94A3B8),
-        ),
-        filled: true,
-        fillColor: readonly ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
-        focusColor: Colors.white,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-        constraints: const BoxConstraints.tightFor(height: _h),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: invalidField ? danger : line),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: invalidField ? danger : line,
-            width: invalidField ? 1.25 : 1,
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-            color: invalidField ? danger : ink,
-            width: 1.4,
-          ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: danger, width: 1.25),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: danger, width: 1.25),
-        ),
-        // Error text hidden: red border + red label hi dikhta hai (layout nahi hilta).
-        errorStyle: const TextStyle(color: danger, fontSize: 0, height: 0),
-        suffixIconConstraints: const BoxConstraints(
-          minWidth: 34,
-          minHeight: _h,
-          maxHeight: _h,
-        ),
-        suffixIcon: readonly
-            ? const Icon(Icons.lock_outline_rounded, size: 14, color: muted)
-            : null,
-      );
+  }) => InputDecoration(
+    hintText: hint,
+    hintStyle: const TextStyle(
+      fontSize: 13,
+      height: 1.15,
+      letterSpacing: 0,
+      color: Color(0xFF94A3B8),
+    ),
+    filled: true,
+    fillColor: readonly ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC),
+    focusColor: Colors.white,
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+    constraints: const BoxConstraints.tightFor(height: _h),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(color: invalidField ? danger : line),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(
+        color: invalidField ? danger : line,
+        width: invalidField ? 1.25 : 1,
+      ),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: BorderSide(color: invalidField ? danger : ink, width: 1.4),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: danger, width: 1.25),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: danger, width: 1.25),
+    ),
+    // Error text hidden: red border + red label hi dikhta hai (layout nahi hilta).
+    errorStyle: const TextStyle(color: danger, fontSize: 0, height: 0),
+    suffixIconConstraints: const BoxConstraints(
+      minWidth: 34,
+      minHeight: _h,
+      maxHeight: _h,
+    ),
+    suffixIcon: readonly
+        ? const Icon(Icons.lock_outline_rounded, size: 14, color: muted)
+        : null,
+  );
 
   Widget _fieldLabel(String label, {bool invalid = false}) => SizedBox(
     height: 15,
@@ -776,103 +796,100 @@ class _MprReportScreenState extends State<MprReportScreen> {
     bool invalidField = false,
     bool enabled = true,
     bool showLabel = true,
-  }) =>
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (showLabel) _fieldLabel(label, invalid: invalidField),
-          LayoutBuilder(
-            builder: (context, box) => PopupMenuButton<T>(
-              enabled: enabled,
-              tooltip: '',
-              position: PopupMenuPosition.under,
-              color: Colors.white,
-              elevation: 8,
-              surfaceTintColor: Colors.transparent,
-              offset: const Offset(0, 4),
-              constraints: BoxConstraints(
-                minWidth: box.maxWidth,
-                maxWidth: box.maxWidth,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-                side: const BorderSide(color: line),
-              ),
-              onSelected: onSelected,
-              itemBuilder: (context) => [
-                for (final item in items)
-                  PopupMenuItem<T>(
-                    value: item.key,
-                    height: 38,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.value,
-                            style: TextStyle(
-                              letterSpacing: 0,
-                              fontSize: 13.5,
-                              fontWeight: item.key == value
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: ink,
-                            ),
-                          ),
-                        ),
-                        if (item.key == value)
-                          const Icon(
-                            CupertinoIcons.checkmark,
-                            size: 14,
-                            color: ink,
-                          ),
-                      ],
-                    ),
-                  ),
-              ],
-              child: Container(
-                height: _h,
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (showLabel) _fieldLabel(label, invalid: invalidField),
+      LayoutBuilder(
+        builder: (context, box) => PopupMenuButton<T>(
+          enabled: enabled,
+          tooltip: '',
+          position: PopupMenuPosition.under,
+          color: Colors.white,
+          elevation: 8,
+          surfaceTintColor: Colors.transparent,
+          offset: const Offset(0, 4),
+          constraints: BoxConstraints(
+            minWidth: box.maxWidth,
+            maxWidth: box.maxWidth,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+            side: const BorderSide(color: line),
+          ),
+          onSelected: onSelected,
+          itemBuilder: (context) => [
+            for (final item in items)
+              PopupMenuItem<T>(
+                value: item.key,
+                height: 38,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: enabled ? const Color(0xFFF8FAFC) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: invalidField ? danger : line,
-                    width: invalidField ? 1.25 : 1,
-                  ),
-                ),
                 child: Row(
                   children: [
                     Expanded(
                       child: Text(
-                        (() {
-                          for (final item in items) {
-                            if (item.key == value) return item.value;
-                          }
-                          return 'Select';
-                        })(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: _valueStyle.copyWith(
-                          color: items.any((e) => e.key == value)
-                              ? ink
-                              : const Color(0xFF94A3B8),
+                        item.value,
+                        style: TextStyle(
+                          letterSpacing: 0,
+                          fontSize: 13.5,
+                          fontWeight: item.key == value
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: ink,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      CupertinoIcons.chevron_down,
-                      size: 12,
-                      color: muted,
-                    ),
+                    if (item.key == value)
+                      const Icon(
+                        CupertinoIcons.checkmark,
+                        size: 14,
+                        color: ink,
+                      ),
                   ],
                 ),
               ),
+          ],
+          child: Container(
+            height: _h,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: enabled
+                  ? const Color(0xFFF8FAFC)
+                  : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: invalidField ? danger : line,
+                width: invalidField ? 1.25 : 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    (() {
+                      for (final item in items) {
+                        if (item.key == value) return item.value;
+                      }
+                      return 'Select';
+                    })(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _valueStyle.copyWith(
+                      color: items.any((e) => e.key == value)
+                          ? ink
+                          : const Color(0xFF94A3B8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(CupertinoIcons.chevron_down, size: 12, color: muted),
+              ],
             ),
           ),
-        ],
-      );
+        ),
+      ),
+    ],
+  );
 
   Widget choice(String key, String label, List<String> options) {
     final current = f(key).text;
@@ -881,12 +898,12 @@ class _MprReportScreenState extends State<MprReportScreen> {
       initialValue: current,
       validator: (_) =>
           key.startsWith('cook') &&
-                  key.endsWith('_gender') &&
-                  (key.startsWith('cook1_') ||
-                      f('${key.split('_').first}_name').text.trim().isNotEmpty) &&
-                  f(key).text.isEmpty
-              ? invalid(key, 'Required')
-              : null,
+              key.endsWith('_gender') &&
+              (key.startsWith('cook1_') ||
+                  f('${key.split('_').first}_name').text.trim().isNotEmpty) &&
+              f(key).text.isEmpty
+          ? invalid(key, 'Required')
+          : null,
       builder: (state) {
         final invalidField = state.hasError || _manualInvalid.contains(key);
 
@@ -917,41 +934,40 @@ class _MprReportScreenState extends State<MprReportScreen> {
     double minWidth = 160,
     bool preferTwoOnMobile = true,
     int maxColumns = 4,
-  }) =>
-      LayoutBuilder(
-        builder: (_, constraints) {
-          final width = constraints.maxWidth;
-          final gap = width < 600 ? 8.0 : 10.0;
+  }) => LayoutBuilder(
+    builder: (_, constraints) {
+      final width = constraints.maxWidth;
+      final gap = width < 600 ? 8.0 : 10.0;
 
-          int availableColumns;
-          if (width < 350) {
-            availableColumns = 1;
-          } else if (width < 600) {
-            availableColumns = preferTwoOnMobile ? 2 : 1;
-          } else if (width < 820) {
-            availableColumns = 2;
-          } else if (width < 1120) {
-            availableColumns = 3;
-          } else {
-            availableColumns = 4;
-          }
+      int availableColumns;
+      if (width < 350) {
+        availableColumns = 1;
+      } else if (width < 600) {
+        availableColumns = preferTwoOnMobile ? 2 : 1;
+      } else if (width < 820) {
+        availableColumns = 2;
+      } else if (width < 1120) {
+        availableColumns = 3;
+      } else {
+        availableColumns = 4;
+      }
 
-          var columns = availableColumns.clamp(1, maxColumns).toInt();
-          if (children.length < columns) columns = children.length;
-          if (columns < 1) columns = 1;
+      var columns = availableColumns.clamp(1, maxColumns).toInt();
+      if (children.length < columns) columns = children.length;
+      if (columns < 1) columns = 1;
 
-          final cellWidth = (width - gap * (columns - 1)) / columns;
+      final cellWidth = (width - gap * (columns - 1)) / columns;
 
-          return Wrap(
-            spacing: gap,
-            runSpacing: 8,
-            children: [
-              for (final child in children)
-                SizedBox(width: cellWidth, child: child),
-            ],
-          );
-        },
+      return Wrap(
+        spacing: gap,
+        runSpacing: 8,
+        children: [
+          for (final child in children)
+            SizedBox(width: cellWidth, child: child),
+        ],
       );
+    },
+  );
 
   // Name jaise lambe fields ko zyada jagah (flex), chhote fields ko kam.
   Widget flexFields(
@@ -959,54 +975,53 @@ class _MprReportScreenState extends State<MprReportScreen> {
     required List<int> flexes,
     double stackBelow = 600,
     bool compactPhone = false,
-  }) =>
-      LayoutBuilder(
-        builder: (_, constraints) {
-          assert(children.length == flexes.length);
+  }) => LayoutBuilder(
+    builder: (_, constraints) {
+      assert(children.length == flexes.length);
 
-          if (constraints.maxWidth < stackBelow) {
-            if (compactPhone &&
-                children.length == 3 &&
-                constraints.maxWidth >= 350) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  children.first,
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: children[1]),
-                      const SizedBox(width: 8),
-                      Expanded(child: children[2]),
-                    ],
-                  ),
-                ],
-              );
-            }
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (int i = 0; i < children.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 8),
-                  children[i],
-                ],
-              ],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      if (constraints.maxWidth < stackBelow) {
+        if (compactPhone &&
+            children.length == 3 &&
+            constraints.maxWidth >= 350) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (int i = 0; i < children.length; i++) ...[
-                if (i > 0) const SizedBox(width: 10),
-                Expanded(flex: flexes[i], child: children[i]),
-              ],
+              children.first,
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: children[1]),
+                  const SizedBox(width: 8),
+                  Expanded(child: children[2]),
+                ],
+              ),
             ],
           );
-        },
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (int i = 0; i < children.length; i++) ...[
+              if (i > 0) const SizedBox(height: 8),
+              children[i],
+            ],
+          ],
+        );
+      }
+
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (int i = 0; i < children.length; i++) ...[
+            if (i > 0) const SizedBox(width: 10),
+            Expanded(flex: flexes[i], child: children[i]),
+          ],
+        ],
       );
+    },
+  );
 
   Widget hint(String text) => Padding(
     padding: const EdgeInsets.only(top: 10),
@@ -1040,18 +1055,18 @@ class _MprReportScreenState extends State<MprReportScreen> {
     final side = nested
         ? 10.0
         : compact
-            ? 11.0
-            : 14.0;
+        ? 11.0
+        : 14.0;
     final top = nested
         ? 9.0
         : compact
-            ? 10.0
-            : 12.0;
+        ? 10.0
+        : 12.0;
     final bottom = nested
         ? 10.0
         : compact
-            ? 11.0
-            : 13.0;
+        ? 11.0
+        : 13.0;
 
     final body = Padding(
       padding: EdgeInsets.fromLTRB(side, 0, side, bottom),
@@ -1151,7 +1166,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
       ),
       child: fold
           ? Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              data: Theme.of(context)
+                  .copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
                 key: ValueKey('$title|$expanded'),
                 initiallyExpanded: expanded,
@@ -1246,11 +1262,10 @@ class _MprReportScreenState extends State<MprReportScreen> {
             'Name${required ? ' *' : ''}',
             required: required,
           ),
-          choice(
-            '${prefix}_gender',
-            'Gender${required ? ' *' : ''}',
-            ['M', 'F'],
-          ),
+          choice('${prefix}_gender', 'Gender${required ? ' *' : ''}', [
+            'M',
+            'F',
+          ]),
           field('${prefix}_honorarium', 'Honorarium ₹', numeric: true),
         ],
         flexes: const [2, 1, 1],
@@ -1263,68 +1278,67 @@ class _MprReportScreenState extends State<MprReportScreen> {
     required String label,
     required String value,
     required ValueChanged<String> onChanged,
-  }) =>
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _fieldLabel(label),
-          SizedBox(
-            height: _h,
-            child: Row(
-              children: [
-                for (final o in const ['Yes', 'No']) ...[
-                  if (o == 'No') const SizedBox(width: 8),
-                  Expanded(
-                    child: InkWell(
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      _fieldLabel(label),
+      SizedBox(
+        height: _h,
+        child: Row(
+          children: [
+            for (final o in const ['Yes', 'No']) ...[
+              if (o == 'No') const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: _generating
+                      ? null
+                      : () => onChanged(value == o ? '' : o),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: value == o
+                          ? const Color(0xFFE8EDF4)
+                          : const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(10),
-                      onTap: _generating
-                          ? null
-                          : () => onChanged(value == o ? '' : o),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: value == o
-                              ? const Color(0xFFE8EDF4)
-                              : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: value == o ? ink : line,
-                            width: value == o ? 1.4 : 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (value == o) ...[
-                              const Icon(
-                                CupertinoIcons.checkmark_alt,
-                                size: 15,
-                                color: ink,
-                              ),
-                              const SizedBox(width: 4),
-                            ],
-                            Text(
-                              o,
-                              style: _valueStyle.copyWith(
-                                fontWeight: value == o
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                                color: value == o ? ink : muted,
-                              ),
-                            ),
-                          ],
-                        ),
+                      border: Border.all(
+                        color: value == o ? ink : line,
+                        width: value == o ? 1.4 : 1,
                       ),
                     ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (value == o) ...[
+                          const Icon(
+                            CupertinoIcons.checkmark_alt,
+                            size: 15,
+                            color: ink,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        Text(
+                          o,
+                          style: _valueStyle.copyWith(
+                            fontWeight: value == o
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: value == o ? ink : muted,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      );
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ],
+  );
 
   // Data me 'Y' / 'N' save hota hai (PDF isi ko padhta hai).
   Widget yesNoField(String key, String label) => tickChoice(
@@ -1332,14 +1346,14 @@ class _MprReportScreenState extends State<MprReportScreen> {
     value: f(key).text == 'Y'
         ? 'Yes'
         : f(key).text == 'N'
-            ? 'No'
-            : '',
+        ? 'No'
+        : '',
     onChanged: (v) => setState(() {
       f(key).text = v == 'Yes'
           ? 'Y'
           : v == 'No'
-              ? 'N'
-              : '';
+          ? 'N'
+          : '';
     }),
   );
 
@@ -1386,8 +1400,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
       note: required
           ? 'Required · saved per school'
           : prefix == 'cook2' && _cook2Needed
-              ? 'Needed for 60+ enrolment · saved per school'
-              : 'Optional · saved per school',
+          ? 'Needed for 60+ enrolment · saved per school'
+          : 'Optional · saved per school',
       fold: (prefix == 'cook2' && !_cook2Needed) || prefix == 'cook3',
       expanded: prefix == 'cook2' && _cook2Needed,
       icon: Icons.person_outline_rounded,
@@ -1464,8 +1478,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
         fontWeight: head
             ? FontWeight.w600
             : bold
-                ? FontWeight.w700
-                : FontWeight.w500,
+            ? FontWeight.w700
+            : FontWeight.w500,
         color: head ? muted : ink,
       ),
     ),
@@ -1689,55 +1703,53 @@ class _MprReportScreenState extends State<MprReportScreen> {
             required List<V> values,
             required String Function(V) labelOf,
             required ValueChanged<V> onPick,
-          }) =>
-              PopupMenuButton<V>(
-                tooltip: '',
-                initialValue: current,
-                position: PopupMenuPosition.under,
-                surfaceTintColor: Colors.transparent,
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+          }) => PopupMenuButton<V>(
+            tooltip: '',
+            initialValue: current,
+            position: PopupMenuPosition.under,
+            surfaceTintColor: Colors.transparent,
+            color: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            onSelected: onPick,
+            itemBuilder: (_) => [
+              for (final v in values)
+                PopupMenuItem<V>(
+                  value: v,
+                  height: 36,
+                  child: Text(
+                    labelOf(v),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: v == current
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: v == current ? const Color(0xFFEF4444) : ink,
+                    ),
+                  ),
                 ),
-                onSelected: onPick,
-                itemBuilder: (_) => [
-                  for (final v in values)
-                    PopupMenuItem<V>(
-                      value: v,
-                      height: 36,
-                      child: Text(
-                        labelOf(v),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight:
-                              v == current ? FontWeight.w700 : FontWeight.w500,
-                          color: v == current
-                              ? const Color(0xFFEF4444)
-                              : ink,
-                        ),
-                      ),
-                    ),
-                ],
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      text,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: ink,
-                      ),
-                    ),
-                    const SizedBox(width: 3),
-                    const Icon(
-                      CupertinoIcons.chevron_down,
-                      size: 11,
-                      color: Color(0xFFEF4444),
-                    ),
-                  ],
+            ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: ink,
+                  ),
                 ),
-              );
+                const SizedBox(width: 3),
+                const Icon(
+                  CupertinoIcons.chevron_down,
+                  size: 11,
+                  color: Color(0xFFEF4444),
+                ),
+              ],
+            ),
+          );
 
           void clampDay() {
             final maxDay = DateUtils.getDaysInMonth(year, month);
@@ -1823,8 +1835,10 @@ class _MprReportScreenState extends State<MprReportScreen> {
                             });
                           }
                         },
-                        icon:
-                            const Icon(CupertinoIcons.chevron_right, size: 16),
+                        icon: const Icon(
+                          CupertinoIcons.chevron_right,
+                          size: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -1832,7 +1846,13 @@ class _MprReportScreenState extends State<MprReportScreen> {
                   Row(
                     children: [
                       for (final day in const [
-                        'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su',
+                        'Mo',
+                        'Tu',
+                        'We',
+                        'Th',
+                        'Fr',
+                        'Sa',
+                        'Su',
                       ])
                         Expanded(
                           child: Center(
@@ -1855,16 +1875,17 @@ class _MprReportScreenState extends State<MprReportScreen> {
                     itemCount: leading + daysInMonth,
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 7,
-                      mainAxisSpacing: 3,
-                      crossAxisSpacing: 3,
-                    ),
+                          crossAxisCount: 7,
+                          mainAxisSpacing: 3,
+                          crossAxisSpacing: 3,
+                        ),
                     itemBuilder: (_, index) {
                       if (index < leading) return const SizedBox.shrink();
                       final day = index - leading + 1;
                       final date = DateTime(year, month, day);
                       final isEnabled = enabled(date);
-                      final isSelected = selected.year == year &&
+                      final isSelected =
+                          selected.year == year &&
                           selected.month == month &&
                           selected.day == day;
 
@@ -1891,8 +1912,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
                               color: !isEnabled
                                   ? const Color(0xFFCBD5E1)
                                   : isSelected
-                                      ? Colors.white
-                                      : ink,
+                                  ? Colors.white
+                                  : ink,
                             ),
                           ),
                         ),
@@ -1929,9 +1950,9 @@ class _MprReportScreenState extends State<MprReportScreen> {
                         ),
                         onPressed: enabled(selected)
                             ? () => Navigator.pop(
-                                  ctx,
-                                  DateUtils.dateOnly(selected),
-                                )
+                                ctx,
+                                DateUtils.dateOnly(selected),
+                              )
                             : null,
                         child: const Text(
                           'OK',
@@ -2069,8 +2090,11 @@ class _MprReportScreenState extends State<MprReportScreen> {
                   ],
                 ),
               ),
-              const Icon(CupertinoIcons.checkmark_seal_fill,
-                  size: 15, color: Color(0xFF16A34A)),
+              const Icon(
+                CupertinoIcons.checkmark_seal_fill,
+                size: 15,
+                color: Color(0xFF16A34A),
+              ),
             ],
           ),
         ),
@@ -2090,34 +2114,45 @@ class _MprReportScreenState extends State<MprReportScreen> {
         subLabel('Facilities'),
         grid(
           [
-            choice(
-              'school_detail_kitchen_shed',
-              'Kitchen shed',
-              const ['Complete', 'Incomplete', 'Repairable', 'N.A.'],
-            ),
-            choice(
-              'school_detail_gas_connection',
-              'Gas connection',
-              const ['YES-SBC', 'YES-DBC', 'NO'],
-            ),
-            choice(
-              'school_detail_utensils',
-              'Utensils',
-              const ['Sufficient', 'Un-Sufficient'],
-            ),
+            choice('school_detail_kitchen_shed', 'Kitchen shed', const [
+              'Complete',
+              'Incomplete',
+              'Repairable',
+              'N.A.',
+            ]),
+            choice('school_detail_gas_connection', 'Gas connection', const [
+              'YES-SBC',
+              'YES-DBC',
+              'NO',
+            ]),
+            choice('school_detail_utensils', 'Utensils', const [
+              'Sufficient',
+              'Un-Sufficient',
+            ]),
             yesNoField('school_detail_drinking_water', 'Drinking water'),
             yesNoField('school_detail_fire_extinguisher', 'Fire extinguisher'),
             yesNoField('school_detail_weighing_machine', 'Weighing machine'),
             yesNoField('school_detail_height_measurement', 'Height measure'),
             yesNoField('school_detail_hand_washing', 'Hand washing'),
             yesNoField('school_detail_electricity', 'Electricity'),
-            choice(
-              'school_detail_toilet_status',
-              'Toilet status',
-              const ['Complete', 'Incomplete', 'Repairable', 'N.A.'],
+            choice('school_detail_toilet_status', 'Toilet status', const [
+              'Complete',
+              'Incomplete',
+              'Repairable',
+              'N.A.',
+            ]),
+            field(
+              'school_detail_toilet_boys',
+              'Boys toilets',
+              numeric: true,
+              integer: true,
             ),
-            field('school_detail_toilet_boys', 'Boys toilets', numeric: true, integer: true),
-            field('school_detail_toilet_girls', 'Girls toilets', numeric: true, integer: true),
+            field(
+              'school_detail_toilet_girls',
+              'Girls toilets',
+              numeric: true,
+              integer: true,
+            ),
           ],
           minWidth: 145,
           preferTwoOnMobile: true,
@@ -2136,11 +2171,10 @@ class _MprReportScreenState extends State<MprReportScreen> {
     schoolDetailsPanel(),
     verifiedSummary(),
     for (final g in visible)
-      section(
-        labels[g]!,
-        [
-          subLabel('Cooking cost'),
-          grid([
+      section(labels[g]!, [
+        subLabel('Cooking cost'),
+        grid(
+          [
             field(
               'cooking_rate_$g',
               'Cooking rate ₹ / meal',
@@ -2148,10 +2182,15 @@ class _MprReportScreenState extends State<MprReportScreen> {
               required: map(_mealGroups[g])['total_meals'] != null,
             ),
             readonlyBox('Cooking expenditure', '₹ ${calc(g)}'),
-          ], minWidth: 170, preferTwoOnMobile: true, maxColumns: 2),
-          const SizedBox(height: 8),
-          subLabel('Milk served'),
-          grid([
+          ],
+          minWidth: 170,
+          preferTwoOnMobile: true,
+          maxColumns: 2,
+        ),
+        const SizedBox(height: 8),
+        subLabel('Milk served'),
+        grid(
+          [
             field(
               'milk_days_$g',
               'Milk served days',
@@ -2164,12 +2203,17 @@ class _MprReportScreenState extends State<MprReportScreen> {
               numeric: true,
               integer: true,
             ),
-          ], minWidth: 160, preferTwoOnMobile: true, maxColumns: 2),
-          const SizedBox(height: 8),
-          section(
-            'Attendance · optional',
-            [
-              grid([
+          ],
+          minWidth: 160,
+          preferTwoOnMobile: true,
+          maxColumns: 2,
+        ),
+        const SizedBox(height: 8),
+        section(
+          'Attendance · optional',
+          [
+            grid(
+              [
                 field(
                   'attendance_$g',
                   'Total attendance',
@@ -2177,17 +2221,19 @@ class _MprReportScreenState extends State<MprReportScreen> {
                   integer: true,
                 ),
                 field('average_$g', 'Average override', numeric: true),
-              ], minWidth: 160, preferTwoOnMobile: true, maxColumns: 2),
-              hint(
-                'Leave blank to keep the PDF blank. Average uses total attendance ÷ working days.',
-              ),
-            ],
-            fold: true,
-            nested: true,
-          ),
-        ],
-        icon: Icons.restaurant_menu_rounded,
-      ),
+              ],
+              minWidth: 160,
+              preferTwoOnMobile: true,
+              maxColumns: 2,
+            ),
+            hint(
+              'Leave blank to keep the PDF blank. Average uses total attendance ÷ working days.',
+            ),
+          ],
+          fold: true,
+          nested: true,
+        ),
+      ], icon: Icons.restaurant_menu_rounded),
   ];
 
   // ───────── Step 2 · Milk & gas ─────────
@@ -2219,10 +2265,15 @@ class _MprReportScreenState extends State<MprReportScreen> {
       icon: Icons.cookie_outlined,
     ),
     section('Sugar consumed · kg', [
-      grid([
-        for (final g in visible)
-          field('sugar_kg_$g', labels[g]!, numeric: true),
-      ], minWidth: 170, preferTwoOnMobile: true, maxColumns: 3),
+      grid(
+        [
+          for (final g in visible)
+            field('sugar_kg_$g', labels[g]!, numeric: true),
+        ],
+        minWidth: 170,
+        preferTwoOnMobile: true,
+        maxColumns: 3,
+      ),
       hint(
         'Sugar amounts automatically copy into Part 11. Kilograms are entered separately.',
       ),
@@ -2243,10 +2294,7 @@ class _MprReportScreenState extends State<MprReportScreen> {
     cook('helper', 'Milk work helper'),
     section('MDM incharge', [
       flexFields(
-        [
-          field('incharge_name', 'Name'),
-          field('incharge_mobile', 'Mobile'),
-        ],
+        [field('incharge_name', 'Name'), field('incharge_mobile', 'Mobile')],
         flexes: const [2, 1],
         stackBelow: 520,
       ),
@@ -2267,7 +2315,7 @@ class _MprReportScreenState extends State<MprReportScreen> {
                 await _saveSettings();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Cook/helper details saved.')),
+                    mprPageNotice(context, 'Cook/helper details saved.'),
                   );
                 }
               },
@@ -2283,22 +2331,27 @@ class _MprReportScreenState extends State<MprReportScreen> {
   // ───────── Step 4 · Health & others ─────────
   List<Widget> otherPage() => [
     section('Children health', [
-      grid([
-        field(
-          'viffs_boys',
-          '4+ tablets · boys',
-          numeric: true,
-          integer: true,
-          readonly: _viffs?['entry_available'] == true,
-        ),
-        field(
-          'viffs_girls',
-          '4+ tablets · girls',
-          numeric: true,
-          integer: true,
-          readonly: _viffs?['entry_available'] == true,
-        ),
-      ], minWidth: 160, preferTwoOnMobile: true, maxColumns: 2),
+      grid(
+        [
+          field(
+            'viffs_boys',
+            '4+ tablets · boys',
+            numeric: true,
+            integer: true,
+            readonly: _viffs?['entry_available'] == true,
+          ),
+          field(
+            'viffs_girls',
+            '4+ tablets · girls',
+            numeric: true,
+            integer: true,
+            readonly: _viffs?['entry_available'] == true,
+          ),
+        ],
+        minWidth: 160,
+        preferTwoOnMobile: true,
+        maxColumns: 2,
+      ),
       _viffs?['entry_available'] == true
           ? Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -2360,11 +2413,9 @@ class _MprReportScreenState extends State<MprReportScreen> {
       'CCH & MME',
       [
         for (final r in ['cch', 'mme'])
-          section(
-            r.toUpperCase(),
-            [moneyRow(r, expenditure: 'expenditure')],
-            nested: true,
-          ),
+          section(r.toUpperCase(), [
+            moneyRow(r, expenditure: 'expenditure'),
+          ], nested: true),
       ],
       fold: true,
       note: 'Optional',
@@ -2378,8 +2429,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
             r == 'all'
                 ? 'All heads'
                 : r == 'interest'
-                    ? 'Interest'
-                    : 'Total',
+                ? 'Interest'
+                : 'Total',
             [moneyRow('bank_$r', expenditure: 'expenditure')],
             nested: true,
           ),
@@ -2398,9 +2449,7 @@ class _MprReportScreenState extends State<MprReportScreen> {
           showLabel: labels,
           value: _month,
           enabled: !_loading && !_generating,
-          items: [
-            for (int m = 1; m <= 12; m++) MapEntry(m, monthNames[m - 1]),
-          ],
+          items: [for (int m = 1; m <= 12; m++) MapEntry(m, monthNames[m - 1])],
           onSelected: (m) {
             if (m == _month) return;
             setState(() {
@@ -2495,8 +2544,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
                       color: i == _page
                           ? ink
                           : i < _page
-                              ? const Color(0xFF16A34A)
-                              : const Color(0xFFD5DCE6),
+                          ? const Color(0xFF16A34A)
+                          : const Color(0xFFD5DCE6),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -2518,8 +2567,9 @@ class _MprReportScreenState extends State<MprReportScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight:
-                                i == _page ? FontWeight.w700 : FontWeight.w500,
+                            fontWeight: i == _page
+                                ? FontWeight.w700
+                                : FontWeight.w500,
                             color: i == _page ? ink : muted,
                           ),
                         ),
@@ -2666,8 +2716,9 @@ class _MprReportScreenState extends State<MprReportScreen> {
           ..addAll(missing);
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please complete the highlighted required fields.'),
+        mprPageNotice(
+          context,
+          'Please complete the highlighted required fields.',
         ),
       );
       return false;
@@ -2706,8 +2757,9 @@ class _MprReportScreenState extends State<MprReportScreen> {
       if (key != null) setState(() => _manualInvalid.add(key));
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fix the highlighted field before generating.'),
+        mprPageNotice(
+          context,
+          'Please fix the highlighted field before generating.',
         ),
       );
       return;
@@ -2737,8 +2789,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
               final side = width >= 900
                   ? 20.0
                   : isPhone
-                      ? 10.0
-                      : 14.0;
+                  ? 10.0
+                  : 14.0;
 
               return Center(
                 child: SizedBox(
@@ -2825,60 +2877,54 @@ class _MprReportScreenState extends State<MprReportScreen> {
   }
 
   Widget _appBackground() => const Positioned.fill(
-        child: RepaintBoundary(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0.0, 0.45, 1.0],
-                    colors: [
-                      Color(0xFFF8FAFC),
-                      Color(0xFFF1F5F9),
-                      Color(0xFFFEF3C7),
-                    ],
-                  ),
-                ),
+    child: RepaintBoundary(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: [0.0, 0.45, 1.0],
+                colors: [
+                  Color(0xFFF8FAFC),
+                  Color(0xFFF1F5F9),
+                  Color(0xFFFEF3C7),
+                ],
               ),
-              Positioned(
-                left: -50,
-                top: -40,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        Color(0x59BAE6FD),
-                        Color(0x00BAE6FD),
-                      ],
-                    ),
-                  ),
-                  child: SizedBox(width: 270, height: 270),
-                ),
-              ),
-              Positioned(
-                right: -50,
-                top: 40,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        Color(0x59FDE68A),
-                        Color(0x00FDE68A),
-                      ],
-                    ),
-                  ),
-                  child: SizedBox(width: 260, height: 260),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      );
+          Positioned(
+            left: -50,
+            top: -40,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [Color(0x59BAE6FD), Color(0x00BAE6FD)],
+                ),
+              ),
+              child: SizedBox(width: 270, height: 270),
+            ),
+          ),
+          Positioned(
+            right: -50,
+            top: 40,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [Color(0x59FDE68A), Color(0x00FDE68A)],
+                ),
+              ),
+              child: SizedBox(width: 260, height: 260),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget bottomBar() {
     final last = _page == _lastStep;
@@ -2888,153 +2934,135 @@ class _MprReportScreenState extends State<MprReportScreen> {
     final side = screenWidth >= 900
         ? 20.0
         : isPhone
-            ? 10.0
-            : 14.0;
+        ? 10.0
+        : 14.0;
 
     final contentWidth = isPhone
         ? screenWidth
         : AppAdaptive.contentWidth(screenWidth);
 
     Widget backButton() => SizedBox(
-          height: 40,
-          child: OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: ink,
-              side: const BorderSide(color: line),
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 13),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: _generating ? null : () => switchPage(_page - 1),
-            icon: const Icon(CupertinoIcons.chevron_back, size: 12.5),
-            label: Text(
-              isPhone ? 'Back' : 'Back',
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        );
+      height: 40,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: ink,
+          side: const BorderSide(color: line),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 13),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        onPressed: _generating ? null : () => switchPage(_page - 1),
+        icon: const Icon(CupertinoIcons.chevron_back, size: 12.5),
+        label: Text(
+          isPhone ? 'Back' : 'Back',
+          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
 
     Widget cookingTotal() => Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text(
-                'Cooking total',
-                style: TextStyle(
-                  fontSize: 9.5,
-                  height: 1,
-                  color: muted,
-                ),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                _hasTotal ? '₹ $_totalCooking' : '—',
-                style: const TextStyle(
-                  fontSize: 14,
-                  height: 1,
-                  fontWeight: FontWeight.w700,
-                  color: ink,
-                ),
-              ),
-            ],
+      padding: const EdgeInsets.only(right: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const Text(
+            'Cooking total',
+            style: TextStyle(fontSize: 9.5, height: 1, color: muted),
           ),
-        );
+          const SizedBox(height: 3),
+          Text(
+            _hasTotal ? '₹ $_totalCooking' : '—',
+            style: const TextStyle(
+              fontSize: 14,
+              height: 1,
+              fontWeight: FontWeight.w700,
+              color: ink,
+            ),
+          ),
+        ],
+      ),
+    );
 
     Widget primaryButton() => SizedBox(
-          height: 40,
-          child: FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: _generating && last
-                  ? const Color(0xFFF1F6FD)
-                  : ink,
-              foregroundColor: _generating && last
-                  ? ink
-                  : Colors.white,
-              disabledBackgroundColor: _generating && last
-                  ? const Color(0xFFF1F6FD)
-                  : const Color(0xFFCBD5E1),
-              disabledForegroundColor: _generating && last
-                  ? ink
-                  : Colors.white,
-              elevation: 0,
-              shadowColor: Colors.transparent,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: _generating && last
-                    ? const BorderSide(color: Color(0xFFD7E8FC))
-                    : BorderSide.none,
-              ),
-            ),
-            onPressed: _generating
-                ? null
-                : last
-                    ? _onGenerate
-                    : _nextStep,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 160),
-              child: _generating && last
-                  ? Row(
-                      key: const ValueKey('generating'),
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        NicDownloadIndicator(
-                          size: 19,
-                          progress: _pdfProgress,
-                          color: const Color(0xFF007AFF),
-                          trackColor: const Color(0x2E007AFF),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Generating…',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: ink,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Row(
-                      key: ValueKey(last ? 'generate' : 'next'),
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (last) ...[
-                          const Icon(CupertinoIcons.doc_text, size: 12.5),
-                          const SizedBox(width: 7),
-                        ],
-                        Text(
-                          last ? 'Generate PDF' : 'Next',
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (!last) ...[
-                          const SizedBox(width: 7),
-                          const Icon(
-                            CupertinoIcons.chevron_forward,
-                            size: 12.5,
-                          ),
-                        ],
-                      ],
-                    ),
-            ),
+      height: 40,
+      child: FilledButton(
+        style: FilledButton.styleFrom(
+          backgroundColor: _generating && last ? const Color(0xFFF1F6FD) : ink,
+          foregroundColor: _generating && last ? ink : Colors.white,
+          disabledBackgroundColor: _generating && last
+              ? const Color(0xFFF1F6FD)
+              : const Color(0xFFCBD5E1),
+          disabledForegroundColor: _generating && last ? ink : Colors.white,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: _generating && last
+                ? const BorderSide(color: Color(0xFFD7E8FC))
+                : BorderSide.none,
           ),
-        );
+        ),
+        onPressed: _generating
+            ? null
+            : last
+            ? _onGenerate
+            : _nextStep,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 160),
+          child: _generating && last
+              ? Row(
+                  key: const ValueKey('generating'),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    NicDownloadIndicator(
+                      size: 19,
+                      progress: _pdfProgress,
+                      color: const Color(0xFF007AFF),
+                      trackColor: const Color(0x2E007AFF),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Generating…',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: ink,
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  key: ValueKey(last ? 'generate' : 'next'),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (last) ...[
+                      const Icon(CupertinoIcons.doc_text, size: 12.5),
+                      const SizedBox(width: 7),
+                    ],
+                    Text(
+                      last ? 'Generate PDF' : 'Next',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (!last) ...[
+                      const SizedBox(width: 7),
+                      const Icon(CupertinoIcons.chevron_forward, size: 12.5),
+                    ],
+                  ],
+                ),
+        ),
+      ),
+    );
 
     return SizedBox(
-      height: 58,
+      height: 58.0 + MediaQuery.paddingOf(context).bottom,
       child: Material(
         color: Colors.transparent,
         child: SafeArea(
@@ -3046,14 +3074,41 @@ class _MprReportScreenState extends State<MprReportScreen> {
               width: contentWidth,
               child: Padding(
                 padding: EdgeInsets.fromLTRB(side, 5, side, 7),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    if (_page > 0) backButton(),
-                    const Spacer(),
-                    cookingTotal(),
-                    primaryButton(),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, footer) => Row(
+                    children: [
+                      if (_page > 0)
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: isPhone ? 80 : 140,
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: backButton(),
+                          ),
+                        ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: cookingTotal(),
+                          ),
+                        ),
+                      ),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth:
+                              (footer.maxWidth - (_page > 0 ? 86 : 6)) * 0.7,
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: primaryButton(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -3107,9 +3162,8 @@ class _MprReportScreenState extends State<MprReportScreen> {
       data: theme,
       child: PopScope(
         canPop: !_generating,
-        child: Scaffold(
-          extendBody: true,
-          backgroundColor: const Color(0xFFF8FAFC),
+        child: MprPageFrame(
+          background: _appBackground(),
           appBar: _alignedTopBar(
             title: 'MPR & Milk Report',
             onBack: () => Navigator.maybePop(context),
@@ -3123,162 +3177,177 @@ class _MprReportScreenState extends State<MprReportScreen> {
           body: Stack(
             fit: StackFit.expand,
             children: [
-              _appBackground(),
-              PageContentMotion(child: SafeArea(
-                top: false,
-                child: LayoutBuilder(
-                  builder: (context, viewport) {
-                    final isPhone = viewport.maxWidth < 600;
-                    final side = viewport.maxWidth >= 900
-                        ? 20.0
-                        : isPhone
-                            ? 10.0
-                            : 14.0;
-                    final maxContentWidth = isPhone
-                        ? viewport.maxWidth
-                        : AppAdaptive.contentWidth(viewport.maxWidth);
+              PageContentMotion(
+                child: SafeArea(
+                  top: false,
+                  bottom: false,
+                  child: LayoutBuilder(
+                    builder: (context, viewport) {
+                      final isPhone = viewport.maxWidth < 600;
+                      final side = viewport.maxWidth >= 900
+                          ? 20.0
+                          : isPhone
+                          ? 10.0
+                          : 14.0;
+                      final maxContentWidth = isPhone
+                          ? viewport.maxWidth
+                          : AppAdaptive.contentWidth(viewport.maxWidth);
 
-                    return Align(
-                      alignment: Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: maxContentWidth,
-                          minWidth: isPhone ? viewport.maxWidth : 0,
-                        ),
-                        child: Column(
-                          children: [
-                            if (!_ready)
-                              Padding(
-                                padding: EdgeInsets.fromLTRB(side, 2, side, 8),
-                                child: periodPicker(),
-                              ),
-                            if (_ready) ...[
-                              Padding(
-                                padding: EdgeInsets.fromLTRB(side, 4, side, 0),
-                                child: stepper(),
-                              ),
-                              const SizedBox(height: 6),
-                              Expanded(
-                                child: Form(
-                                  key: _form,
-                                  child: SingleChildScrollView(
-                                    controller: _scroll,
-                                    keyboardDismissBehavior:
-                                        ScrollViewKeyboardDismissBehavior.onDrag,
-                                    padding: EdgeInsets.fromLTRB(
-                                      side,
-                                      0,
-                                      side,
-                                      88,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        headerCard(),
-                                        const SizedBox(height: 6),
-                                        notices(),
-                                        for (int i = 0; i < pages.length; i++)
-                                          Offstage(
-                                            offstage: _page != i,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: [
-                                                intro(i),
-                                                ...pages[i],
-                                              ],
+                      return Align(
+                        alignment: Alignment.topCenter,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: maxContentWidth,
+                            minWidth: isPhone ? viewport.maxWidth : 0,
+                          ),
+                          child: Column(
+                            children: [
+                              if (!_ready)
+                                Padding(
+                                  padding: EdgeInsets.fromLTRB(
+                                    side,
+                                    2,
+                                    side,
+                                    8,
+                                  ),
+                                  child: periodPicker(),
+                                ),
+                              if (_ready) ...[
+                                Padding(
+                                  padding: EdgeInsets.fromLTRB(
+                                    side,
+                                    4,
+                                    side,
+                                    0,
+                                  ),
+                                  child: stepper(),
+                                ),
+                                const SizedBox(height: 6),
+                                Expanded(
+                                  child: Form(
+                                    key: _form,
+                                    child: SingleChildScrollView(
+                                      controller: _scroll,
+                                      keyboardDismissBehavior:
+                                          ScrollViewKeyboardDismissBehavior
+                                              .onDrag,
+                                      padding: EdgeInsets.fromLTRB(
+                                        side,
+                                        0,
+                                        side,
+                                        16,
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          headerCard(),
+                                          const SizedBox(height: 6),
+                                          notices(),
+                                          for (int i = 0; i < pages.length; i++)
+                                            Offstage(
+                                              offstage: _page != i,
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  intro(i),
+                                                  ...pages[i],
+                                                ],
+                                              ),
                                             ),
-                                          ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ] else
-                              Expanded(
-                                child: Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(24),
-                                    child: _loading
-                                        ? const Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              SizedBox(
-                                                width: 26,
-                                                height: 26,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                  strokeWidth: 2.4,
-                                                  color: ink,
-                                                ),
-                                              ),
-                                              SizedBox(height: 18),
-                                              Text(
-                                                'Preparing your monthly report',
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              SizedBox(height: 6),
-                                              Text(
-                                                'Loading school, meals, stock and VIFFS…',
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: muted,
-                                                ),
-                                              ),
-                                            ],
-                                          )
-                                        : SingleChildScrollView(
-                                            child: Column(
+                              ] else
+                                Expanded(
+                                  child: Center(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(24),
+                                      child: _loading
+                                          ? const Column(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                const Icon(
-                                                  Icons.description_outlined,
-                                                  size: 32,
-                                                  color: muted,
+                                                SizedBox(
+                                                  width: 26,
+                                                  height: 26,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        strokeWidth: 2.4,
+                                                        color: ink,
+                                                      ),
                                                 ),
-                                                const SizedBox(height: 8),
-                                                const Text(
-                                                  'Report data could not be loaded',
+                                                SizedBox(height: 18),
+                                                Text(
+                                                  'Preparing your monthly report',
                                                   style: TextStyle(
+                                                    fontSize: 14,
                                                     fontWeight: FontWeight.w600,
                                                   ),
                                                 ),
-                                                const SizedBox(height: 8),
-                                                notices(),
-                                                OutlinedButton.icon(
-                                                  style:
-                                                      OutlinedButton.styleFrom(
-                                                    foregroundColor: ink,
+                                                SizedBox(height: 6),
+                                                Text(
+                                                  'Loading school, meals, stock and VIFFS…',
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: muted,
                                                   ),
-                                                  onPressed: _load,
-                                                  icon: const Icon(
-                                                    Icons.refresh_rounded,
-                                                    size: 18,
-                                                  ),
-                                                  label:
-                                                      const Text('Try again'),
                                                 ),
                                               ],
+                                            )
+                                          : SingleChildScrollView(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.description_outlined,
+                                                    size: 32,
+                                                    color: muted,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  const Text(
+                                                    'Report data could not be loaded',
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  notices(),
+                                                  OutlinedButton.icon(
+                                                    style:
+                                                        OutlinedButton.styleFrom(
+                                                          foregroundColor: ink,
+                                                        ),
+                                                    onPressed: _load,
+                                                    icon: const Icon(
+                                                      Icons.refresh_rounded,
+                                                      size: 18,
+                                                    ),
+                                                    label: const Text(
+                                                      'Try again',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
-                                          ),
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-              )),
+              ),
             ],
           ),
-          bottomNavigationBar: _ready ? bottomBar() : null,
+          footer: _ready ? bottomBar() : null,
         ),
       ),
     );
@@ -3405,4 +3474,3 @@ class _IosProgressRingPainter extends CustomPainter {
         oldDelegate.trackColor != trackColor;
   }
 }
-

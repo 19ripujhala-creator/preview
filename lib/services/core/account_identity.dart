@@ -36,6 +36,7 @@ class AccountIdentity {
           'staff': staff,
           'name': name,
           'nic': nic,
+          'designation': _text(profile['designation']),
         }),
       );
     } catch (_) {
@@ -64,7 +65,11 @@ class AccountIdentity {
               data['staff'] == staff &&
               _text(data['name']).isNotEmpty &&
               _text(data['nic']).isNotEmpty) {
-            cached = {'name': _text(data['name']), 'nic': _text(data['nic'])};
+            cached = {
+              'name': _text(data['name']),
+              'nic': _text(data['nic']),
+              'designation': _text(data['designation']),
+            };
           }
         } catch (_) {
           /* Ignore malformed cache and use the portal profile. */
@@ -101,6 +106,7 @@ class AccountIdentity {
             ? 'Account'
             : _text(profile['name']),
         'nic': _text(profile['nicId']).isEmpty ? '—' : _text(profile['nicId']),
+        'designation': _text(profile['designation']),
       };
     } catch (_) {
       return unavailable;

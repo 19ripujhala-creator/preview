@@ -2,6 +2,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'staff_leave_icon_data.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -9,6 +11,8 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/shaladarpan_service.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/offline_attendance_queue.dart';
+
+final _staffLeaveIconBytes = base64Decode(staffLeaveIconBase64);
 
 const String kAppFont = 'PlusJakartaSans';
 
@@ -1019,14 +1023,15 @@ class _AttendanceViewState extends State<AttendanceView> {
         'Leave',
         _onLeaveCount,
         const Color(0xFFD18A19),
-        Icons.event_note_rounded,
+        Icons.event_available_rounded,
       ),
-      ('Other', _otherCount, const Color(0xFF64748B), Icons.groups_outlined),
+      ('Other', _otherCount, const Color(0xFF64748B), Icons.category_outlined),
     ];
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 600;
+      builder: (context, box) {
+        final compact = box.maxWidth < 600;
         final gap = compact ? 5.0 : 8.0;
+        final badge = compact ? 22.0 : 30.0;
         return Row(
           children: [
             for (var i = 0; i < items.length; i++) ...[
@@ -1037,39 +1042,37 @@ class _AttendanceViewState extends State<AttendanceView> {
                   excludeSemantics: true,
                   child: Container(
                     padding: EdgeInsets.symmetric(
-                      horizontal: compact ? 5 : 12,
+                      horizontal: compact ? 6 : 12,
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(13),
                       border: Border.all(color: const Color(0xFFE8ECF1)),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x060F172A),
-                          blurRadius: 5,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
                     ),
-                    child: Row(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                items[i].$1,
-                                style: const TextStyle(
-                                  fontFamily: kAppFont,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              FittedBox(
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            items[i].$1,
+                            maxLines: 1,
+                            style: const TextStyle(
+                              fontFamily: kAppFont,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
                                 child: Text(
@@ -1083,33 +1086,44 @@ class _AttendanceViewState extends State<AttendanceView> {
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        if (constraints.maxWidth >= 350) ...[
-                          const SizedBox(width: 4),
-                          Container(
-                            width: compact ? 24 : 32,
-                            height: compact ? 24 : 32,
-                            padding: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: items[i].$3.withOpacity(0.09),
-                              borderRadius: BorderRadius.circular(9),
                             ),
-                            child: i < 2
-                                ? CustomPaint(
-                                    painter: _AttendancePersonIcon(
+                            const SizedBox(width: 3),
+                            Container(
+                              width: badge,
+                              height: badge,
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                color: items[i].$3.withOpacity(0.09),
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                              child: i < 2
+                                  ? CustomPaint(
+                                      painter: _AttendancePersonIcon(
+                                        color: items[i].$3,
+                                        present: i == 0,
+                                      ),
+                                    )
+                                  : i == 2
+                                  ? Image.memory(
+                                      _staffLeaveIconBytes,
+                                      fit: BoxFit.contain,
                                       color: items[i].$3,
-                                      present: i == 0,
+                                      colorBlendMode: BlendMode.srcIn,
+                                      gaplessPlayback: true,
+                                      errorBuilder: (_, __, ___) => Icon(
+                                        Icons.event_note_rounded,
+                                        size: badge - 6,
+                                        color: items[i].$3,
+                                      ),
+                                    )
+                                  : Icon(
+                                      items[i].$4,
+                                      size: badge - 6,
+                                      color: items[i].$3,
                                     ),
-                                  )
-                                : Icon(
-                                    items[i].$4,
-                                    size: 22,
-                                    color: items[i].$3,
-                                  ),
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),

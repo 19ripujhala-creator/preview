@@ -10,7 +10,9 @@ import 'package:lottie/lottie.dart';
 import 'package:shaladarpan/services/core/account_identity.dart';
 import 'package:shaladarpan/tabs/teacher/modules/shaladarpan/monthly_tasks_screen.dart';
 import 'package:shaladarpan/tabs/teacher/modules/shaladarpan/monthly_tasks_hub.dart';
+
 import 'widgets/app_notice.dart';
+import 'services/portals/shaladarpan/dashboard_mdm_key.dart';
 
 import 'dart:async';
 
@@ -21,7 +23,6 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -137,6 +138,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   Timer? _networkCheckTimer;
   bool _networkCheckInProgress = false;
   bool _mdmFetchInProgress = false;
+  bool _mdmReadActive = false;
   bool _appActive = true;
   final Set<int> _visitedTabs = {0};
   late final PageController _cardPageController;
@@ -157,8 +159,12 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _retainedTeacherTab() {
-    final inputs = (widget.schoolId, _teacherInitialEngine,
-        _teacherSubModuleIndex, _teacherResetTrigger);
+    final inputs = (
+      widget.schoolId,
+      _teacherInitialEngine,
+      _teacherSubModuleIndex,
+      _teacherResetTrigger,
+    );
     if (_teacherTabInputs != inputs) {
       _teacherTabInputs = inputs;
       _teacherTabCache = Padding(
@@ -191,7 +197,6 @@ class _DashboardScreenState extends State<DashboardScreen>
     return _accountTabCache!;
   }
 
-
   bool _isSyncing = false;
   bool _syncCompleted = false;
   bool _syncButtonPressed = false;
@@ -200,7 +205,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   bool _isOnline = true;
   bool _hasPendingOfflineAttendance = false;
   bool _isStaffVerifiedOnPortal = false;
-  bool _isStudentVerifiedOnPortal = false;
 
   String _kpiSections = "--";
   String _kpiStudents = "--";
@@ -237,6 +241,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     });
 
     DashboardBootstrap.mdmStatus.addListener(_onMdmStatusChanged);
+    _onMdmStatusChanged();
     RankingStatusService.changes.addListener(_onRankingStatusChanged);
     ViffsStatusService.changes.addListener(_onViffsStatusChanged);
     ViffsStatusService.restore(widget.schoolId);
@@ -270,7 +275,11 @@ class _DashboardScreenState extends State<DashboardScreen>
   void _onMdmStatusChanged() {
     final status = DashboardBootstrap.mdmStatus.value;
     final now = DateTime.now();
-    final key = '${widget.schoolId}/${now.year}-${now.month}-${now.day}';
+    final key = dashboardMdmDayKey(
+      widget.schoolId,
+      now,
+      direct: StudentService.directAttendanceEnabled,
+    );
     if (!mounted ||
         status == null ||
         status['school_id'] != widget.schoolId ||
@@ -317,18 +326,32 @@ class _DashboardScreenState extends State<DashboardScreen>
     }
   }
 
+  Future<bool> _backgroundReadAllowed() async {
+    final school = widget.schoolId;
+    final allowed = await StudentService.waitForAttendanceIdle(school);
+    return allowed && mounted && widget.schoolId == school;
+  }
+
   Future<void> _fetchLiveRajsimsMdmTileData() async {
     if (_mdmFetchInProgress || !mounted) return;
     setState(() => _mdmFetchInProgress = true);
     try {
+      if (!await _backgroundReadAllowed()) return;
+      if (!mounted) return;
+      setState(() => _mdmReadActive = true);
       _applyMdmResult(await DashboardBootstrap.loadMdm(widget.schoolId));
     } catch (_) {
       _applyMdmResult({'success': false, 'message': 'MDM data unavailable'});
     } finally {
       if (mounted)
-        setState(() => _mdmFetchInProgress = false);
-      else
+        setState(() {
+          _mdmFetchInProgress = false;
+          _mdmReadActive = false;
+        });
+      else {
         _mdmFetchInProgress = false;
+        _mdmReadActive = false;
+      }
     }
   }
 
@@ -389,14 +412,12 @@ class _DashboardScreenState extends State<DashboardScreen>
         _applyStudentSummary(
           Map<String, dynamic>.from(kpiData['class_summary']),
         );
-      _isStudentVerifiedOnPortal = _studentTaskDone == true;
       await prefs.setString('cached_student_kpi', jsonEncode(kpiData));
     } else if (StudentService.directAttendanceEnabled &&
         kpiData is Map &&
         kpiData['success'] == false) {
       setState(() {
         _studentTaskDone = null;
-        _isStudentVerifiedOnPortal = false;
         _kpiSections = '--';
         _kpiStudents = '--';
         _kpiAttendance = '--';
@@ -439,6 +460,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       await _loadInitialMetrics();
       await _refreshStaffFromCache();
       unawaited(_fetchLiveRajsimsMdmTileData());
+      if (!await _backgroundReadAllowed()) return;
       final result = await DashboardBootstrap.load(widget.schoolId);
       if (mounted &&
           (result['success'] == true ||
@@ -524,6 +546,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Future<void> _fetchAndApplyLiveStaffData() async {
+    if (!await _backgroundReadAllowed()) return;
     final result = await ShaladarpanService.fetchStaffAttendance(
       schoolId: widget.schoolId,
     );
@@ -538,7 +561,6 @@ class _DashboardScreenState extends State<DashboardScreen>
   Future<void> _loadInitialMetrics() async {
     if (widget.initialKpi != null && widget.initialKpi!.isNotEmpty) {
       _applyKpiData(widget.initialKpi!);
-      _isStudentVerifiedOnPortal = false;
       return;
     }
     try {
@@ -550,7 +572,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       if (cachedJson != null && cachedJson.isNotEmpty) {
         final Map<String, dynamic> data = jsonDecode(cachedJson);
         _applyKpiData(data);
-        _isStudentVerifiedOnPortal = false;
       }
     } catch (_) {}
   }
@@ -739,12 +760,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }) {
     if (!mounted) return;
     HapticFeedback.lightImpact();
-    AppNotice.show(
-      context,
-      message,
-      icon: icon,
-      iconColor: iconColor,
-    );
+    AppNotice.show(context, message, icon: icon, iconColor: iconColor);
   }
 
   String _getFormattedDate(DateTime time) {
@@ -792,27 +808,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         Icons.dashboard_customize_rounded,
         size: size,
         color: tintColor ?? const Color(0xFF0F172A),
-      ),
-    );
-  }
-
-  Widget _buildSuccessCheckIcon() {
-    return Image.asset(
-      'assets/icons/check.png',
-      width: 20,
-      height: 20,
-      fit: BoxFit.contain,
-      cacheWidth: 48,
-      errorBuilder: (context, error, stackTrace) => Container(
-        width: 20,
-        height: 20,
-        decoration: const BoxDecoration(
-          color: Color(0xFF10B981),
-          shape: BoxShape.circle,
-        ),
-        child: const Center(
-          child: Icon(Icons.check_rounded, color: Colors.white, size: 13),
-        ),
       ),
     );
   }
@@ -2064,7 +2059,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                 iconPath: 'assets/icons/mdm.png',
                 isBlackPill: true,
               ),
-              if (_mdmFetchInProgress)
+              if (_mdmReadActive && !_mdmLoaded)
                 const CupertinoActivityIndicator(radius: 7)
               else
                 _buildCardVerificationBadge(isVerified: _mdmEntryVerified),
@@ -2157,7 +2152,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               _buildPill(
                 _mdmLoaded
                     ? (_mdmStatusDone ? "Status: Completed" : "Status: Pending")
-                    : (_mdmFetchInProgress
+                    : (_mdmReadActive
                           ? 'Loading…'
                           : (_mdmError ?? 'Not synced')),
                 _mdmStatusDone
@@ -2328,8 +2323,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     _viffsStatusRetry?.cancel();
     if (force) _viffsStatusAttempts = 0;
     _viffsStatusLoading = true;
-    _viffsStatusAttempts++;
+    var attempted = false;
     try {
+      if (!await _backgroundReadAllowed() || _monthlyScreenOpen) return;
+      attempted = true;
+      _viffsStatusAttempts++;
       // A cached attendance result does not establish the school's class range.
       if (ViffsStatusService.requiredCategories(widget.schoolId) == null) {
         await _fetchStudentTaskStatus();
@@ -2338,6 +2336,10 @@ class _DashboardScreenState extends State<DashboardScreen>
       final tablets = ViffsStatusService.requiredCategories(widget.schoolId);
       if (tablets == null || tablets.isEmpty) return;
       final metadata = MonthlyTaskService.cachedViffsSelectors(widget.schoolId);
+      if (metadata == null &&
+          (!await _backgroundReadAllowed() || _monthlyScreenOpen)) {
+        return;
+      }
       final form =
           metadata ??
           Map<String, dynamic>.from(
@@ -2369,6 +2371,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         if (!mounted || _monthlyScreenOpen) return;
         if (!options('ddlClass').any((o) => o['value'].toString() == tablet))
           return;
+        if (!await _backgroundReadAllowed() || _monthlyScreenOpen) return;
         await MonthlyTaskService.fetch(widget.schoolId, 'viffs', {
           'ContentPlaceHolder1_ddlStudentType': sessions.single['value']
               .toString(),
@@ -2378,12 +2381,20 @@ class _DashboardScreenState extends State<DashboardScreen>
       }
       _viffsCheckedPeriod = period;
       _viffsStatusAttempts = 0;
+    } on MonthlyTaskException catch (e) {
+      if (e.isPortalBusinessRejection) {
+        _viffsCheckedPeriod = period;
+        _viffsStatusAttempts = 0;
+      } else {
+        debugPrint('VIFFS status read unavailable: $e');
+      }
     } catch (e) {
       debugPrint('VIFFS status read unavailable: $e');
     } finally {
       _viffsStatusLoading = false;
       // Retry reads only; never Submit or Lock. Pause while a form is being used.
-      if (mounted &&
+      if (attempted &&
+          mounted &&
           !_monthlyScreenOpen &&
           _viffsCheckedPeriod != period &&
           _viffsStatusAttempts < 3) {
@@ -2534,6 +2545,10 @@ class _DashboardScreenState extends State<DashboardScreen>
       return;
     _mdmDetailReads.add(detailKey);
     try {
+      if (!await _backgroundReadAllowed() ||
+          requestedDay != _todayStr ||
+          distributionNo != _mdmDistributionNo)
+        return;
       final uri = BackendConfig.uri('/api/rajsims/mdm/entry')
           .replace(queryParameters: {'dist_no': distributionNo});
       final response = await http.get(uri).timeout(const Duration(seconds: 45));
@@ -2615,7 +2630,6 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ).hasMatch(row['status']?.toString() ?? ''),
             )
           : null;
-      _isStudentVerifiedOnPortal = _studentTaskDone == true;
       if (data['success'] == true && classes is List && classes.isNotEmpty) {
         final grades = classes
             .map(
@@ -2652,6 +2666,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (!mounted || _studentStatusLoading) return;
     setState(() => _studentStatusLoading = true);
     try {
+      if (!await _backgroundReadAllowed()) return;
       if (StudentService.directAttendanceEnabled) {
         final session = DirectSchoolSession.studentKpi;
         if (session == null ||
@@ -2659,7 +2674,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           if (mounted)
             setState(() {
               _studentTaskDone = null;
-              _isStudentVerifiedOnPortal = false;
             });
           return;
         }
@@ -2680,7 +2694,6 @@ class _DashboardScreenState extends State<DashboardScreen>
         } else {
           setState(() {
             _studentTaskDone = null;
-            _isStudentVerifiedOnPortal = false;
             _kpiSections = '--';
             _kpiStudents = '--';
             _kpiAttendance = '--';
@@ -2692,6 +2705,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         }
         return;
       }
+      if (!await _backgroundReadAllowed()) return;
       final response = await http
           .get(BackendConfig.uri('/api/student/summary'))
           .timeout(const Duration(seconds: 45));
@@ -2699,14 +2713,12 @@ class _DashboardScreenState extends State<DashboardScreen>
       final data = decoded['data'] is Map
           ? Map<String, dynamic>.from(decoded['data'])
           : decoded;
-      final classes = data['classes'];
       if (!mounted) return;
       if (response.statusCode == 200) _applyStudentSummary(data);
     } catch (_) {
       if (mounted)
         setState(() {
           _studentTaskDone = null;
-          _isStudentVerifiedOnPortal = false;
         });
     } finally {
       if (mounted) setState(() => _studentStatusLoading = false);
@@ -3594,12 +3606,6 @@ class _DashboardTask {
   final String title, iconPath;
   final bool? done;
   final VoidCallback onTap;
-  final bool unavailable;
-  const _DashboardTask(
-    this.title,
-    this.iconPath,
-    this.done,
-    this.onTap, {
-    this.unavailable = false,
-  });
+  final bool unavailable = false;
+  const _DashboardTask(this.title, this.iconPath, this.done, this.onTap);
 }

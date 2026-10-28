@@ -1,7 +1,9 @@
+import 'dart:async';
 // Python student_attendance_worker.py parity (Android native HTTP).
 // A save is made only after explicit confirmation; an uncertain result is NEVER retried.
 import '../services/core/direct/coordinator.dart';
 import '../services/core/direct/errors.dart';
+import '../services/core/direct/portal_diagnostics.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -73,6 +75,24 @@ class DirectStudentAttendanceService {
   static const _host = 'rajshaladarpan.rajasthan.gov.in';
   static const _pageName = 'StudentdailyAttendanceStatus_Web_NewVersion.aspx';
   bool _busy = false;
+  Future<void>? _preparation;
+  int _foregroundUsers = 0;
+  Completer<void>? _foregroundEnded;
+  bool get foregroundActive => _foregroundUsers > 0;
+  Future<void> waitForForeground() async {
+    while (foregroundActive) { await _foregroundEnded!.future; }
+  }
+  void Function() acquireForeground() {
+    if (_foregroundUsers == 0) _foregroundEnded = Completer<void>();
+    _foregroundUsers++;
+    var released = false;
+    return () {
+      if (!released) {
+        released = true; _foregroundUsers--;
+        if (_foregroundUsers == 0) _foregroundEnded?.complete();
+      }
+    };
+  }
   SchoolReportWorker? _reportWorker;
 
   Uri get _endpoint {
@@ -88,6 +108,29 @@ class DirectStudentAttendanceService {
     double? timeout,
     int? maxAttempts,
   }) async {
+    return PortalDiagnostics.measure(
+      mutation
+          ? PortalPhase.studentSaveOperation
+          : PortalPhase.studentReadOperation,
+      () => _exclusiveImpl(
+        fn,
+        mutation: mutation,
+        timeout: timeout,
+        maxAttempts: maxAttempts,
+      ),
+    );
+  }
+
+  Future<T> _exclusiveImpl<T>(
+    Future<T> Function() fn, {
+    bool mutation = false,
+    double? timeout,
+    int? maxAttempts,
+  }) async {
+    // A cancelled confirmation can leave its READ in flight. Later portal
+    // work waits for that owner; cached UI navigation remains independent.
+    final preparation = _preparation;
+    if (preparation != null) await preparation;
     Future<T> execute() async {
       if (_busy) {
         throw const AttendancePortalException(
@@ -106,14 +149,22 @@ class DirectStudentAttendanceService {
     final coordinator = auth.coordinator;
     if (coordinator == null) return execute();
     final expectedSchool = auth.authenticatedSchoolId;
-    final preMutationCodes = <String>{'BAD_DATE', 'BAD_CLASS', 'NO_CLASSES'};
+    final preMutationCodes = <String>{
+      'BAD_DATE',
+      'BAD_CLASS',
+      'NO_CLASSES',
+      'STALE_ATTENDANCE_READ',
+    };
     try {
+      if (_worker.hasFreshSessionForm) {
+        coordinator.markAlive();
+      }
       final result = await coordinator.run(
         resource: 'sd.student',
         kind: mutation ? Kind.mutation : Kind.read,
         timeout: timeout ?? (mutation ? 75 : 60),
         maxAttempts: maxAttempts ?? (mutation ? 1 : 3),
-        preMutationCodes: mutation ? preMutationCodes : {},
+        preMutationCodes: preMutationCodes,
         label: mutation ? 'student_save' : 'student_fetch',
         worker: (_) async {
           if (auth.authenticatedSchoolId != expectedSchool ||
@@ -170,6 +221,9 @@ class DirectStudentAttendanceService {
             };
           }
           if (value is Map<String, dynamic>) {
+            if (!mutation && preMutationCodes.contains(value['code'])) {
+              return {...value, 'success': true, '_direct_value': value};
+            }
             return {...value, '_direct_value': value};
           }
           return {'success': true, '_direct_value': value};
@@ -219,10 +273,16 @@ class DirectStudentAttendanceService {
     }
   }
 
+  bool get hasFreshSessionForm => _worker.hasFreshSessionForm;
+  ({int revision, String? date, List<Map<String, dynamic>> classes})?
+      get lastSummarySnapshot => _worker.lastSummarySnapshot;
+
   late final StudentAttendanceWorker _worker = StudentAttendanceWorker(
     baseUrl: () => _endpoint.resolve('../../'),
     observeUrl: auth.observeAttendanceUrl,
     sessionIdentity: () => auth.schoolSessionIdentity,
+    activityStamp: () => auth.schoolIdleActivityStamp,
+    readFormLifetime: const Duration(minutes: 10),
     request: (url, {fields, referer, mutation = false}) {
       if (mutation) {
         return auth.submitStudentAttendanceOnce(
@@ -304,14 +364,16 @@ class DirectStudentAttendanceService {
     }
   }
 
-  Future<Map<String, dynamic>> fetchClassSummaryResponse({String? date}) async {
+  Future<Map<String, dynamic>> fetchClassSummaryResponse({String? date, bool background = false}) async {
     try {
-      return await _exclusive(
-        () => _worker.fetchClassSummary(attendanceDate: date),
-      );
-    } catch (error) {
-      return _failure(error);
-    }
+      while (true) {
+        if (background) await waitForForeground(); // Outside portal resource lock.
+        final result = await _exclusive(() => background && foregroundActive
+          ? Future.value(<String,dynamic>{'success': true, '_deferred': true})
+          : _worker.fetchClassSummary(attendanceDate: date));
+        if (result['_deferred'] != true) return result;
+      }
+    } catch (error) { return _failure(error); }
   }
 
   Future<List<AttendanceSection>> fetchClassSummary({String? date}) async {
@@ -326,13 +388,23 @@ class DirectStudentAttendanceService {
     required String classId,
     String? date,
     String? section,
+    bool Function()? shouldContinue,
   }) async {
+    if (shouldContinue != null && !shouldContinue()) {
+      return {
+        'success': false,
+        'code': 'STALE_ATTENDANCE_READ',
+        'message': 'Attendance read superseded by a newer class selection.',
+        'students': [],
+      };
+    }
     try {
       return await _exclusive(
         () => _worker.fetchStudentAttendanceList(
           classId: classId,
           attendanceDate: date,
           section: section,
+          shouldContinue: shouldContinue,
         ),
       );
     } catch (error) {
@@ -375,6 +447,29 @@ class DirectStudentAttendanceService {
         '${result['code'] ?? 'UNEXPECTED'}',
         '${result['message'] ?? 'Portal data is missing or invalid.'}',
       );
+    }
+  }
+
+  Future<void> prepareSave({
+    required String classId, required String date, String? section,
+  }) async {
+    final previous = _preparation;
+    if (previous != null) await previous;
+    // Start before publishing ownership so preparation never waits on itself.
+    final pending = _exclusive(() async {
+      await PortalDiagnostics.measure(PortalPhase.studentPrepare, () =>
+        _worker.prepareStudentAttendanceSave(
+          classId: classId, attendanceDate: date, section: section,
+        ));
+      return <String, dynamic>{'success': true};
+    }, maxAttempts: 1).then<void>((_) {}, onError: (Object _, StackTrace __) {
+      // Optional READ preparation. The confirmed Save retains fresh fallback.
+    });
+    _preparation = pending;
+    try {
+      await pending;
+    } finally {
+      if (identical(_preparation, pending)) _preparation = null;
     }
   }
 

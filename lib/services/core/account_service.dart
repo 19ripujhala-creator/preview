@@ -85,7 +85,7 @@ class AccountService {
   }
 
   static Future<Map<String, dynamic>> _nativeProfile(String scope) async {
-    final result = await StaffLoginService.fetchProfile();
+    final result = await StaffLoginService.fetchIdentity();
     final after = await SecureStorageService.getAllPortalCreds();
     if (!StudentService.directAttendanceEnabled || _scope(after) != scope)
       return {

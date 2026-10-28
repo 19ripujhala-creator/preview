@@ -12,15 +12,24 @@ import 'package:shaladarpan/services/core/backend_config.dart';
 
 class MonthlyTaskException implements Exception {
   final String message;
+  final String? code;
+  final bool portalRejected;
   final bool submissionUnknown;
   final Map<String, dynamic>? savedForm;
   final Map<String, String> fieldErrors;
   const MonthlyTaskException(
     this.message, {
+    this.code,
+    this.portalRejected = false,
     this.submissionUnknown = false,
     this.savedForm,
     this.fieldErrors = const {},
   });
+  bool get isPortalBusinessRejection =>
+      portalRejected ||
+      code == 'PORTAL_MESSAGE' ||
+      code == 'SUBMISSION_REJECTED' ||
+      savedForm != null;
   @override
   String toString() => message;
 }
@@ -181,10 +190,17 @@ class MonthlyTaskService {
             'data': savedForm,
           });
         }
+        final errorCode = error['code']?.toString();
+        final rejected =
+            error['submission_rejected'] == true ||
+            errorCode == 'PORTAL_MESSAGE' ||
+            errorCode == 'SUBMISSION_REJECTED';
         throw MonthlyTaskException(
           (error['message'] ??
                   (detail is String ? detail : 'Monthly task request failed.'))
               .toString(),
+          code: errorCode,
+          portalRejected: rejected,
           submissionUnknown:
               mutation &&
               savedForm == null &&

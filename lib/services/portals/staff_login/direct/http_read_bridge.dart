@@ -30,6 +30,8 @@ class StaffHttpReadBridge {
     return result;
   }
 
+  Future<Map<String, dynamic>> fetchIdentity() =>
+      run((s) => fetchStaffHttpProfile(s, includeP10: false));
   Future<Map<String, dynamic>> fetchProfile() => run(fetchStaffHttpProfile);
   Future<Map<String, dynamic>> fetchHistory([String filter = 'all']) =>
       run((s) => fetchStaffHttpHistory(s, filter));

@@ -211,7 +211,6 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
 
   @override
   Widget build(BuildContext context) {
-    final double screenHeight = MediaQuery.of(context).size.height;
     final bool isAnyLoading = _isLoadingStock || _isLoadingStatus;
     final bool isActivelySyncing = isAnyLoading;
 
@@ -223,10 +222,13 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
           child: ScrollConfiguration(
             behavior: const _NoGlowScrollBehavior(),
             child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                24 + MediaQuery.paddingOf(context).bottom,
               ),
-              padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 110.0),
               child: Align(
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
@@ -234,9 +236,7 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                     maxWidth: AppAdaptive.contentWidth(viewport.maxWidth) - 32,
                   ),
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: math.max(400.0, screenHeight - 160.0),
-                    ),
+                    constraints: BoxConstraints(minHeight: 0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
@@ -539,8 +539,8 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                                       onTap: () {
                                         _haptic();
                                         pushPageAndWaitForExit(
-                    context,
-                    MaterialPageRoute(
+                                          context,
+                                          MaterialPageRoute(
                                             builder: (context) =>
                                                 const AddLegacyDistributionScreen(),
                                           ),
@@ -591,8 +591,8 @@ class _RajsimsTabViewState extends State<RajsimsTabView> {
                                       onTap: () {
                                         _haptic();
                                         pushPageAndWaitForExit(
-                    context,
-                    MaterialPageRoute(
+                                          context,
+                                          MaterialPageRoute(
                                             builder: (context) =>
                                                 const AddDistributionScreen(),
                                           ),
@@ -971,7 +971,8 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
         elevation: 0,
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.transparent,
-        margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
+        width: AppAdaptive.contentWidth(MediaQuery.sizeOf(context).width) - 32,
+        padding: EdgeInsets.zero,
         content: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
@@ -1347,564 +1348,560 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
 
     return ScrollConfiguration(
       behavior: const _NoGlowScrollBehavior(),
-      child: Scaffold(
-        extendBodyBehindAppBar: false,
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white.withOpacity(0.85),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(
-              CupertinoIcons.back,
-              color: Color(0xFF0F172A),
-              size: 20,
-            ),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: const Text(
-            "Add Distribution",
-            style: TextStyle(
-              fontFamily: kAppFont,
-              fontSize: 15.0,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          centerTitle: false,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 12.0, top: 10, bottom: 10),
-              child: Container(
-                height: 32,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(8),
+      child: _RajsimsListBackdrop(
+        child: Scaffold(
+          extendBodyBehindAppBar: false,
+          backgroundColor: Colors.transparent,
+          appBar: _RajsimsListHeaderFrame(
+            title: 'Add Distribution',
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(
+                  right: 12.0,
+                  top: 10,
+                  bottom: 10,
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      _haptic();
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const AddLegacyDistributionScreen(),
-                        ),
-                      );
-                    },
+                child: Container(
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
                     borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(
-                            CupertinoIcons.arrow_counterclockwise,
-                            size: 12,
-                            color: Colors.white,
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        _haptic();
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const AddLegacyDistributionScreen(),
                           ),
-                          SizedBox(width: 5),
-                          Text(
-                            "Legacy Distribution",
-                            style: TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w700,
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              CupertinoIcons.arrow_counterclockwise,
+                              size: 12,
                               color: Colors.white,
                             ),
-                          ),
-                        ],
+                            SizedBox(width: 5),
+                            Text(
+                              "Legacy Distribution",
+                              style: TextStyle(
+                                fontFamily: kAppFont,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned.fill(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0.0, 0.45, 1.0],
-                    colors: [
-                      Color(0xFFF8FAFC),
-                      Color(0xFFF1F5F9),
-                      Color(0xFFFEF3C7),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: -50,
-              top: -40,
-              child: StaticBlur(sigma: 85,
-                child: Container(
-                  width: 260,
-                  height: 260,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFFBAE6FD).withOpacity(0.42),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              right: -50,
-              top: 40,
-              child: StaticBlur(sigma: 90,
-                child: Container(
-                  width: 240,
-                  height: 240,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFFFDE68A).withOpacity(0.35),
-                  ),
-                ),
-              ),
-            ),
-
-            PageContentMotion(child: SafeArea(
-              bottom: false,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
-                    ),
-                    padding: const EdgeInsets.fromLTRB(14.0, 6.0, 14.0, 30.0),
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth:
-                              AppAdaptive.contentWidth(constraints.maxWidth) -
-                              32,
+            ],
+          ),
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              PageContentMotion(
+                child: SafeArea(
+                  bottom: false,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
                         ),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 0),
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.95),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: const Color(0xFFE2E8F0),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF0F172A)
-                                      .withOpacity(0.03),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                        padding: const EdgeInsets.fromLTRB(
+                          14.0,
+                          6.0,
+                          14.0,
+                          30.0,
+                        ),
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth:
+                                  AppAdaptive.contentWidth(
+                                    constraints.maxWidth,
+                                  ) -
+                                  32,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 0),
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.95),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFFE2E8F0),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF0F172A)
+                                          .withOpacity(0.03),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
-                                        AdaptiveFieldGrid(
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
                                           children: [
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
+                                            AdaptiveFieldGrid(
                                               children: [
-                                                _buildLabel("Transaction Type"),
-                                                _buildReadOnlyField(
-                                                  "Distribution",
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .stretch,
+                                                  children: [
+                                                    _buildLabel(
+                                                      "Transaction Type",
+                                                    ),
+                                                    _buildReadOnlyField(
+                                                      "Distribution",
+                                                    ),
+                                                  ],
+                                                ),
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .stretch,
+                                                  children: [
+                                                    _buildLabel(
+                                                      "Customer Type",
+                                                    ),
+                                                    _buildReadOnlyField(
+                                                      "Beneficiary Dept.",
+                                                    ),
+                                                  ],
+                                                ),
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .stretch,
+                                                  children: [
+                                                    _buildLabel(
+                                                      "Distribution No.",
+                                                    ),
+                                                    _buildReadOnlyField(
+                                                      "Auto Generated",
+                                                    ),
+                                                  ],
+                                                ),
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .stretch,
+                                                  children: [
+                                                    _buildLabel(
+                                                      "Distribution Date *",
+                                                      isRequired: true,
+                                                    ),
+                                                    _buildReadOnlyField(
+                                                      formatDisplayDate(
+                                                        DateTime.now(),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ],
                                             ),
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: [
-                                                _buildLabel("Customer Type"),
-                                                _buildReadOnlyField(
-                                                  "Beneficiary Dept.",
-                                                ),
-                                              ],
-                                            ),
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: [
-                                                _buildLabel("Distribution No."),
-                                                _buildReadOnlyField(
-                                                  "Auto Generated",
-                                                ),
-                                              ],
-                                            ),
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: [
-                                                _buildLabel(
-                                                  "Distribution Date *",
-                                                  isRequired: true,
-                                                ),
-                                                _buildReadOnlyField(
-                                                  formatDisplayDate(
-                                                    DateTime.now(),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 14),
-                                        const Text(
-                                          "Zero Consumption (If Any)",
-                                          style: TextStyle(
-                                            fontFamily: kAppFont,
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF8FAFC),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            border: Border.all(
-                                              color: const Color(0xFFE2E8F0),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Checkbox(
-                                                value: _isZeroConsumption,
-                                                onChanged: (val) {
-                                                  _haptic();
-                                                  setState(
-                                                    () => _isZeroConsumption =
-                                                        val ?? false,
-                                                  );
-                                                },
-                                                activeColor: const Color(
-                                                  0xFF0F172A,
-                                                ),
+                                            const SizedBox(height: 14),
+                                            const Text(
+                                              "Zero Consumption (If Any)",
+                                              style: TextStyle(
+                                                fontFamily: kAppFont,
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: Color(0xFF0F172A),
                                               ),
-                                              const Expanded(
-                                                child: Text(
-                                                  "Zero consumption for this day",
-                                                  style: TextStyle(
-                                                    fontFamily: kAppFont,
-                                                    fontSize: 11.5,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Color(0xFF0F172A),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
+                                            ),
+                                            const SizedBox(height: 6),
 
-                                        if (_isZeroConsumption) ...[
-                                          const SizedBox(height: 12),
-                                          _buildLabel(
-                                            "Reason *",
-                                            isRequired: true,
-                                          ),
-                                          GestureDetector(
-                                            onTap:
-                                                _openZeroReasonSelectorDialog,
-                                            behavior: HitTestBehavior.opaque,
-                                            child: Container(
-                                              height: 38,
+                                            Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                    horizontal: 12,
+                                                    horizontal: 8,
+                                                    vertical: 6,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: Colors.white,
+                                                color: const Color(0xFFF8FAFC),
                                                 borderRadius:
                                                     BorderRadius.circular(8),
                                                 border: Border.all(
                                                   color: const Color(
-                                                    0xFFCBD5E1,
+                                                    0xFFE2E8F0,
                                                   ),
                                                 ),
                                               ),
                                               child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
                                                 children: [
-                                                  Expanded(
+                                                  Checkbox(
+                                                    value: _isZeroConsumption,
+                                                    onChanged: (val) {
+                                                      _haptic();
+                                                      setState(
+                                                        () =>
+                                                            _isZeroConsumption =
+                                                                val ?? false,
+                                                      );
+                                                    },
+                                                    activeColor: const Color(
+                                                      0xFF0F172A,
+                                                    ),
+                                                  ),
+                                                  const Expanded(
                                                     child: Text(
-                                                      _selectedZeroReason ??
-                                                          "--Select Reason--",
+                                                      "Zero consumption for this day",
                                                       style: TextStyle(
                                                         fontFamily: kAppFont,
-                                                        fontSize: 12.0,
+                                                        fontSize: 11.5,
                                                         fontWeight:
                                                             FontWeight.w600,
-                                                        color:
-                                                            _selectedZeroReason ==
-                                                                null
-                                                            ? const Color(
-                                                                0xFF94A3B8,
-                                                              )
-                                                            : const Color(
-                                                                0xFF0F172A,
-                                                              ),
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ),
-                                                  const Icon(
-                                                    CupertinoIcons.chevron_down,
-                                                    size: 13,
-                                                    color: Color(0xFF64748B),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        if (!_isZeroConsumption ||
-                                            isShriKrishnaBhog) ...[
-                                          const SizedBox(height: 14),
-                                          const Divider(
-                                            height: 1,
-                                            color: Color(0xFFF1F5F9),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          const Text(
-                                            "Daily Consumption Entry",
-                                            style: TextStyle(
-                                              fontFamily: kAppFont,
-                                              fontSize: 13.0,
-                                              fontWeight: FontWeight.w700,
-                                              color: Color(0xFF0F172A),
-                                            ),
-                                          ),
-                                          if (!isShriKrishnaBhog) ...[
-                                            const SizedBox(height: 8),
-                                            _buildLabel(
-                                              "Product Name *",
-                                              isRequired: true,
-                                            ),
-                                            GestureDetector(
-                                              onTap: _openProductSelectorDialog,
-                                              behavior: HitTestBehavior.opaque,
-                                              child: Container(
-                                                height: 38,
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white,
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  border: Border.all(
-                                                    color: const Color(
-                                                      0xFFCBD5E1,
-                                                    ),
-                                                  ),
-                                                ),
-                                                child: Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      _selectedProductName ==
-                                                              'Wheat'
-                                                          ? "Wheat (गेहूं)"
-                                                          : _selectedProductName ==
-                                                                'Rice'
-                                                          ? "Rice (चावल)"
-                                                          : "--Select Product--",
-                                                      style: TextStyle(
-                                                        fontFamily: kAppFont,
-                                                        fontSize: 12.0,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color:
-                                                            _selectedProductName ==
-                                                                null
-                                                            ? const Color(
-                                                                0xFF94A3B8,
-                                                              )
-                                                            : const Color(
-                                                                0xFF0F172A,
-                                                              ),
-                                                      ),
-                                                    ),
-                                                    const Icon(
-                                                      CupertinoIcons
-                                                          .chevron_down,
-                                                      size: 13,
-                                                      color: Color(0xFF64748B),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                          const SizedBox(height: 12),
-                                          Container(
-                                            padding: const EdgeInsets.all(12),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF8FAFC),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              border: Border.all(
-                                                color: const Color(0xFFE2E8F0),
-                                              ),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Checkbox(
-                                                      value: _isRowSelected,
-                                                      onChanged: (v) =>
-                                                          setState(
-                                                            () =>
-                                                                _isRowSelected =
-                                                                    v ?? true,
-                                                          ),
-                                                      activeColor: const Color(
-                                                        0xFF0F172A,
-                                                      ),
-                                                    ),
-                                                    const Expanded(
-                                                      child: Text(
-                                                        "Primary School (Pre-Primary to 5)",
-                                                        style: TextStyle(
-                                                          fontFamily: kAppFont,
-                                                          fontSize: 12.0,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: Color(
-                                                            0xFF0F172A,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 7,
-                                                            vertical: 3,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.white,
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              6,
-                                                            ),
-                                                        border: Border.all(
-                                                          color: const Color(
-                                                            0xFFCBD5E1,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      child: Text(
-                                                        "Enrolment: $_maxEnrolment",
-                                                        style: const TextStyle(
-                                                          fontFamily: kAppFont,
-                                                          fontSize: 10.0,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: Color(
-                                                            0xFF475569,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 8),
-                                                const Divider(
-                                                  height: 1,
-                                                  color: Color(0xFFE2E8F0),
-                                                ),
-                                                const SizedBox(height: 10),
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      isShriKrishnaBhog
-                                                          ? "Beneficiaries (Atithi Bhog)"
-                                                          : "No. Of Beneficiary *",
-                                                      style: const TextStyle(
-                                                        fontFamily: kAppFont,
-                                                        fontSize: 11.0,
-                                                        fontWeight:
-                                                            FontWeight.w700,
                                                         color: Color(
                                                           0xFF0F172A,
                                                         ),
                                                       ),
                                                     ),
-                                                    GestureDetector(
-                                                      onTap: () {
-                                                        _haptic();
-                                                        _beneficiaryController
-                                                                .text =
-                                                            _maxEnrolment
-                                                                .toString();
-                                                        _calculateIssuedQty();
-                                                      },
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 7,
-                                                              vertical: 2.5,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          color: const Color(
-                                                            0xFFDCFCE7,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+
+                                            if (_isZeroConsumption) ...[
+                                              const SizedBox(height: 12),
+                                              _buildLabel(
+                                                "Reason *",
+                                                isRequired: true,
+                                              ),
+                                              GestureDetector(
+                                                onTap:
+                                                    _openZeroReasonSelectorDialog,
+                                                behavior:
+                                                    HitTestBehavior.opaque,
+                                                child: Container(
+                                                  height: 38,
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: const Color(
+                                                        0xFFCBD5E1,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          _selectedZeroReason ?? "--Select Reason--",
+                                                          style: TextStyle(
+                                                            fontFamily:
+                                                                kAppFont,
+                                                            fontSize: 12.0,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color:
+                                                                _selectedZeroReason ==
+                                                                    null
+                                                                ? const Color(
+                                                                    0xFF94A3B8,
+                                                                  )
+                                                                : const Color(
+                                                                    0xFF0F172A,
+                                                                  ),
                                                           ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                5,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                      ),
+                                                      const Icon(
+                                                        CupertinoIcons
+                                                            .chevron_down,
+                                                        size: 13,
+                                                        color: Color(
+                                                          0xFF64748B,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            if (!_isZeroConsumption ||
+                                                isShriKrishnaBhog) ...[
+                                              const SizedBox(height: 14),
+                                              const Divider(
+                                                height: 1,
+                                                color: Color(0xFFF1F5F9),
+                                              ),
+                                              const SizedBox(height: 12),
+                                              const Text(
+                                                "Daily Consumption Entry",
+                                                style: TextStyle(
+                                                  fontFamily: kAppFont,
+                                                  fontSize: 13.0,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF0F172A),
+                                                ),
+                                              ),
+                                              if (!isShriKrishnaBhog) ...[
+                                                const SizedBox(height: 8),
+                                                _buildLabel(
+                                                  "Product Name *",
+                                                  isRequired: true,
+                                                ),
+                                                GestureDetector(
+                                                  onTap:
+                                                      _openProductSelectorDialog,
+                                                  behavior:
+                                                      HitTestBehavior.opaque,
+                                                  child: Container(
+                                                    height: 38,
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 12,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: const Color(
+                                                          0xFFCBD5E1,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        Text(
+                                                          _selectedProductName ==
+                                                                  'Wheat'
+                                                              ? "Wheat (गेहूं)"
+                                                              : _selectedProductName ==
+                                                                    'Rice'
+                                                              ? "Rice (चावल)"
+                                                              : "--Select Product--",
+                                                          style: TextStyle(
+                                                            fontFamily:
+                                                                kAppFont,
+                                                            fontSize: 12.0,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color:
+                                                                _selectedProductName ==
+                                                                    null
+                                                                ? const Color(
+                                                                    0xFF94A3B8,
+                                                                  )
+                                                                : const Color(
+                                                                    0xFF0F172A,
+                                                                  ),
+                                                          ),
+                                                        ),
+                                                        const Icon(
+                                                          CupertinoIcons
+                                                              .chevron_down,
+                                                          size: 13,
+                                                          color: Color(
+                                                            0xFF64748B,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                              const SizedBox(height: 12),
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFFF8FAFC,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                    color: const Color(
+                                                      0xFFE2E8F0,
+                                                    ),
+                                                  ),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        Checkbox(
+                                                          value: _isRowSelected,
+                                                          onChanged: (v) =>
+                                                              setState(
+                                                                () =>
+                                                                    _isRowSelected =
+                                                                        v ??
+                                                                        true,
+                                                              ),
+                                                          activeColor:
+                                                              const Color(
+                                                                0xFF0F172A,
                                                               ),
                                                         ),
-                                                        child: Text(
-                                                          "Fill All ($_maxEnrolment)",
+                                                        const Expanded(
+                                                          child: Text(
+                                                            "Primary School (Pre-Primary to 5)",
+                                                            style: TextStyle(
+                                                              fontFamily:
+                                                                  kAppFont,
+                                                              fontSize: 12.0,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              color: Color(
+                                                                0xFF0F172A,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 7,
+                                                                vertical: 3,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.white,
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  6,
+                                                                ),
+                                                            border: Border.all(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFFCBD5E1,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                          child: Text(
+                                                            "Enrolment: $_maxEnrolment",
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontFamily:
+                                                                      kAppFont,
+                                                                  fontSize:
+                                                                      10.0,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                  color: Color(
+                                                                    0xFF475569,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    const Divider(
+                                                      height: 1,
+                                                      color: Color(0xFFE2E8F0),
+                                                    ),
+                                                    const SizedBox(height: 10),
+                                                    Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        Text(
+                                                          isShriKrishnaBhog
+                                                              ? "Beneficiaries (Atithi Bhog)"
+                                                              : "No. Of Beneficiary *",
                                                           style:
                                                               const TextStyle(
+                                                                fontFamily:
+                                                                    kAppFont,
+                                                                fontSize: 11.0,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                color: Color(
+                                                                  0xFF0F172A,
+                                                                ),
+                                                              ),
+                                                        ),
+                                                        GestureDetector(
+                                                          onTap: () {
+                                                            _haptic();
+                                                            _beneficiaryController
+                                                                    .text =
+                                                                _maxEnrolment
+                                                                    .toString();
+                                                            _calculateIssuedQty();
+                                                          },
+                                                          child: Container(
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  horizontal: 7,
+                                                                  vertical: 2.5,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFFDCFCE7,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    5,
+                                                                  ),
+                                                            ),
+                                                            child: Text(
+                                                              "Fill All ($_maxEnrolment)",
+                                                              style: const TextStyle(
                                                                 fontFamily:
                                                                     kAppFont,
                                                                 fontSize: 9.5,
@@ -1915,30 +1912,29 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                                                   0xFF16A34A,
                                                                 ),
                                                               ),
+                                                            ),
+                                                          ),
                                                         ),
-                                                      ),
+                                                      ],
                                                     ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Row(
-                                                  children: [
-                                                    Expanded(
-                                                      flex: 3,
-                                                      child: SizedBox(
-                                                        height: 36,
-                                                        child: TextField(
-                                                          controller:
-                                                              _beneficiaryController,
-                                                          keyboardType:
-                                                              TextInputType
-                                                                  .number,
-                                                          inputFormatters: [
-                                                            FilteringTextInputFormatter
-                                                                .digitsOnly,
-                                                          ],
-                                                          style:
-                                                              const TextStyle(
+                                                    const SizedBox(height: 6),
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          flex: 3,
+                                                          child: SizedBox(
+                                                            height: 36,
+                                                            child: TextField(
+                                                              controller:
+                                                                  _beneficiaryController,
+                                                              keyboardType:
+                                                                  TextInputType
+                                                                      .number,
+                                                              inputFormatters: [
+                                                                FilteringTextInputFormatter
+                                                                    .digitsOnly,
+                                                              ],
+                                                              style: const TextStyle(
                                                                 fontFamily:
                                                                     kAppFont,
                                                                 fontSize: 13.0,
@@ -1949,10 +1945,9 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                                                   0xFF0F172A,
                                                                 ),
                                                               ),
-                                                          decoration: InputDecoration(
-                                                            hintText: "Enter count...",
-                                                            hintStyle:
-                                                                const TextStyle(
+                                                              decoration: InputDecoration(
+                                                                hintText: "Enter count...",
+                                                                hintStyle: const TextStyle(
                                                                   fontFamily:
                                                                       kAppFont,
                                                                   fontSize:
@@ -1961,19 +1956,349 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                                                     0xFF94A3B8,
                                                                   ),
                                                                 ),
-                                                            contentPadding:
-                                                                const EdgeInsets.symmetric(
-                                                                  horizontal:
-                                                                      10,
-                                                                  vertical: 8,
+                                                                contentPadding:
+                                                                    const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          10,
+                                                                      vertical:
+                                                                          8,
+                                                                    ),
+                                                                filled: true,
+                                                                fillColor:
+                                                                    Colors
+                                                                        .white,
+                                                                border: OutlineInputBorder(
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                  borderSide: const BorderSide(
+                                                                    color: Color(
+                                                                      0xFFCBD5E1,
+                                                                    ),
+                                                                  ),
                                                                 ),
+                                                                enabledBorder: OutlineInputBorder(
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                  borderSide: const BorderSide(
+                                                                    color: Color(
+                                                                      0xFFCBD5E1,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                focusedBorder: OutlineInputBorder(
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                  borderSide: const BorderSide(
+                                                                    color: Color(
+                                                                      0xFF0F172A,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        Expanded(
+                                                          flex: 2,
+                                                          child: Container(
+                                                            height: 36,
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  horizontal: 8,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFFF1F5F9,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    8,
+                                                                  ),
+                                                              border: Border.all(
+                                                                color:
+                                                                    const Color(
+                                                                      0xFFE2E8F0,
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                            alignment: Alignment
+                                                                .center,
+                                                            child: Text(
+                                                              isShriKrishnaBhog
+                                                                  ? "0.00 Kg (Free)"
+                                                                  : "${_issuedQty.toStringAsFixed(2)} Kg",
+                                                              style: TextStyle(
+                                                                fontFamily:
+                                                                    kAppFont,
+                                                                fontSize: 11.5,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
+                                                                color:
+                                                                    isShriKrishnaBhog
+                                                                    ? const Color(
+                                                                        0xFF16A34A,
+                                                                      )
+                                                                    : const Color(
+                                                                        0xFF0F172A,
+                                                                      ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+
+                                            if (!_isZeroConsumption) ...[
+                                              const SizedBox(height: 16),
+                                              const Divider(
+                                                height: 1,
+                                                color: Color(0xFFF1F5F9),
+                                              ),
+                                              const SizedBox(height: 14),
+                                              const Text(
+                                                "अतिथि माता (If Any)",
+                                                style: TextStyle(
+                                                  fontFamily: kAppFont,
+                                                  fontSize: 13.0,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF0F172A),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              const Text(
+                                                "क्या विद्यार्थियों को भोजन परोसने जाने से पूर्व उनकी माताओं / महिला अभिभावकों द्वारा भोजन को चखा गया है",
+                                                style: TextStyle(
+                                                  fontFamily: kAppFont,
+                                                  fontSize: 11.0,
+                                                  color: Color(0xFF475569),
+                                                  height: 1.3,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Container(
+                                                decoration: BoxDecoration(
+                                                  border: Border.all(
+                                                    color: const Color(
+                                                      0xFFCBD5E1,
+                                                    ),
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: GestureDetector(
+                                                        onTap: () {
+                                                          _haptic();
+                                                          setState(
+                                                            () =>
+                                                                _atithiMataChoice =
+                                                                    '1',
+                                                          );
+                                                        },
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                vertical: 8,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color:
+                                                                _atithiMataChoice ==
+                                                                    '1'
+                                                                ? const Color(
+                                                                    0xFF0F172A,
+                                                                  )
+                                                                : Colors
+                                                                      .transparent,
+                                                            borderRadius:
+                                                                const BorderRadius.horizontal(
+                                                                  left:
+                                                                      Radius.circular(
+                                                                        7,
+                                                                      ),
+                                                                ),
+                                                          ),
+                                                          alignment:
+                                                              Alignment.center,
+                                                          child: Text(
+                                                            "हाँ",
+                                                            style: TextStyle(
+                                                              fontFamily:
+                                                                  kAppFont,
+                                                              fontSize: 12.0,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              color:
+                                                                  _atithiMataChoice ==
+                                                                      '1'
+                                                                  ? Colors.white
+                                                                  : const Color(
+                                                                      0xFF0F172A,
+                                                                    ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Container(
+                                                      width: 1,
+                                                      height: 34,
+                                                      color: const Color(
+                                                        0xFFCBD5E1,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: GestureDetector(
+                                                        onTap: () {
+                                                          _haptic();
+                                                          setState(
+                                                            () =>
+                                                                _atithiMataChoice =
+                                                                    '0',
+                                                          );
+                                                        },
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                vertical: 8,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color:
+                                                                _atithiMataChoice ==
+                                                                    '0'
+                                                                ? const Color(
+                                                                    0xFF0F172A,
+                                                                  )
+                                                                : Colors
+                                                                      .transparent,
+                                                            borderRadius:
+                                                                const BorderRadius.horizontal(
+                                                                  right:
+                                                                      Radius.circular(
+                                                                        7,
+                                                                      ),
+                                                                ),
+                                                          ),
+                                                          alignment:
+                                                              Alignment.center,
+                                                          child: Text(
+                                                            "नहीं",
+                                                            style: TextStyle(
+                                                              fontFamily:
+                                                                  kAppFont,
+                                                              fontSize: 12.0,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              color:
+                                                                  _atithiMataChoice ==
+                                                                      '0'
+                                                                  ? Colors.white
+                                                                  : const Color(
+                                                                      0xFF0F172A,
+                                                                    ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+
+                                              if (_atithiMataChoice == '1') ...[
+                                                const SizedBox(height: 10),
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 8,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFFF8FAFC,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: const Color(
+                                                        0xFFE2E8F0,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      const Expanded(
+                                                        child: Text(
+                                                          "अतिथि माता की संख्या *",
+                                                          style: TextStyle(
+                                                            fontFamily:
+                                                                kAppFont,
+                                                            fontSize: 11.5,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            color: Color(
+                                                              0xFF0F172A,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      SizedBox(
+                                                        width: 60,
+                                                        height: 32,
+                                                        child: TextField(
+                                                          controller:
+                                                              _atithiMataCountController,
+                                                          keyboardType:
+                                                              TextInputType
+                                                                  .number,
+                                                          inputFormatters: [
+                                                            FilteringTextInputFormatter
+                                                                .digitsOnly,
+                                                          ],
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontFamily:
+                                                                    kAppFont,
+                                                                fontSize: 12.5,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                color: Color(
+                                                                  0xFF0F172A,
+                                                                ),
+                                                              ),
+                                                          decoration: InputDecoration(
+                                                            contentPadding:
+                                                                EdgeInsets.zero,
                                                             filled: true,
                                                             fillColor:
                                                                 Colors.white,
                                                             border: OutlineInputBorder(
                                                               borderRadius:
                                                                   BorderRadius.circular(
-                                                                    8,
+                                                                    6,
                                                                   ),
                                                               borderSide:
                                                                   const BorderSide(
@@ -1985,7 +2310,7 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                                             enabledBorder: OutlineInputBorder(
                                                               borderRadius:
                                                                   BorderRadius.circular(
-                                                                    8,
+                                                                    6,
                                                                   ),
                                                               borderSide:
                                                                   const BorderSide(
@@ -2009,457 +2334,157 @@ class _AddDistributionScreenState extends State<AddDistributionScreen> {
                                                           ),
                                                         ),
                                                       ),
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Expanded(
-                                                      flex: 2,
-                                                      child: Container(
-                                                        height: 36,
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 8,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          color: const Color(
-                                                            0xFFF1F5F9,
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 24),
+
+                                    // Cancel / Save CTA
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 520,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: SizedBox(
+                                                height: 36,
+                                                child: OutlinedButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  style: ButtonStyle(
+                                                    backgroundColor:
+                                                        MaterialStateProperty.all(
+                                                          Colors.white
+                                                              .withOpacity(0.9),
+                                                        ),
+                                                    foregroundColor:
+                                                        MaterialStateProperty.all(
+                                                          const Color(
+                                                            0xFF0F172A,
                                                           ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                8,
-                                                              ),
-                                                          border: Border.all(
-                                                            color: const Color(
-                                                              0xFFE2E8F0,
+                                                        ),
+                                                    elevation:
+                                                        MaterialStateProperty.all(
+                                                          0,
+                                                        ),
+                                                    side:
+                                                        MaterialStateProperty.all(
+                                                          const BorderSide(
+                                                            color: Color(
+                                                              0xFFCBD5E1,
                                                             ),
                                                           ),
                                                         ),
-                                                        alignment:
-                                                            Alignment.center,
-                                                        child: Text(
-                                                          isShriKrishnaBhog
-                                                              ? "0.00 Kg (Free)"
-                                                              : "${_issuedQty.toStringAsFixed(2)} Kg",
+                                                    shape: MaterialStateProperty.all(
+                                                      RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  child: const Text(
+                                                    "Cancel",
+                                                    style: TextStyle(
+                                                      fontFamily: kAppFont,
+                                                      fontSize: 12.0,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Color(0xFF0F172A),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: SizedBox(
+                                                height: 36,
+                                                child: ElevatedButton(
+                                                  onPressed: _isSubmitting
+                                                      ? null
+                                                      : _submitDistribution,
+                                                  style: ButtonStyle(
+                                                    backgroundColor:
+                                                        MaterialStateProperty.all(
+                                                          const Color(
+                                                            0xFF00E676,
+                                                          ),
+                                                        ),
+                                                    foregroundColor:
+                                                        MaterialStateProperty.all(
+                                                          const Color(
+                                                            0xFF0F172A,
+                                                          ),
+                                                        ),
+                                                    elevation:
+                                                        MaterialStateProperty.all(
+                                                          0,
+                                                        ),
+                                                    shape: MaterialStateProperty.all(
+                                                      RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  child: _isSubmitting
+                                                      ? const SizedBox(
+                                                          width: 16,
+                                                          height: 16,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                strokeWidth: 2,
+                                                                color: Color(
+                                                                  0xFF0F172A,
+                                                                ),
+                                                              ),
+                                                        )
+                                                      : const Text(
+                                                          "Save",
                                                           style: TextStyle(
                                                             fontFamily:
                                                                 kAppFont,
-                                                            fontSize: 11.5,
+                                                            fontSize: 12.5,
                                                             fontWeight:
-                                                                FontWeight.w800,
-                                                            color:
-                                                                isShriKrishnaBhog
-                                                                ? const Color(
-                                                                    0xFF16A34A,
-                                                                  )
-                                                                : const Color(
-                                                                    0xFF0F172A,
-                                                                  ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-
-                                        if (!_isZeroConsumption) ...[
-                                          const SizedBox(height: 16),
-                                          const Divider(
-                                            height: 1,
-                                            color: Color(0xFFF1F5F9),
-                                          ),
-                                          const SizedBox(height: 14),
-                                          const Text(
-                                            "अतिथि माता (If Any)",
-                                            style: TextStyle(
-                                              fontFamily: kAppFont,
-                                              fontSize: 13.0,
-                                              fontWeight: FontWeight.w700,
-                                              color: Color(0xFF0F172A),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          const Text(
-                                            "क्या विद्यार्थियों को भोजन परोसने जाने से पूर्व उनकी माताओं / महिला अभिभावकों द्वारा भोजन को चखा गया है",
-                                            style: TextStyle(
-                                              fontFamily: kAppFont,
-                                              fontSize: 11.0,
-                                              color: Color(0xFF475569),
-                                              height: 1.3,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Container(
-                                            decoration: BoxDecoration(
-                                              border: Border.all(
-                                                color: const Color(0xFFCBD5E1),
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Expanded(
-                                                  child: GestureDetector(
-                                                    onTap: () {
-                                                      _haptic();
-                                                      setState(
-                                                        () =>
-                                                            _atithiMataChoice =
-                                                                '1',
-                                                      );
-                                                    },
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 8,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            _atithiMataChoice ==
-                                                                '1'
-                                                            ? const Color(
-                                                                0xFF0F172A,
-                                                              )
-                                                            : Colors
-                                                                  .transparent,
-                                                        borderRadius:
-                                                            const BorderRadius.horizontal(
-                                                              left:
-                                                                  Radius.circular(
-                                                                    7,
-                                                                  ),
-                                                            ),
-                                                      ),
-                                                      alignment:
-                                                          Alignment.center,
-                                                      child: Text(
-                                                        "हाँ",
-                                                        style: TextStyle(
-                                                          fontFamily: kAppFont,
-                                                          fontSize: 12.0,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color:
-                                                              _atithiMataChoice ==
-                                                                  '1'
-                                                              ? Colors.white
-                                                              : const Color(
-                                                                  0xFF0F172A,
-                                                                ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Container(
-                                                  width: 1,
-                                                  height: 34,
-                                                  color: const Color(
-                                                    0xFFCBD5E1,
-                                                  ),
-                                                ),
-                                                Expanded(
-                                                  child: GestureDetector(
-                                                    onTap: () {
-                                                      _haptic();
-                                                      setState(
-                                                        () =>
-                                                            _atithiMataChoice =
-                                                                '0',
-                                                      );
-                                                    },
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 8,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            _atithiMataChoice ==
-                                                                '0'
-                                                            ? const Color(
-                                                                0xFF0F172A,
-                                                              )
-                                                            : Colors
-                                                                  .transparent,
-                                                        borderRadius:
-                                                            const BorderRadius.horizontal(
-                                                              right:
-                                                                  Radius.circular(
-                                                                    7,
-                                                                  ),
-                                                            ),
-                                                      ),
-                                                      alignment:
-                                                          Alignment.center,
-                                                      child: Text(
-                                                        "नहीं",
-                                                        style: TextStyle(
-                                                          fontFamily: kAppFont,
-                                                          fontSize: 12.0,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color:
-                                                              _atithiMataChoice ==
-                                                                  '0'
-                                                              ? Colors.white
-                                                              : const Color(
-                                                                  0xFF0F172A,
-                                                                ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-
-                                          if (_atithiMataChoice == '1') ...[
-                                            const SizedBox(height: 10),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 8,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFF8FAFC),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                border: Border.all(
-                                                  color: const Color(
-                                                    0xFFE2E8F0,
-                                                  ),
-                                                ),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  const Expanded(
-                                                    child: Text(
-                                                      "अतिथि माता की संख्या *",
-                                                      style: TextStyle(
-                                                        fontFamily: kAppFont,
-                                                        fontSize: 11.5,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        color: Color(
-                                                          0xFF0F172A,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  SizedBox(
-                                                    width: 60,
-                                                    height: 32,
-                                                    child: TextField(
-                                                      controller:
-                                                          _atithiMataCountController,
-                                                      keyboardType:
-                                                          TextInputType.number,
-                                                      inputFormatters: [
-                                                        FilteringTextInputFormatter
-                                                            .digitsOnly,
-                                                      ],
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      style: const TextStyle(
-                                                        fontFamily: kAppFont,
-                                                        fontSize: 12.5,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        color: Color(
-                                                          0xFF0F172A,
-                                                        ),
-                                                      ),
-                                                      decoration: InputDecoration(
-                                                        contentPadding:
-                                                            EdgeInsets.zero,
-                                                        filled: true,
-                                                        fillColor: Colors.white,
-                                                        border: OutlineInputBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                6,
-                                                              ),
-                                                          borderSide:
-                                                              const BorderSide(
-                                                                color: Color(
-                                                                  0xFFCBD5E1,
-                                                                ),
-                                                              ),
-                                                        ),
-                                                        enabledBorder:
-                                                            OutlineInputBorder(
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    6,
-                                                                  ),
-                                                              borderSide:
-                                                                  const BorderSide(
-                                                                    color: Color(
-                                                                      0xFFCBD5E1,
-                                                                    ),
-                                                                  ),
-                                                            ),
-                                                        focusedBorder:
-                                                            OutlineInputBorder(
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    8,
-                                                                  ),
-                                                              borderSide:
-                                                                  const BorderSide(
-                                                                    color: Color(
-                                                                      0xFF0F172A,
-                                                                    ),
-                                                                  ),
-                                                            ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-
-                                // Cancel / Save CTA
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 520,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: SizedBox(
-                                            height: 36,
-                                            child: OutlinedButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context),
-                                              style: ButtonStyle(
-                                                backgroundColor:
-                                                    MaterialStateProperty.all(
-                                                      Colors.white.withOpacity(
-                                                        0.9,
-                                                      ),
-                                                    ),
-                                                foregroundColor:
-                                                    MaterialStateProperty.all(
-                                                      const Color(0xFF0F172A),
-                                                    ),
-                                                elevation:
-                                                    MaterialStateProperty.all(
-                                                      0,
-                                                    ),
-                                                side: MaterialStateProperty.all(
-                                                  const BorderSide(
-                                                    color: Color(0xFFCBD5E1),
-                                                  ),
-                                                ),
-                                                shape: MaterialStateProperty.all(
-                                                  RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
-                                                  ),
-                                                ),
-                                              ),
-                                              child: const Text(
-                                                "Cancel",
-                                                style: TextStyle(
-                                                  fontFamily: kAppFont,
-                                                  fontSize: 12.0,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF0F172A),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: SizedBox(
-                                            height: 36,
-                                            child: ElevatedButton(
-                                              onPressed: _isSubmitting
-                                                  ? null
-                                                  : _submitDistribution,
-                                              style: ButtonStyle(
-                                                backgroundColor:
-                                                    MaterialStateProperty.all(
-                                                      const Color(0xFF00E676),
-                                                    ),
-                                                foregroundColor:
-                                                    MaterialStateProperty.all(
-                                                      const Color(0xFF0F172A),
-                                                    ),
-                                                elevation:
-                                                    MaterialStateProperty.all(
-                                                      0,
-                                                    ),
-                                                shape: MaterialStateProperty.all(
-                                                  RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
-                                                  ),
-                                                ),
-                                              ),
-                                              child: _isSubmitting
-                                                  ? const SizedBox(
-                                                      width: 16,
-                                                      height: 16,
-                                                      child:
-                                                          CircularProgressIndicator(
-                                                            strokeWidth: 2,
+                                                                FontWeight.w700,
                                                             color: Color(
                                                               0xFF0F172A,
                                                             ),
                                                           ),
-                                                    )
-                                                  : const Text(
-                                                      "Save",
-                                                      style: TextStyle(
-                                                        fontFamily: kAppFont,
-                                                        fontSize: 12.5,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        color: Color(
-                                                          0xFF0F172A,
                                                         ),
-                                                      ),
-                                                    ),
+                                                ),
+                                              ),
                                             ),
-                                          ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  );
-                },
+                      );
+                    },
+                  ),
+                ),
               ),
-            )),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -2586,7 +2611,8 @@ class _AddLegacyDistributionScreenState
         elevation: 0,
         behavior: SnackBarBehavior.floating,
         backgroundColor: Colors.transparent,
-        margin: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
+        width: AppAdaptive.contentWidth(MediaQuery.sizeOf(context).width) - 32,
+        padding: EdgeInsets.zero,
         content: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
@@ -3345,399 +3371,154 @@ class _AddLegacyDistributionScreenState
 
     return ScrollConfiguration(
       behavior: const _NoGlowScrollBehavior(),
-      child: Scaffold(
-        extendBodyBehindAppBar: false,
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white.withOpacity(0.85),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(
-              CupertinoIcons.back,
-              color: Color(0xFF0F172A),
-              size: 20,
-            ),
-            onPressed: () => Navigator.pop(context),
+      child: _RajsimsListBackdrop(
+        child: Scaffold(
+          extendBodyBehindAppBar: false,
+          backgroundColor: Colors.transparent,
+          appBar: _RajsimsListHeaderFrame(
+            title: 'Add Legacy Distribution',
+            actions: const <Widget>[],
           ),
-          title: const Text(
-            "Add Legacy Distribution",
-            style: TextStyle(
-              fontFamily: kAppFont,
-              fontSize: 15.0,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          centerTitle: false,
-        ),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned.fill(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0.0, 0.45, 1.0],
-                    colors: [
-                      Color(0xFFF8FAFC),
-                      Color(0xFFF1F5F9),
-                      Color(0xFFFEF3C7),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: -50,
-              top: -40,
-              child: StaticBlur(sigma: 85,
-                child: Container(
-                  width: 260,
-                  height: 260,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFFBAE6FD).withOpacity(0.42),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              right: -50,
-              top: 40,
-              child: StaticBlur(sigma: 90,
-                child: Container(
-                  width: 240,
-                  height: 240,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFFFDE68A).withOpacity(0.35),
-                  ),
-                ),
-              ),
-            ),
-
-            PageContentMotion(child: SafeArea(
-              bottom: false,
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
-                    ),
-                    padding: const EdgeInsets.fromLTRB(14.0, 6.0, 14.0, 30.0),
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth:
-                              AppAdaptive.contentWidth(constraints.maxWidth) -
-                              32,
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              PageContentMotion(
+                child: SafeArea(
+                  bottom: false,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
                         ),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 0),
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.95),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: const Color(0xFFE2E8F0),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF0F172A)
-                                      .withOpacity(0.03),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                        padding: const EdgeInsets.fromLTRB(
+                          14.0,
+                          6.0,
+                          14.0,
+                          30.0,
+                        ),
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth:
+                                  AppAdaptive.contentWidth(
+                                    constraints.maxWidth,
+                                  ) -
+                                  32,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 0),
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.95),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: const Color(0xFFE2E8F0),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF0F172A)
+                                          .withOpacity(0.03),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.stretch,
                                       children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(10),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFFEF3C7),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            border: Border.all(
-                                              color: const Color(0xFFFDE68A),
-                                            ),
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: const [
-                                              Text(
-                                                "• Legacy डिस्ट्रीब्यूशन में आज से पूर्व की तिथि की एंट्री होगी।",
-                                                style: TextStyle(
-                                                  fontFamily: kAppFont,
-                                                  fontSize: 10.5,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF92400E),
-                                                ),
-                                              ),
-                                              SizedBox(height: 2),
-                                              Text(
-                                                "• Legacy एंट्री सर्व प्रथम Unsettled / Draft मोड में सेव होगी।",
-                                                style: TextStyle(
-                                                  fontFamily: kAppFont,
-                                                  fontSize: 10.5,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF92400E),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        const SizedBox(height: 12),
-                                        AdaptiveFieldGrid(
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
                                           children: [
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: [
-                                                _buildLabel("Transaction Type"),
-                                                _buildReadOnlyField(
-                                                  "Distribution",
-                                                ),
-                                              ],
-                                            ),
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.stretch,
-                                              children: [
-                                                _buildLabel("Customer Type"),
-                                                _buildReadOnlyField(
-                                                  "Beneficiary Dept.",
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 10),
-                                        _buildLabel(
-                                          "Distribution Date (Legacy Date) *",
-                                          isRequired: true,
-                                        ),
-                                        GestureDetector(
-                                          onTap: _openLegacyCalendarPicker,
-                                          behavior: HitTestBehavior.opaque,
-                                          child: Container(
-                                            height: 36,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border: Border.all(
-                                                color: const Color(0xFFCBD5E1),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  formattedDate,
-                                                  style: const TextStyle(
-                                                    fontFamily: kAppFont,
-                                                    fontSize: 12.0,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Color(0xFF0F172A),
-                                                  ),
-                                                ),
-                                                Image.asset(
-                                                  'assets/icons/leave.png',
-                                                  width: 16,
-                                                  height: 16,
-                                                  color: const Color(
-                                                    0xFF0F172A,
-                                                  ),
-                                                  errorBuilder: (c, e, s) =>
-                                                      const Icon(
-                                                        CupertinoIcons.calendar,
-                                                        size: 16,
-                                                        color: Color(
-                                                          0xFF0F172A,
-                                                        ),
-                                                      ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-
-                                        const SizedBox(height: 14),
-                                        const Text(
-                                          "Zero Consumption (If Any)",
-                                          style: TextStyle(
-                                            fontFamily: kAppFont,
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF8FAFC),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            border: Border.all(
-                                              color: const Color(0xFFE2E8F0),
-                                            ),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Checkbox(
-                                                value: _isZeroConsumption,
-                                                onChanged: (val) {
-                                                  _haptic();
-                                                  setState(
-                                                    () => _isZeroConsumption =
-                                                        val ?? false,
-                                                  );
-                                                },
-                                                activeColor: const Color(
-                                                  0xFF0F172A,
-                                                ),
-                                              ),
-                                              const Expanded(
-                                                child: Text(
-                                                  "Zero consumption for this day",
-                                                  style: TextStyle(
-                                                    fontFamily: kAppFont,
-                                                    fontSize: 11.5,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Color(0xFF0F172A),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        if (_isZeroConsumption) ...[
-                                          const SizedBox(height: 12),
-                                          _buildLabel(
-                                            "Reason *",
-                                            isRequired: true,
-                                          ),
-                                          GestureDetector(
-                                            onTap:
-                                                _openZeroReasonSelectorDialog,
-                                            behavior: HitTestBehavior.opaque,
-                                            child: Container(
-                                              height: 38,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                  ),
+                                            Container(
+                                              padding: const EdgeInsets.all(10),
                                               decoration: BoxDecoration(
-                                                color: Colors.white,
+                                                color: const Color(0xFFFEF3C7),
                                                 borderRadius:
                                                     BorderRadius.circular(8),
                                                 border: Border.all(
                                                   color: const Color(
-                                                    0xFFCBD5E1,
+                                                    0xFFFDE68A,
                                                   ),
                                                 ),
                                               ),
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      _selectedZeroReason ??
-                                                          "--Select Reason--",
-                                                      style: TextStyle(
-                                                        fontFamily: kAppFont,
-                                                        fontSize: 12.0,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color:
-                                                            _selectedZeroReason ==
-                                                                null
-                                                            ? const Color(
-                                                                0xFF94A3B8,
-                                                              )
-                                                            : const Color(
-                                                                0xFF0F172A,
-                                                              ),
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: const [
+                                                  Text(
+                                                    "• Legacy डिस्ट्रीब्यूशन में आज से पूर्व की तिथि की एंट्री होगी।",
+                                                    style: TextStyle(
+                                                      fontFamily: kAppFont,
+                                                      fontSize: 10.5,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Color(0xFF92400E),
                                                     ),
                                                   ),
-                                                  const Icon(
-                                                    CupertinoIcons.chevron_down,
-                                                    size: 13,
-                                                    color: Color(0xFF64748B),
+                                                  SizedBox(height: 2),
+                                                  Text(
+                                                    "• Legacy एंट्री सर्व प्रथम Unsettled / Draft मोड में सेव होगी।",
+                                                    style: TextStyle(
+                                                      fontFamily: kAppFont,
+                                                      fontSize: 10.5,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Color(0xFF92400E),
+                                                    ),
                                                   ),
                                                 ],
                                               ),
                                             ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
-                                      children: [
-                                        if (!_isZeroConsumption ||
-                                            isShriKrishnaBhog) ...[
-                                          const SizedBox(height: 14),
-                                          const Divider(
-                                            height: 1,
-                                            color: Color(0xFFF1F5F9),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          const Text(
-                                            "Daily Consumption Entry",
-                                            style: TextStyle(
-                                              fontFamily: kAppFont,
-                                              fontSize: 13.0,
-                                              fontWeight: FontWeight.w700,
-                                              color: Color(0xFF0F172A),
+
+                                            const SizedBox(height: 12),
+                                            AdaptiveFieldGrid(
+                                              children: [
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .stretch,
+                                                  children: [
+                                                    _buildLabel(
+                                                      "Transaction Type",
+                                                    ),
+                                                    _buildReadOnlyField(
+                                                      "Distribution",
+                                                    ),
+                                                  ],
+                                                ),
+                                                Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .stretch,
+                                                  children: [
+                                                    _buildLabel(
+                                                      "Customer Type",
+                                                    ),
+                                                    _buildReadOnlyField(
+                                                      "Beneficiary Dept.",
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
                                             ),
-                                          ),
-                                          if (!isShriKrishnaBhog) ...[
-                                            const SizedBox(height: 8),
+                                            const SizedBox(height: 10),
                                             _buildLabel(
-                                              "Product Name *",
+                                              "Distribution Date (Legacy Date) *",
                                               isRequired: true,
                                             ),
                                             GestureDetector(
-                                              onTap: _openProductSelectorDialog,
+                                              onTap: _openLegacyCalendarPicker,
                                               behavior: HitTestBehavior.opaque,
                                               child: Container(
-                                                height: 38,
+                                                height: 36,
                                                 padding:
                                                     const EdgeInsets.symmetric(
                                                       horizontal: 12,
@@ -3758,134 +3539,10 @@ class _AddLegacyDistributionScreenState
                                                           .spaceBetween,
                                                   children: [
                                                     Text(
-                                                      _selectedProductName ==
-                                                              'Wheat'
-                                                          ? "Wheat (गेहूं)"
-                                                          : _selectedProductName ==
-                                                                'Rice'
-                                                          ? "Rice (चावल)"
-                                                          : "--Select Product--",
-                                                      style: TextStyle(
-                                                        fontFamily: kAppFont,
-                                                        fontSize: 12.0,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color:
-                                                            _selectedProductName ==
-                                                                null
-                                                            ? const Color(
-                                                                0xFF94A3B8,
-                                                              )
-                                                            : const Color(
-                                                                0xFF0F172A,
-                                                              ),
-                                                      ),
-                                                    ),
-                                                    const Icon(
-                                                      CupertinoIcons
-                                                          .chevron_down,
-                                                      size: 13,
-                                                      color: Color(0xFF64748B),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                          const SizedBox(height: 12),
-                                          Container(
-                                            padding: const EdgeInsets.all(12),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF8FAFC),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              border: Border.all(
-                                                color: const Color(0xFFE2E8F0),
-                                              ),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Checkbox(
-                                                      value: _isRowSelected,
-                                                      onChanged: (v) =>
-                                                          setState(
-                                                            () =>
-                                                                _isRowSelected =
-                                                                    v ?? true,
-                                                          ),
-                                                      activeColor: const Color(
-                                                        0xFF0F172A,
-                                                      ),
-                                                    ),
-                                                    const Expanded(
-                                                      child: Text(
-                                                        "Primary School (Pre-Primary to 5)",
-                                                        style: TextStyle(
-                                                          fontFamily: kAppFont,
-                                                          fontSize: 12.0,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: Color(
-                                                            0xFF0F172A,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 7,
-                                                            vertical: 3,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.white,
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              6,
-                                                            ),
-                                                        border: Border.all(
-                                                          color: const Color(
-                                                            0xFFCBD5E1,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      child: Text(
-                                                        "Enrolment: $_maxEnrolment",
-                                                        style: const TextStyle(
-                                                          fontFamily: kAppFont,
-                                                          fontSize: 10.0,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: Color(
-                                                            0xFF475569,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 8),
-                                                const Divider(
-                                                  height: 1,
-                                                  color: Color(0xFFE2E8F0),
-                                                ),
-                                                const SizedBox(height: 10),
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      isShriKrishnaBhog
-                                                          ? "Beneficiaries (Atithi Bhog)"
-                                                          : "No. Of Beneficiary *",
+                                                      formattedDate,
                                                       style: const TextStyle(
                                                         fontFamily: kAppFont,
-                                                        fontSize: 11.0,
+                                                        fontSize: 12.0,
                                                         fontWeight:
                                                             FontWeight.w700,
                                                         color: Color(
@@ -3893,34 +3550,402 @@ class _AddLegacyDistributionScreenState
                                                         ),
                                                       ),
                                                     ),
-                                                    GestureDetector(
-                                                      onTap: () {
-                                                        _haptic();
-                                                        _beneficiaryController
-                                                                .text =
-                                                            _maxEnrolment
-                                                                .toString();
-                                                        _calculateIssuedQty();
-                                                      },
-                                                      child: Container(
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 7,
-                                                              vertical: 2.5,
+                                                    Image.asset(
+                                                      'assets/icons/leave.png',
+                                                      width: 16,
+                                                      height: 16,
+                                                      color: const Color(
+                                                        0xFF0F172A,
+                                                      ),
+                                                      errorBuilder: (c, e, s) =>
+                                                          const Icon(
+                                                            CupertinoIcons
+                                                                .calendar,
+                                                            size: 16,
+                                                            color: Color(
+                                                              0xFF0F172A,
                                                             ),
-                                                        decoration: BoxDecoration(
-                                                          color: const Color(
-                                                            0xFFDCFCE7,
                                                           ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                5,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+
+                                            const SizedBox(height: 14),
+                                            const Text(
+                                              "Zero Consumption (If Any)",
+                                              style: TextStyle(
+                                                fontFamily: kAppFont,
+                                                fontSize: 12.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: Color(0xFF0F172A),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 6,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFF8FAFC),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                  color: const Color(
+                                                    0xFFE2E8F0,
+                                                  ),
+                                                ),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Checkbox(
+                                                    value: _isZeroConsumption,
+                                                    onChanged: (val) {
+                                                      _haptic();
+                                                      setState(
+                                                        () =>
+                                                            _isZeroConsumption =
+                                                                val ?? false,
+                                                      );
+                                                    },
+                                                    activeColor: const Color(
+                                                      0xFF0F172A,
+                                                    ),
+                                                  ),
+                                                  const Expanded(
+                                                    child: Text(
+                                                      "Zero consumption for this day",
+                                                      style: TextStyle(
+                                                        fontFamily: kAppFont,
+                                                        fontSize: 11.5,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Color(
+                                                          0xFF0F172A,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+
+                                            if (_isZeroConsumption) ...[
+                                              const SizedBox(height: 12),
+                                              _buildLabel(
+                                                "Reason *",
+                                                isRequired: true,
+                                              ),
+                                              GestureDetector(
+                                                onTap:
+                                                    _openZeroReasonSelectorDialog,
+                                                behavior:
+                                                    HitTestBehavior.opaque,
+                                                child: Container(
+                                                  height: 38,
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: const Color(
+                                                        0xFFCBD5E1,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          _selectedZeroReason ?? "--Select Reason--",
+                                                          style: TextStyle(
+                                                            fontFamily:
+                                                                kAppFont,
+                                                            fontSize: 12.0,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color:
+                                                                _selectedZeroReason ==
+                                                                    null
+                                                                ? const Color(
+                                                                    0xFF94A3B8,
+                                                                  )
+                                                                : const Color(
+                                                                    0xFF0F172A,
+                                                                  ),
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                        ),
+                                                      ),
+                                                      const Icon(
+                                                        CupertinoIcons
+                                                            .chevron_down,
+                                                        size: 13,
+                                                        color: Color(
+                                                          0xFF64748B,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            if (!_isZeroConsumption ||
+                                                isShriKrishnaBhog) ...[
+                                              const SizedBox(height: 14),
+                                              const Divider(
+                                                height: 1,
+                                                color: Color(0xFFF1F5F9),
+                                              ),
+                                              const SizedBox(height: 12),
+                                              const Text(
+                                                "Daily Consumption Entry",
+                                                style: TextStyle(
+                                                  fontFamily: kAppFont,
+                                                  fontSize: 13.0,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF0F172A),
+                                                ),
+                                              ),
+                                              if (!isShriKrishnaBhog) ...[
+                                                const SizedBox(height: 8),
+                                                _buildLabel(
+                                                  "Product Name *",
+                                                  isRequired: true,
+                                                ),
+                                                GestureDetector(
+                                                  onTap:
+                                                      _openProductSelectorDialog,
+                                                  behavior:
+                                                      HitTestBehavior.opaque,
+                                                  child: Container(
+                                                    height: 38,
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 12,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
+                                                          ),
+                                                      border: Border.all(
+                                                        color: const Color(
+                                                          0xFFCBD5E1,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        Text(
+                                                          _selectedProductName ==
+                                                                  'Wheat'
+                                                              ? "Wheat (गेहूं)"
+                                                              : _selectedProductName ==
+                                                                    'Rice'
+                                                              ? "Rice (चावल)"
+                                                              : "--Select Product--",
+                                                          style: TextStyle(
+                                                            fontFamily:
+                                                                kAppFont,
+                                                            fontSize: 12.0,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color:
+                                                                _selectedProductName ==
+                                                                    null
+                                                                ? const Color(
+                                                                    0xFF94A3B8,
+                                                                  )
+                                                                : const Color(
+                                                                    0xFF0F172A,
+                                                                  ),
+                                                          ),
+                                                        ),
+                                                        const Icon(
+                                                          CupertinoIcons
+                                                              .chevron_down,
+                                                          size: 13,
+                                                          color: Color(
+                                                            0xFF64748B,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                              const SizedBox(height: 12),
+                                              Container(
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFFF8FAFC,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                    color: const Color(
+                                                      0xFFE2E8F0,
+                                                    ),
+                                                  ),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        Checkbox(
+                                                          value: _isRowSelected,
+                                                          onChanged: (v) =>
+                                                              setState(
+                                                                () =>
+                                                                    _isRowSelected =
+                                                                        v ??
+                                                                        true,
+                                                              ),
+                                                          activeColor:
+                                                              const Color(
+                                                                0xFF0F172A,
                                                               ),
                                                         ),
-                                                        child: Text(
-                                                          "Fill All ($_maxEnrolment)",
+                                                        const Expanded(
+                                                          child: Text(
+                                                            "Primary School (Pre-Primary to 5)",
+                                                            style: TextStyle(
+                                                              fontFamily:
+                                                                  kAppFont,
+                                                              fontSize: 12.0,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              color: Color(
+                                                                0xFF0F172A,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 7,
+                                                                vertical: 3,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.white,
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  6,
+                                                                ),
+                                                            border: Border.all(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFFCBD5E1,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                          child: Text(
+                                                            "Enrolment: $_maxEnrolment",
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontFamily:
+                                                                      kAppFont,
+                                                                  fontSize:
+                                                                      10.0,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w700,
+                                                                  color: Color(
+                                                                    0xFF475569,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    const Divider(
+                                                      height: 1,
+                                                      color: Color(0xFFE2E8F0),
+                                                    ),
+                                                    const SizedBox(height: 10),
+                                                    Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        Text(
+                                                          isShriKrishnaBhog
+                                                              ? "Beneficiaries (Atithi Bhog)"
+                                                              : "No. Of Beneficiary *",
                                                           style:
                                                               const TextStyle(
+                                                                fontFamily:
+                                                                    kAppFont,
+                                                                fontSize: 11.0,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                color: Color(
+                                                                  0xFF0F172A,
+                                                                ),
+                                                              ),
+                                                        ),
+                                                        GestureDetector(
+                                                          onTap: () {
+                                                            _haptic();
+                                                            _beneficiaryController
+                                                                    .text =
+                                                                _maxEnrolment
+                                                                    .toString();
+                                                            _calculateIssuedQty();
+                                                          },
+                                                          child: Container(
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  horizontal: 7,
+                                                                  vertical: 2.5,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFFDCFCE7,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    5,
+                                                                  ),
+                                                            ),
+                                                            child: Text(
+                                                              "Fill All ($_maxEnrolment)",
+                                                              style: const TextStyle(
                                                                 fontFamily:
                                                                     kAppFont,
                                                                 fontSize: 9.5,
@@ -3931,30 +3956,29 @@ class _AddLegacyDistributionScreenState
                                                                   0xFF16A34A,
                                                                 ),
                                                               ),
+                                                            ),
+                                                          ),
                                                         ),
-                                                      ),
+                                                      ],
                                                     ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Row(
-                                                  children: [
-                                                    Expanded(
-                                                      flex: 3,
-                                                      child: SizedBox(
-                                                        height: 36,
-                                                        child: TextField(
-                                                          controller:
-                                                              _beneficiaryController,
-                                                          keyboardType:
-                                                              TextInputType
-                                                                  .number,
-                                                          inputFormatters: [
-                                                            FilteringTextInputFormatter
-                                                                .digitsOnly,
-                                                          ],
-                                                          style:
-                                                              const TextStyle(
+                                                    const SizedBox(height: 6),
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          flex: 3,
+                                                          child: SizedBox(
+                                                            height: 36,
+                                                            child: TextField(
+                                                              controller:
+                                                                  _beneficiaryController,
+                                                              keyboardType:
+                                                                  TextInputType
+                                                                      .number,
+                                                              inputFormatters: [
+                                                                FilteringTextInputFormatter
+                                                                    .digitsOnly,
+                                                              ],
+                                                              style: const TextStyle(
                                                                 fontFamily:
                                                                     kAppFont,
                                                                 fontSize: 13.0,
@@ -3965,10 +3989,9 @@ class _AddLegacyDistributionScreenState
                                                                   0xFF0F172A,
                                                                 ),
                                                               ),
-                                                          decoration: InputDecoration(
-                                                            hintText: "Enter count...",
-                                                            hintStyle:
-                                                                const TextStyle(
+                                                              decoration: InputDecoration(
+                                                                hintText: "Enter count...",
+                                                                hintStyle: const TextStyle(
                                                                   fontFamily:
                                                                       kAppFont,
                                                                   fontSize:
@@ -3977,19 +4000,349 @@ class _AddLegacyDistributionScreenState
                                                                     0xFF94A3B8,
                                                                   ),
                                                                 ),
-                                                            contentPadding:
-                                                                const EdgeInsets.symmetric(
-                                                                  horizontal:
-                                                                      10,
-                                                                  vertical: 8,
+                                                                contentPadding:
+                                                                    const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          10,
+                                                                      vertical:
+                                                                          8,
+                                                                    ),
+                                                                filled: true,
+                                                                fillColor:
+                                                                    Colors
+                                                                        .white,
+                                                                border: OutlineInputBorder(
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                  borderSide: const BorderSide(
+                                                                    color: Color(
+                                                                      0xFFCBD5E1,
+                                                                    ),
+                                                                  ),
                                                                 ),
+                                                                enabledBorder: OutlineInputBorder(
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                  borderSide: const BorderSide(
+                                                                    color: Color(
+                                                                      0xFFCBD5E1,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                focusedBorder: OutlineInputBorder(
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                  borderSide: const BorderSide(
+                                                                    color: Color(
+                                                                      0xFF0F172A,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        Expanded(
+                                                          flex: 2,
+                                                          child: Container(
+                                                            height: 36,
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  horizontal: 8,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFFF1F5F9,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    8,
+                                                                  ),
+                                                              border: Border.all(
+                                                                color:
+                                                                    const Color(
+                                                                      0xFFE2E8F0,
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                            alignment: Alignment
+                                                                .center,
+                                                            child: Text(
+                                                              isShriKrishnaBhog
+                                                                  ? "0.00 Kg (Free)"
+                                                                  : "${_issuedQty.toStringAsFixed(2)} Kg",
+                                                              style: TextStyle(
+                                                                fontFamily:
+                                                                    kAppFont,
+                                                                fontSize: 11.5,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
+                                                                color:
+                                                                    isShriKrishnaBhog
+                                                                    ? const Color(
+                                                                        0xFF16A34A,
+                                                                      )
+                                                                    : const Color(
+                                                                        0xFF0F172A,
+                                                                      ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+
+                                            if (!_isZeroConsumption) ...[
+                                              const SizedBox(height: 16),
+                                              const Divider(
+                                                height: 1,
+                                                color: Color(0xFFF1F5F9),
+                                              ),
+                                              const SizedBox(height: 14),
+                                              const Text(
+                                                "अतिथि माता (If Any)",
+                                                style: TextStyle(
+                                                  fontFamily: kAppFont,
+                                                  fontSize: 13.0,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Color(0xFF0F172A),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              const Text(
+                                                "क्या विद्यार्थियों को भोजन परोसने जाने से पूर्व उनकी माताओं / महिला अभिभावकों द्वारा भोजन को चखा गया है",
+                                                style: TextStyle(
+                                                  fontFamily: kAppFont,
+                                                  fontSize: 11.0,
+                                                  color: Color(0xFF475569),
+                                                  height: 1.3,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Container(
+                                                decoration: BoxDecoration(
+                                                  border: Border.all(
+                                                    color: const Color(
+                                                      0xFFCBD5E1,
+                                                    ),
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: GestureDetector(
+                                                        onTap: () {
+                                                          _haptic();
+                                                          setState(
+                                                            () =>
+                                                                _atithiMataChoice =
+                                                                    '1',
+                                                          );
+                                                        },
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                vertical: 8,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color:
+                                                                _atithiMataChoice ==
+                                                                    '1'
+                                                                ? const Color(
+                                                                    0xFF0F172A,
+                                                                  )
+                                                                : Colors
+                                                                      .transparent,
+                                                            borderRadius:
+                                                                const BorderRadius.horizontal(
+                                                                  left:
+                                                                      Radius.circular(
+                                                                        7,
+                                                                      ),
+                                                                ),
+                                                          ),
+                                                          alignment:
+                                                              Alignment.center,
+                                                          child: Text(
+                                                            "हाँ",
+                                                            style: TextStyle(
+                                                              fontFamily:
+                                                                  kAppFont,
+                                                              fontSize: 12.0,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              color:
+                                                                  _atithiMataChoice ==
+                                                                      '1'
+                                                                  ? Colors.white
+                                                                  : const Color(
+                                                                      0xFF0F172A,
+                                                                    ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Container(
+                                                      width: 1,
+                                                      height: 34,
+                                                      color: const Color(
+                                                        0xFFCBD5E1,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: GestureDetector(
+                                                        onTap: () {
+                                                          _haptic();
+                                                          setState(
+                                                            () =>
+                                                                _atithiMataChoice =
+                                                                    '0',
+                                                          );
+                                                        },
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                vertical: 8,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color:
+                                                                _atithiMataChoice ==
+                                                                    '0'
+                                                                ? const Color(
+                                                                    0xFF0F172A,
+                                                                  )
+                                                                : Colors
+                                                                      .transparent,
+                                                            borderRadius:
+                                                                const BorderRadius.horizontal(
+                                                                  right:
+                                                                      Radius.circular(
+                                                                        7,
+                                                                      ),
+                                                                ),
+                                                          ),
+                                                          alignment:
+                                                              Alignment.center,
+                                                          child: Text(
+                                                            "नहीं",
+                                                            style: TextStyle(
+                                                              fontFamily:
+                                                                  kAppFont,
+                                                              fontSize: 12.0,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              color:
+                                                                  _atithiMataChoice ==
+                                                                      '0'
+                                                                  ? Colors.white
+                                                                  : const Color(
+                                                                      0xFF0F172A,
+                                                                    ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+
+                                              if (_atithiMataChoice == '1') ...[
+                                                const SizedBox(height: 10),
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 8,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFFF8FAFC,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: const Color(
+                                                        0xFFE2E8F0,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      const Expanded(
+                                                        child: Text(
+                                                          "अतिथि माता की संख्या *",
+                                                          style: TextStyle(
+                                                            fontFamily:
+                                                                kAppFont,
+                                                            fontSize: 11.5,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            color: Color(
+                                                              0xFF0F172A,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      SizedBox(
+                                                        width: 60,
+                                                        height: 32,
+                                                        child: TextField(
+                                                          controller:
+                                                              _atithiMataCountController,
+                                                          keyboardType:
+                                                              TextInputType
+                                                                  .number,
+                                                          inputFormatters: [
+                                                            FilteringTextInputFormatter
+                                                                .digitsOnly,
+                                                          ],
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontFamily:
+                                                                    kAppFont,
+                                                                fontSize: 12.5,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                color: Color(
+                                                                  0xFF0F172A,
+                                                                ),
+                                                              ),
+                                                          decoration: InputDecoration(
+                                                            contentPadding:
+                                                                EdgeInsets.zero,
                                                             filled: true,
                                                             fillColor:
                                                                 Colors.white,
                                                             border: OutlineInputBorder(
                                                               borderRadius:
                                                                   BorderRadius.circular(
-                                                                    8,
+                                                                    6,
                                                                   ),
                                                               borderSide:
                                                                   const BorderSide(
@@ -4001,7 +4354,7 @@ class _AddLegacyDistributionScreenState
                                                             enabledBorder: OutlineInputBorder(
                                                               borderRadius:
                                                                   BorderRadius.circular(
-                                                                    8,
+                                                                    6,
                                                                   ),
                                                               borderSide:
                                                                   const BorderSide(
@@ -4025,457 +4378,157 @@ class _AddLegacyDistributionScreenState
                                                           ),
                                                         ),
                                                       ),
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Expanded(
-                                                      flex: 2,
-                                                      child: Container(
-                                                        height: 36,
-                                                        padding:
-                                                            const EdgeInsets.symmetric(
-                                                              horizontal: 8,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          color: const Color(
-                                                            0xFFF1F5F9,
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 24),
+
+                                    // Cancel / Save CTA
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: ConstrainedBox(
+                                        constraints: const BoxConstraints(
+                                          maxWidth: 520,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: SizedBox(
+                                                height: 36,
+                                                child: OutlinedButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                  style: ButtonStyle(
+                                                    backgroundColor:
+                                                        MaterialStateProperty.all(
+                                                          Colors.white
+                                                              .withOpacity(0.9),
+                                                        ),
+                                                    foregroundColor:
+                                                        MaterialStateProperty.all(
+                                                          const Color(
+                                                            0xFF0F172A,
                                                           ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                8,
-                                                              ),
-                                                          border: Border.all(
-                                                            color: const Color(
-                                                              0xFFE2E8F0,
+                                                        ),
+                                                    elevation:
+                                                        MaterialStateProperty.all(
+                                                          0,
+                                                        ),
+                                                    side:
+                                                        MaterialStateProperty.all(
+                                                          const BorderSide(
+                                                            color: Color(
+                                                              0xFFCBD5E1,
                                                             ),
                                                           ),
                                                         ),
-                                                        alignment:
-                                                            Alignment.center,
-                                                        child: Text(
-                                                          isShriKrishnaBhog
-                                                              ? "0.00 Kg (Free)"
-                                                              : "${_issuedQty.toStringAsFixed(2)} Kg",
+                                                    shape: MaterialStateProperty.all(
+                                                      RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  child: const Text(
+                                                    "Cancel",
+                                                    style: TextStyle(
+                                                      fontFamily: kAppFont,
+                                                      fontSize: 12.0,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Color(0xFF0F172A),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: SizedBox(
+                                                height: 36,
+                                                child: ElevatedButton(
+                                                  onPressed: _isSubmitting
+                                                      ? null
+                                                      : _submitLegacyDistribution,
+                                                  style: ButtonStyle(
+                                                    backgroundColor:
+                                                        MaterialStateProperty.all(
+                                                          const Color(
+                                                            0xFF00E676,
+                                                          ),
+                                                        ),
+                                                    foregroundColor:
+                                                        MaterialStateProperty.all(
+                                                          const Color(
+                                                            0xFF0F172A,
+                                                          ),
+                                                        ),
+                                                    elevation:
+                                                        MaterialStateProperty.all(
+                                                          0,
+                                                        ),
+                                                    shape: MaterialStateProperty.all(
+                                                      RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  child: _isSubmitting
+                                                      ? const SizedBox(
+                                                          width: 16,
+                                                          height: 16,
+                                                          child:
+                                                              CircularProgressIndicator(
+                                                                strokeWidth: 2,
+                                                                color: Color(
+                                                                  0xFF0F172A,
+                                                                ),
+                                                              ),
+                                                        )
+                                                      : const Text(
+                                                          "Save",
                                                           style: TextStyle(
                                                             fontFamily:
                                                                 kAppFont,
-                                                            fontSize: 11.5,
+                                                            fontSize: 12.5,
                                                             fontWeight:
-                                                                FontWeight.w800,
-                                                            color:
-                                                                isShriKrishnaBhog
-                                                                ? const Color(
-                                                                    0xFF16A34A,
-                                                                  )
-                                                                : const Color(
-                                                                    0xFF0F172A,
-                                                                  ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-
-                                        if (!_isZeroConsumption) ...[
-                                          const SizedBox(height: 16),
-                                          const Divider(
-                                            height: 1,
-                                            color: Color(0xFFF1F5F9),
-                                          ),
-                                          const SizedBox(height: 14),
-                                          const Text(
-                                            "अतिथि माता (If Any)",
-                                            style: TextStyle(
-                                              fontFamily: kAppFont,
-                                              fontSize: 13.0,
-                                              fontWeight: FontWeight.w700,
-                                              color: Color(0xFF0F172A),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          const Text(
-                                            "क्या विद्यार्थियों को भोजन परोसने जाने से पूर्व उनकी माताओं / महिला अभिभावकों द्वारा भोजन को चखा गया है",
-                                            style: TextStyle(
-                                              fontFamily: kAppFont,
-                                              fontSize: 11.0,
-                                              color: Color(0xFF475569),
-                                              height: 1.3,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Container(
-                                            decoration: BoxDecoration(
-                                              border: Border.all(
-                                                color: const Color(0xFFCBD5E1),
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                Expanded(
-                                                  child: GestureDetector(
-                                                    onTap: () {
-                                                      _haptic();
-                                                      setState(
-                                                        () =>
-                                                            _atithiMataChoice =
-                                                                '1',
-                                                      );
-                                                    },
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 8,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            _atithiMataChoice ==
-                                                                '1'
-                                                            ? const Color(
-                                                                0xFF0F172A,
-                                                              )
-                                                            : Colors
-                                                                  .transparent,
-                                                        borderRadius:
-                                                            const BorderRadius.horizontal(
-                                                              left:
-                                                                  Radius.circular(
-                                                                    7,
-                                                                  ),
-                                                            ),
-                                                      ),
-                                                      alignment:
-                                                          Alignment.center,
-                                                      child: Text(
-                                                        "हाँ",
-                                                        style: TextStyle(
-                                                          fontFamily: kAppFont,
-                                                          fontSize: 12.0,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color:
-                                                              _atithiMataChoice ==
-                                                                  '1'
-                                                              ? Colors.white
-                                                              : const Color(
-                                                                  0xFF0F172A,
-                                                                ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Container(
-                                                  width: 1,
-                                                  height: 34,
-                                                  color: const Color(
-                                                    0xFFCBD5E1,
-                                                  ),
-                                                ),
-                                                Expanded(
-                                                  child: GestureDetector(
-                                                    onTap: () {
-                                                      _haptic();
-                                                      setState(
-                                                        () =>
-                                                            _atithiMataChoice =
-                                                                '0',
-                                                      );
-                                                    },
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 8,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color:
-                                                            _atithiMataChoice ==
-                                                                '0'
-                                                            ? const Color(
-                                                                0xFF0F172A,
-                                                              )
-                                                            : Colors
-                                                                  .transparent,
-                                                        borderRadius:
-                                                            const BorderRadius.horizontal(
-                                                              right:
-                                                                  Radius.circular(
-                                                                    7,
-                                                                  ),
-                                                            ),
-                                                      ),
-                                                      alignment:
-                                                          Alignment.center,
-                                                      child: Text(
-                                                        "नहीं",
-                                                        style: TextStyle(
-                                                          fontFamily: kAppFont,
-                                                          fontSize: 12.0,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color:
-                                                              _atithiMataChoice ==
-                                                                  '0'
-                                                              ? Colors.white
-                                                              : const Color(
-                                                                  0xFF0F172A,
-                                                                ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-
-                                          if (_atithiMataChoice == '1') ...[
-                                            const SizedBox(height: 10),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 8,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFF8FAFC),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                border: Border.all(
-                                                  color: const Color(
-                                                    0xFFE2E8F0,
-                                                  ),
-                                                ),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  const Expanded(
-                                                    child: Text(
-                                                      "अतिथि माता की संख्या *",
-                                                      style: TextStyle(
-                                                        fontFamily: kAppFont,
-                                                        fontSize: 11.5,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        color: Color(
-                                                          0xFF0F172A,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  SizedBox(
-                                                    width: 60,
-                                                    height: 32,
-                                                    child: TextField(
-                                                      controller:
-                                                          _atithiMataCountController,
-                                                      keyboardType:
-                                                          TextInputType.number,
-                                                      inputFormatters: [
-                                                        FilteringTextInputFormatter
-                                                            .digitsOnly,
-                                                      ],
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      style: const TextStyle(
-                                                        fontFamily: kAppFont,
-                                                        fontSize: 12.5,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        color: Color(
-                                                          0xFF0F172A,
-                                                        ),
-                                                      ),
-                                                      decoration: InputDecoration(
-                                                        contentPadding:
-                                                            EdgeInsets.zero,
-                                                        filled: true,
-                                                        fillColor: Colors.white,
-                                                        border: OutlineInputBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                6,
-                                                              ),
-                                                          borderSide:
-                                                              const BorderSide(
-                                                                color: Color(
-                                                                  0xFFCBD5E1,
-                                                                ),
-                                                              ),
-                                                        ),
-                                                        enabledBorder:
-                                                            OutlineInputBorder(
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    6,
-                                                                  ),
-                                                              borderSide:
-                                                                  const BorderSide(
-                                                                    color: Color(
-                                                                      0xFFCBD5E1,
-                                                                    ),
-                                                                  ),
-                                                            ),
-                                                        focusedBorder:
-                                                            OutlineInputBorder(
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    8,
-                                                                  ),
-                                                              borderSide:
-                                                                  const BorderSide(
-                                                                    color: Color(
-                                                                      0xFF0F172A,
-                                                                    ),
-                                                                  ),
-                                                            ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 24),
-
-                                // Cancel / Save CTA
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 520,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: SizedBox(
-                                            height: 36,
-                                            child: OutlinedButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context),
-                                              style: ButtonStyle(
-                                                backgroundColor:
-                                                    MaterialStateProperty.all(
-                                                      Colors.white.withOpacity(
-                                                        0.9,
-                                                      ),
-                                                    ),
-                                                foregroundColor:
-                                                    MaterialStateProperty.all(
-                                                      const Color(0xFF0F172A),
-                                                    ),
-                                                elevation:
-                                                    MaterialStateProperty.all(
-                                                      0,
-                                                    ),
-                                                side: MaterialStateProperty.all(
-                                                  const BorderSide(
-                                                    color: Color(0xFFCBD5E1),
-                                                  ),
-                                                ),
-                                                shape: MaterialStateProperty.all(
-                                                  RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
-                                                  ),
-                                                ),
-                                              ),
-                                              child: const Text(
-                                                "Cancel",
-                                                style: TextStyle(
-                                                  fontFamily: kAppFont,
-                                                  fontSize: 12.0,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF0F172A),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: SizedBox(
-                                            height: 36,
-                                            child: ElevatedButton(
-                                              onPressed: _isSubmitting
-                                                  ? null
-                                                  : _submitLegacyDistribution,
-                                              style: ButtonStyle(
-                                                backgroundColor:
-                                                    MaterialStateProperty.all(
-                                                      const Color(0xFF00E676),
-                                                    ),
-                                                foregroundColor:
-                                                    MaterialStateProperty.all(
-                                                      const Color(0xFF0F172A),
-                                                    ),
-                                                elevation:
-                                                    MaterialStateProperty.all(
-                                                      0,
-                                                    ),
-                                                shape: MaterialStateProperty.all(
-                                                  RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
-                                                  ),
-                                                ),
-                                              ),
-                                              child: _isSubmitting
-                                                  ? const SizedBox(
-                                                      width: 16,
-                                                      height: 16,
-                                                      child:
-                                                          CircularProgressIndicator(
-                                                            strokeWidth: 2,
+                                                                FontWeight.w700,
                                                             color: Color(
                                                               0xFF0F172A,
                                                             ),
                                                           ),
-                                                    )
-                                                  : const Text(
-                                                      "Save",
-                                                      style: TextStyle(
-                                                        fontFamily: kAppFont,
-                                                        fontSize: 12.5,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        color: Color(
-                                                          0xFF0F172A,
                                                         ),
-                                                      ),
-                                                    ),
+                                                ),
+                                              ),
                                             ),
-                                          ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ),
-                  );
-                },
+                      );
+                    },
+                  ),
+                ),
               ),
-            )),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -5464,447 +5517,434 @@ class _DistributionListScreenState extends State<DistributionListScreen> {
 
     return ScrollConfiguration(
       behavior: const _NoGlowScrollBehavior(),
-      child: Scaffold(
-        extendBodyBehindAppBar: false,
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white.withOpacity(0.85),
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(
-              CupertinoIcons.back,
-              color: Color(0xFF0F172A),
-              size: 20,
-            ),
-            onPressed: () => Navigator.pop(context),
+      child: _RajsimsListBackdrop(
+        child: Scaffold(
+          extendBodyBehindAppBar: false,
+          backgroundColor: Colors.transparent,
+          appBar: _RajsimsListHeaderFrame(
+            title: title,
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(
+                  right: 12.0,
+                  top: 10,
+                  bottom: 10,
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    _haptic();
+                    pushPageAndWaitForExit(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => widget.isLegacy
+                            ? const AddLegacyDistributionScreen()
+                            : const AddDistributionScreen(),
+                      ),
+                    ).then((_) {
+                      if (mounted) _fetchDistributionRecords(force: true);
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0F172A),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 0,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  icon: const Icon(
+                    CupertinoIcons.add,
+                    size: 12,
+                    color: Colors.white,
+                  ),
+                  label: const Text(
+                    "Add Record",
+                    style: TextStyle(
+                      fontFamily: kAppFont,
+                      fontSize: 11.0,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          title: Text(
-            title,
-            style: const TextStyle(
-              fontFamily: kAppFont,
-              fontSize: 15.0,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A),
-            ),
-          ),
-          centerTitle: false,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 12.0, top: 10, bottom: 10),
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  _haptic();
-                  pushPageAndWaitForExit(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => widget.isLegacy
-                          ? const AddLegacyDistributionScreen()
-                          : const AddDistributionScreen(),
-                    ),
-                  ).then((_) {
-                    if (mounted) _fetchDistributionRecords(force: true);
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0F172A),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 0,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                icon: const Icon(
-                  CupertinoIcons.add,
-                  size: 12,
-                  color: Colors.white,
-                ),
-                label: const Text(
-                  "Add Record",
-                  style: TextStyle(
-                    fontFamily: kAppFont,
-                    fontSize: 11.0,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        body: AdaptiveWorkspace(
-          background: true,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned.fill(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: [0.0, 0.45, 1.0],
-                      colors: [
-                        Color(0xFFF8FAFC),
-                        Color(0xFFF1F5F9),
-                        Color(0xFFFEF3C7),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: -50,
-                top: -40,
-                child: StaticBlur(sigma: 85,
-                  child: Container(
-                    width: 260,
-                    height: 260,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(0xFFBAE6FD).withOpacity(0.42),
-                    ),
-                  ),
-                ),
-              ),
-
-              PageContentMotion(child: SafeArea(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
-                      child: Container(
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.95),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: TextField(
-                          onChanged: (v) =>
-                              setState(() => _searchQuery = v.trim()),
-                          style: const TextStyle(
-                            fontFamily: kAppFont,
-                            fontSize: 12.5,
-                            color: Color(0xFF0F172A),
-                          ),
-                          decoration: const InputDecoration(
-                            hintText: "Search Distribution No. or Date...",
-                            hintStyle: TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 11.5,
-                              color: Color(0xFF94A3B8),
+          body: AdaptiveWorkspace(
+            background: false,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                PageContentMotion(
+                  child: SafeArea(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+                          child: Container(
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.95),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
                             ),
-                            prefixIcon: Icon(
-                              CupertinoIcons.search,
-                              size: 15,
-                              color: Color(0xFF64748B),
+                            child: TextField(
+                              onChanged: (v) =>
+                                  setState(() => _searchQuery = v.trim()),
+                              style: const TextStyle(
+                                fontFamily: kAppFont,
+                                fontSize: 12.5,
+                                color: Color(0xFF0F172A),
+                              ),
+                              decoration: const InputDecoration(
+                                hintText: "Search Distribution No. or Date...",
+                                hintStyle: TextStyle(
+                                  fontFamily: kAppFont,
+                                  fontSize: 11.5,
+                                  color: Color(0xFF94A3B8),
+                                ),
+                                prefixIcon: Icon(
+                                  CupertinoIcons.search,
+                                  size: 15,
+                                  color: Color(0xFF64748B),
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 9.0,
+                                ),
+                              ),
                             ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 9.0),
                           ),
                         ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16.0,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Showing ${displayedList.length} of ${_records.length} records",
-                            style: const TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF64748B),
-                            ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0,
+                            vertical: 4,
                           ),
-                          const Text(
-                            "Page 1 Of 1",
-                            style: TextStyle(
-                              fontFamily: kAppFont,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: _isLoading
-                          ? const Center(
-                              child: SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                  color: Color(0xFF0F172A),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Showing ${displayedList.length} of ${_records.length} records",
+                                style: const TextStyle(
+                                  fontFamily: kAppFont,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF64748B),
                                 ),
                               ),
-                            )
-                          : _errorMessage != null
-                          ? RefreshIndicator(
-                              onRefresh: () =>
-                                  _fetchDistributionRecords(force: true),
-                              child: ListView(
-                                physics: const AlwaysScrollableScrollPhysics(
-                                  parent: BouncingScrollPhysics(),
+                              const Text(
+                                "Page 1 Of 1",
+                                style: TextStyle(
+                                  fontFamily: kAppFont,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF64748B),
                                 ),
-                                children: [
-                                  SizedBox(
-                                    height: 260,
-                                    child: Center(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            CupertinoIcons
-                                                .exclamationmark_triangle,
-                                            size: 22,
-                                            color: Color(0xFFF59E0B),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            _errorMessage!,
-                                            textAlign: TextAlign.center,
-                                            style: const TextStyle(
-                                              fontFamily: kAppFont,
-                                              fontSize: 12,
-                                              color: Color(0xFF64748B),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          OutlinedButton(
-                                            onPressed: () =>
-                                                _fetchDistributionRecords(
-                                                  force: true,
-                                                ),
-                                            child: const Text(
-                                              "Retry",
-                                              style: TextStyle(
-                                                fontFamily: kAppFont,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Expanded(
+                          child: _isLoading
+                              ? const Center(
+                                  child: SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.4,
+                                      color: Color(0xFF0F172A),
                                     ),
                                   ),
-                                ],
-                              ),
-                            )
-                          : displayedList.isEmpty
-                          ? RefreshIndicator(
-                              onRefresh: () =>
-                                  _fetchDistributionRecords(force: true),
-                              child: ListView(
-                                physics: const AlwaysScrollableScrollPhysics(
-                                  parent: BouncingScrollPhysics(),
-                                ),
-                                children: [
-                                  SizedBox(
-                                    height: 260,
-                                    child: Center(
-                                      child: Text(
-                                        _searchQuery.isEmpty
-                                            ? "No records found yet."
-                                            : "No records found matching '$_searchQuery'",
-                                        style: const TextStyle(
-                                          fontFamily: kAppFont,
-                                          fontSize: 12,
-                                          color: Color(0xFF94A3B8),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : RefreshIndicator(
-                              onRefresh: () =>
-                                  _fetchDistributionRecords(force: true),
-                              child: LayoutBuilder(
-                                builder: (context, box) {
-                                  Widget recordBuilder(
-                                    BuildContext context,
-                                    int index,
-                                  ) {
-                                    final item = displayedList[index];
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 10,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.95),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: const Color(0xFFE2E8F0),
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(
-                                              0.015,
-                                            ),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 1),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 24,
-                                            height: 24,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFF1F5F9),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              item["sNo"]!,
-                                              style: const TextStyle(
-                                                fontFamily: kAppFont,
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                color: Color(0xFF475569),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  item["distNo"]!,
-                                                  style: const TextStyle(
-                                                    fontFamily: kAppFont,
-                                                    fontSize: 12.0,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Color(0xFF0F172A),
-                                                    letterSpacing: -0.2,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Row(
-                                                  children: [
-                                                    Text(
-                                                      item["date"]!,
-                                                      style: const TextStyle(
-                                                        fontFamily: kAppFont,
-                                                        fontSize: 10.5,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: Color(
-                                                          0xFF64748B,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 6),
-                                                    const Text(
-                                                      "•",
-                                                      style: TextStyle(
-                                                        color: Color(
-                                                          0xFFCBD5E1,
-                                                        ),
-                                                        fontSize: 10,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(width: 6),
-                                                    Text(
-                                                      item["type"]!,
-                                                      style: const TextStyle(
-                                                        fontFamily: kAppFont,
-                                                        fontSize: 10.5,
-                                                        color: Color(
-                                                          0xFF64748B,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 7,
-                                              vertical: 3,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFDCFCE7),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              item["status"]!,
-                                              style: const TextStyle(
-                                                fontFamily: kAppFont,
-                                                fontSize: 10.0,
-                                                fontWeight: FontWeight.w700,
-                                                color: Color(0xFF16A34A),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          IconButton(
-                                            icon: const Icon(
-                                              CupertinoIcons.pencil_circle_fill,
-                                              size: 18,
-                                              color: Color(0xFF0F172A),
-                                            ),
-                                            padding: EdgeInsets.zero,
-                                            constraints: const BoxConstraints(
-                                              minWidth: 28,
-                                            ),
-                                            onPressed: () =>
-                                                _openEditSheet(item),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  }
-
-                                  return ListView.separated(
+                                )
+                              : _errorMessage != null
+                              ? RefreshIndicator(
+                                  onRefresh: () =>
+                                      _fetchDistributionRecords(force: true),
+                                  child: ListView(
                                     physics:
                                         const AlwaysScrollableScrollPhysics(
                                           parent: BouncingScrollPhysics(),
                                         ),
-                                    padding: const EdgeInsets.fromLTRB(
-                                      14,
-                                      4,
-                                      14,
-                                      20,
-                                    ),
-                                    itemCount: displayedList.length,
-                                    separatorBuilder: (_, __) =>
-                                        const SizedBox(height: 8),
-                                    itemBuilder: recordBuilder,
-                                  );
-                                },
-                              ),
-                            ),
+                                    children: [
+                                      SizedBox(
+                                        height: 260,
+                                        child: Center(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(
+                                                CupertinoIcons
+                                                    .exclamationmark_triangle,
+                                                size: 22,
+                                                color: Color(0xFFF59E0B),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                _errorMessage!,
+                                                textAlign: TextAlign.center,
+                                                style: const TextStyle(
+                                                  fontFamily: kAppFont,
+                                                  fontSize: 12,
+                                                  color: Color(0xFF64748B),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 10),
+                                              OutlinedButton(
+                                                onPressed: () =>
+                                                    _fetchDistributionRecords(
+                                                      force: true,
+                                                    ),
+                                                child: const Text(
+                                                  "Retry",
+                                                  style: TextStyle(
+                                                    fontFamily: kAppFont,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : displayedList.isEmpty
+                              ? RefreshIndicator(
+                                  onRefresh: () =>
+                                      _fetchDistributionRecords(force: true),
+                                  child: ListView(
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(
+                                          parent: BouncingScrollPhysics(),
+                                        ),
+                                    children: [
+                                      SizedBox(
+                                        height: 260,
+                                        child: Center(
+                                          child: Text(
+                                            _searchQuery.isEmpty
+                                                ? "No records found yet."
+                                                : "No records found matching '$_searchQuery'",
+                                            style: const TextStyle(
+                                              fontFamily: kAppFont,
+                                              fontSize: 12,
+                                              color: Color(0xFF94A3B8),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : RefreshIndicator(
+                                  onRefresh: () =>
+                                      _fetchDistributionRecords(force: true),
+                                  child: LayoutBuilder(
+                                    builder: (context, box) {
+                                      Widget recordBuilder(
+                                        BuildContext context,
+                                        int index,
+                                      ) {
+                                        final item = displayedList[index];
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 10,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(
+                                              0.95,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                            border: Border.all(
+                                              color: const Color(0xFFE2E8F0),
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(
+                                                  0.015,
+                                                ),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 1),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: 24,
+                                                height: 24,
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFFF1F5F9,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                alignment: Alignment.center,
+                                                child: Text(
+                                                  item["sNo"]!,
+                                                  style: const TextStyle(
+                                                    fontFamily: kAppFont,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF475569),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      item["distNo"]!,
+                                                      style: const TextStyle(
+                                                        fontFamily: kAppFont,
+                                                        fontSize: 12.0,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: Color(
+                                                          0xFF0F172A,
+                                                        ),
+                                                        letterSpacing: -0.2,
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Row(
+                                                      children: [
+                                                        Text(
+                                                          item["date"]!,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontFamily:
+                                                                    kAppFont,
+                                                                fontSize: 10.5,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                                color: Color(
+                                                                  0xFF64748B,
+                                                                ),
+                                                              ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 6,
+                                                        ),
+                                                        const Text(
+                                                          "•",
+                                                          style: TextStyle(
+                                                            color: Color(
+                                                              0xFFCBD5E1,
+                                                            ),
+                                                            fontSize: 10,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 6,
+                                                        ),
+                                                        Text(
+                                                          item["type"]!,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontFamily:
+                                                                    kAppFont,
+                                                                fontSize: 10.5,
+                                                                color: Color(
+                                                                  0xFF64748B,
+                                                                ),
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 7,
+                                                      vertical: 3,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFFDCFCE7,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  item["status"]!,
+                                                  style: const TextStyle(
+                                                    fontFamily: kAppFont,
+                                                    fontSize: 10.0,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Color(0xFF16A34A),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              IconButton(
+                                                icon: const Icon(
+                                                  CupertinoIcons
+                                                      .pencil_circle_fill,
+                                                  size: 18,
+                                                  color: Color(0xFF0F172A),
+                                                ),
+                                                padding: EdgeInsets.zero,
+                                                constraints:
+                                                    const BoxConstraints(
+                                                      minWidth: 28,
+                                                    ),
+                                                onPressed: () =>
+                                                    _openEditSheet(item),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }
+
+                                      return ListView.separated(
+                                        physics:
+                                            const AlwaysScrollableScrollPhysics(
+                                              parent: BouncingScrollPhysics(),
+                                            ),
+                                        padding: const EdgeInsets.fromLTRB(
+                                          14,
+                                          4,
+                                          14,
+                                          20,
+                                        ),
+                                        itemCount: displayedList.length,
+                                        separatorBuilder: (_, __) =>
+                                            const SizedBox(height: 8),
+                                        itemBuilder: recordBuilder,
+                                      );
+                                    },
+                                  ),
+                                ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              )),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -5945,4 +5985,66 @@ class _ScaleTouchState extends State<_ScaleTouch> {
       ),
     );
   }
+}
+
+class _RajsimsListHeaderFrame extends StatelessWidget
+    implements PreferredSizeWidget {
+  const _RajsimsListHeaderFrame({required this.title, required this.actions});
+  final String title;
+  final List<Widget> actions;
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    bottom: false,
+    child: LayoutBuilder(
+      builder: (context, box) => Center(
+        child: SizedBox(
+          width: AppAdaptive.contentWidth(box.maxWidth),
+          height: kToolbarHeight,
+          child: Row(
+            children: [
+              const SizedBox(width: 8),
+              const BackButton(color: Color(0xFF0F172A)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: kAppFont,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+              ...actions,
+              const SizedBox(width: 8),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _RajsimsListBackdrop extends StatelessWidget {
+  const _RajsimsListBackdrop({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: Theme.of(context).brightness == Brightness.dark
+        ? BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor)
+        : const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: [0, 0.45, 1],
+              colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)],
+            ),
+          ),
+    child: child,
+  );
 }

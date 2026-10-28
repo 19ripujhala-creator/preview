@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'portal_messages.dart';
+import 'ranking_http.dart' show RankingHttp;
 
 import '../../../core/direct/portal_diagnostics.dart';
 import '../../../core/direct/mutation_dispatch.dart';
@@ -137,6 +138,7 @@ class _AttendanceDocument {
   late Uri url;
   late dom.Document soup;
   bool loaded = false;
+  bool responseUnconsumed = false;
   String identity = '';
   Duration loadedAt = Duration.zero;
 
@@ -146,17 +148,22 @@ class _AttendanceDocument {
     Uri? referer,
     bool mutation = false,
   }) async {
+    worker._entryForm = null;
     if (mutation) MutationDispatch.current?.enterRequest();
-    final response = await worker.request(
+    final action = mutation ? 'SUBMIT' : fields?['__READ_ONLY_ACTION']?.toString() ?? 'GET_PAGE';
+    final response = await PortalDiagnostics.withAction(action, () => worker.request(
       target,
       fields: fields,
       referer: referer,
       mutation: mutation,
-    );
+    ));
     url = response.url;
     soup = await PortalDiagnostics.measure(
       PortalPhase.studentParse,
-      () async => html.parse(response.html),
+      () async => StudentAttendanceWorker.mergeResponse(
+        loaded ? soup : null,
+        response.html,
+      ),
     );
     if (StudentAttendanceWorker.isLoginRedirect(url) ||
         soup.querySelector('#bodyContent_txtUName, #txtUserId') != null) {
@@ -194,6 +201,7 @@ class _AttendanceDocument {
     }
     await worker.observeUrl?.call(url);
     loaded = true;
+    responseUnconsumed = true;
     identity = worker.sessionIdentity?.call() ?? '';
     loadedAt = worker._formNow;
   }
@@ -232,7 +240,21 @@ class _AttendanceDocument {
     } else {
       fields['__READ_ONLY_ACTION'] = button.id == StudentAttendanceWorker.showId
           ? 'SHOW'
+          : button.id == StudentAttendanceWorker.backId
+          ? 'BACK'
           : 'CLASS_ENTRY';
+    }
+    // Native capture proves both Entry and btnsubmit use this AJAX panel.
+    if (form.querySelector('#ContentPlaceHolder1_upPnl') != null &&
+        (!mutation || button.id == 'ContentPlaceHolder1_btnsubmit')) {
+      final control = '${fields['__EVENTTARGET'] ?? ''}'.isNotEmpty
+          ? '${fields['__EVENTTARGET']}'
+          : button.attributes['name'];
+      if (control != null && control.isNotEmpty) {
+        fields[r'ctl00$ScriptManager1'] =
+            'ctl00\$ContentPlaceHolder1\$upPnl|$control';
+        fields['__ASYNCPOST'] = 'true';
+      }
     }
     await request(action, fields: fields, referer: url, mutation: mutation);
   }
@@ -242,7 +264,53 @@ class _AttendanceDocument {
     final target = base.resolve(
       'Home/School/${StudentAttendanceWorker.pageName}',
     );
-    final reused = worker._restoreReadForm(this);
+    var reused = worker._restoreReadForm(this);
+    var returnedToSummary = false;
+    // The real entry panel disables date/class selectors. Its native Back
+    // control returns to the summary using the latest entry ViewState.
+    if (reused &&
+        soup
+                .getElementById(StudentAttendanceWorker.dateId)
+                ?.attributes
+                .containsKey('disabled') ==
+            true) {
+      String? entryDateVal;
+      try {
+        entryDateVal = StudentAttendanceWorker.validDate(
+          soup.getElementById(StudentAttendanceWorker.dateId)?.attributes['value'],
+        );
+      } on AttendanceWorkerError {
+        entryDateVal = null;
+      }
+      final wantedDateVal = date == null
+          ? entryDateVal
+          : StudentAttendanceWorker.validDate(date);
+      if (entryDateVal != null &&
+          wantedDateVal != null &&
+          entryDateVal != wantedDateVal) {
+        worker._readForm = null;
+        reused = false;
+      } else {
+        try {
+          await click(soup.getElementById(StudentAttendanceWorker.backId));
+          returnedToSummary = true;
+          // A different layout cannot authorize a stale-summary shortcut.
+          if (soup
+                      .getElementById(StudentAttendanceWorker.dateId)
+                      ?.attributes
+                      .containsKey('disabled') !=
+                  false ||
+              !worker._usableReadForm(url, soup)) {
+            reused = false;
+          }
+        } on AttendanceWorkerError catch (error) {
+          if (!StudentAttendanceWorker._staleFormError(error)) rethrow;
+          worker._blockedReadIdentity = worker.sessionIdentity?.call();
+          worker._readForm = null;
+          reused = false;
+        }
+      }
+    }
     try {
       if (!reused) await request(target);
     } on AttendanceWorkerError catch (error) {
@@ -274,12 +342,41 @@ class _AttendanceDocument {
       );
     }
     final selected = date ?? field.attributes['value'];
+    // A fresh GET or native Back response may already contain this date's
+    // summary. Never use cached summary data to skip a fresh server read.
+    if ((!reused || returnedToSummary || responseUnconsumed) &&
+        worker._usableReadForm(url, soup)) {
+      String? initialDate;
+      try {
+        initialDate = StudentAttendanceWorker.validDate(
+          field.attributes['value'],
+        );
+      } on AttendanceWorkerError {
+        // An unusable initial date still gets the normal explicit Show request.
+      }
+      if (initialDate != null &&
+          initialDate == StudentAttendanceWorker.validDate(selected)) {
+        final initial = StudentAttendanceWorker.parseClassSummary(soup);
+        if (initial['found'] == true &&
+            (initial['classes'] as List).isNotEmpty) {
+          worker._rememberReadForm(this);
+          return initial;
+        }
+      }
+    }
+    final previousDateAttr = field.attributes['value'];
+    if (selected != null) {
+      field.attributes['value'] = selected;
+    }
     try {
       await click(
         button,
         overrides: {field.attributes['name']!: selected ?? ''},
       );
     } on AttendanceWorkerError catch (error) {
+      if (previousDateAttr != null) {
+        field.attributes['value'] = previousDateAttr;
+      }
       // Only a rejected retained WebForms envelope gets a fresh-page fallback.
       // This is READ navigation, never a retry of Submit/Save or business errors.
       if (!reused || !StudentAttendanceWorker._staleFormError(error)) rethrow;
@@ -293,6 +390,9 @@ class _AttendanceDocument {
           'PAGE_NOT_READY',
           'Attendance date or Show control missing.',
         );
+      }
+      if (selected != null) {
+        freshDate!.attributes['value'] = selected;
       }
       await click(
         freshShow,
@@ -342,6 +442,7 @@ class StudentAttendanceWorker {
     this.sessionIdentity,
     this.readFormLifetime = const Duration(seconds: 45),
     this.formElapsed,
+    this.activityStamp,
     DateTime Function()? indiaNow,
   }) : indiaNow =
            indiaNow ??
@@ -349,6 +450,14 @@ class StudentAttendanceWorker {
              const Duration(hours: 5, minutes: 30),
            ));
 
+  final Object? Function()? activityStamp;
+  ({
+    _AttendanceDocument doc,
+    Map<String, dynamic> result,
+    List<dom.Element> rows,
+    Object activity,
+  })?
+  _entryForm;
   final AttendanceHttpRequest request;
   final Uri Function() baseUrl;
   final Future<void> Function(Uri)? observeUrl;
@@ -357,9 +466,131 @@ class StudentAttendanceWorker {
   final Duration readFormLifetime;
   final Duration Function()? formElapsed;
   final Stopwatch _formClock = Stopwatch()..start();
-  ({Uri url, dom.Document soup, String identity, Duration at})? _readForm;
+  ({Uri url, dom.Document soup, String identity, Duration at, bool unconsumed})? _readForm;
   Duration get _formNow => formElapsed?.call() ?? _formClock.elapsed;
   String? _blockedReadIdentity;
+  int _summaryRevision = 0;
+  ({int revision, String? date, List<Map<String, dynamic>> classes})?
+      _lastSummarySnapshot;
+  ({int revision, String? date, List<Map<String, dynamic>> classes})?
+      get lastSummarySnapshot => _lastSummarySnapshot;
+
+  void _recordSummarySnapshot(String? date, List<Map<String, dynamic>> classes) {
+    if (classes.isEmpty) return;
+    _lastSummarySnapshot = (
+      revision: ++_summaryRevision,
+      date: validDate(date),
+      classes: List<Map<String, dynamic>>.unmodifiable(
+        classes.map((r) => Map<String, dynamic>.unmodifiable(r)),
+      ),
+    );
+  }
+
+  bool get hasFreshSessionForm {
+    final cached = _readForm;
+    if (cached != null &&
+        _freshReadForm(cached.identity, cached.at) &&
+        _usableReadForm(cached.url, cached.soup)) {
+      return true;
+    }
+    final live = _entryForm;
+    if (live != null &&
+        _freshReadForm(live.doc.identity, live.doc.loadedAt) &&
+        _usableReadForm(live.doc.url, live.doc.soup)) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Merge native MS-Ajax panels and hidden fields into the latest form.
+  /// Length parsing is UTF-16 aware; never split deltas on pipe characters.
+  static dom.Document mergeResponse(dom.Document? previous, String response) {
+    if (!RegExp(r'^\d+\|').hasMatch(response)) return html.parse(response);
+    if (previous == null) {
+      throw const AttendanceWorkerError(
+        'PAGE_NOT_READY',
+        'Missing WebForms document for attendance AJAX response.',
+      );
+    }
+    late List<(String, String, String)> records;
+    try {
+      records = RankingHttp.parseDelta(response);
+    } on FormatException {
+      throw const AttendanceWorkerError(
+        'PORTAL_RESPONSE_ERROR',
+        'Incomplete attendance AJAX response.',
+      );
+    }
+    final merged = previous.clone(true);
+    for (final script in merged.querySelectorAll('script[data-attendance-response]')) {
+      script.remove();
+    }
+    var updated = false;
+    for (final (type, name, value) in records) {
+      if (type == 'error') {
+        throw AttendanceWorkerError('PORTAL_MESSAGE', value, {
+          'portal_message': value,
+          'message_source': 'portal',
+        });
+      }
+      if (type == 'pageRedirect') {
+        throw const AttendanceWorkerError(
+          'SESSION_EXPIRED',
+          'School session changed during attendance navigation.',
+        );
+      }
+      if (type == 'updatePanel') {
+        final panel = merged.getElementById(name);
+        if (panel == null) {
+          throw const AttendanceWorkerError(
+            'PAGE_NOT_READY',
+            'Attendance UpdatePanel missing from the current form.',
+          );
+        }
+        panel.innerHtml = value;
+        updated = true;
+      } else if (type == 'hiddenField') {
+        final matches = merged
+            .querySelectorAll('input[name]')
+            .where((input) => input.attributes['name'] == name)
+            .toList();
+        if (matches.isEmpty) {
+          final form = merged.querySelector('form');
+          if (form == null) {
+            throw const AttendanceWorkerError(
+              'PAGE_NOT_READY',
+              'Attendance form missing from AJAX state.',
+            );
+          }
+          form.append(
+            dom.Element.tag('input')
+              ..attributes.addAll({
+                'type': 'hidden',
+                'name': name,
+                'id': name,
+                'value': value,
+              }),
+          );
+        } else {
+          for (final input in matches) input.attributes['value'] = value;
+        }
+      } else if (type == 'formAction') {
+        merged.querySelector('form')?.attributes['action'] = value;
+      } else if (type == 'scriptBlock' || type == 'scriptStartupBlock') {
+        // Keep native portal alerts available to the existing message parser.
+        merged.body?.append(dom.Element.tag('script')
+          ..attributes['data-attendance-response'] = 'true'
+          ..text = value);
+      }
+    }
+    if (!updated) {
+      throw const AttendanceWorkerError(
+        'PAGE_NOT_READY',
+        'Attendance AJAX response contains no updated panel.',
+      );
+    }
+    return merged;
+  }
 
   static bool _staleFormText(String message) => [
     'validation of viewstate',
@@ -381,13 +612,13 @@ class StudentAttendanceWorker {
       return false;
     final show = soup.getElementById(showId);
     final date = soup.getElementById(dateId);
-    if (show == null ||
-        date == null ||
-        show.attributes.containsKey('disabled') ||
-        date.attributes.containsKey('disabled') ||
-        date.attributes['name'] == null)
+    if (date == null || date.attributes['name'] == null) return false;
+    final navigation = date.attributes.containsKey('disabled')
+        ? soup.getElementById(backId)
+        : show;
+    if (navigation == null || navigation.attributes.containsKey('disabled'))
       return false;
-    final form = AttendanceForm.enclosing(show);
+    final form = AttendanceForm.enclosing(navigation);
     if (form == null || !identical(AttendanceForm.enclosing(date), form))
       return false;
     for (final name in ['__VIEWSTATE', '__EVENTVALIDATION']) {
@@ -417,7 +648,7 @@ class StudentAttendanceWorker {
 
   bool _restoreReadForm(_AttendanceDocument doc) {
     // Reuse only the navigation envelope, never its roster or marked status.
-    // Every invocation still sends Show and opens the requested class afresh.
+    // Each invocation reads a fresh summary (Show or native Back) and roster.
     final cached = _readForm;
     _readForm = null; // Consume once: a rejected form is not silently retried.
     if (doc.loaded &&
@@ -433,10 +664,12 @@ class StudentAttendanceWorker {
     doc.loaded = true;
     doc.identity = cached.identity;
     doc.loadedAt = cached.at;
+    doc.responseUnconsumed = cached.unconsumed;
     return true;
   }
 
-  void _rememberReadForm(_AttendanceDocument doc) {
+  void _rememberReadForm(_AttendanceDocument doc, {bool unconsumed = false}) {
+    doc.responseUnconsumed = unconsumed;
     if (doc.loaded &&
         _freshReadForm(doc.identity, doc.loadedAt) &&
         _usableReadForm(doc.url, doc.soup)) {
@@ -445,6 +678,7 @@ class StudentAttendanceWorker {
         soup: doc.soup,
         identity: doc.identity,
         at: doc.loadedAt,
+        unconsumed: unconsumed,
       );
     } else {
       _readForm = null;
@@ -454,6 +688,7 @@ class StudentAttendanceWorker {
   static const pageName = 'StudentdailyAttendanceStatus_Web_NewVersion.aspx';
   static const gridId = 'ContentPlaceHolder1_grd_Student';
   static const dateId = 'ContentPlaceHolder1_txtdate';
+  static const backId = 'ContentPlaceHolder1_btnback';
   static const showId = 'ContentPlaceHolder1_btn_Show';
   static const statuses = StudentAttendanceParity.statuses;
 
@@ -550,7 +785,7 @@ class StudentAttendanceWorker {
         'classId': hidden.attributes['value']?.trim() ?? '',
         'section': link?.text.trim() ?? '',
         'total': _toInt(value('${gridId}_lbl_TotStudent_$n')),
-        'present': _toInt(value('${gridId}_lbl_P_Web_$n')),
+        'present': (_toInt(value('${gridId}_lbl_P_Web_$n')) ?? 0) > 0 ? _toInt(value('${gridId}_lbl_P_Web_$n')) : (_toInt(value('${gridId}_lbl_P_App_$n')) ?? _toInt(value('${gridId}_lbl_P_Web_$n'))),
         'absent': _toInt(value('${gridId}_lblA_Web_$n')),
         'status': status,
         'done': status.toLowerCase().startsWith('done'),
@@ -623,6 +858,7 @@ class StudentAttendanceWorker {
     dom.Element? best;
     var rows = <dom.Element>[];
     for (final table in soup.querySelectorAll('table')) {
+      if (best != null && _nearestTable(table) == best) continue;
       dom.Element? ancestor = table;
       var popup = false;
       while (ancestor != null) {
@@ -739,10 +975,13 @@ class StudentAttendanceWorker {
     );
   }
 
+  static String _sectionKey(String value) =>
+      value.trim().toLowerCase().replaceAll(RegExp(r'[\s_-]+'), '');
+
   static bool _classMatches(Map<String, dynamic> row, String wanted) {
     final cid = '${row['classId'] ?? ''}'.trim().toLowerCase();
-    final section = '${row['section'] ?? ''}'.trim().toLowerCase();
-    final w = wanted.trim().toLowerCase();
+    final section = _sectionKey('${row['section'] ?? ''}');
+    final w = _sectionKey(wanted);
     return cid == w ||
         section == w ||
         (int.tryParse(cid) != null && int.tryParse(cid) == int.tryParse(w)) ||
@@ -753,22 +992,33 @@ class StudentAttendanceWorker {
     _AttendanceDocument doc,
     String classId,
     String? date,
-    String? section,
-  ) async {
+    String? section, {
+    bool Function()? shouldContinue,
+    bool recordSummary = false,
+  }) async {
     final wanted = classId.trim();
     if (wanted.isEmpty) {
       throw const AttendanceWorkerError('BAD_CLASS', 'class_id is required.');
     }
     final summary = await doc.summary(date);
     final classes = (summary['classes'] as List).cast<Map<String, dynamic>>();
+    if (recordSummary && classes.isNotEmpty) {
+      _recordSummarySnapshot(summary['date'] as String?, classes);
+    }
+    if (shouldContinue != null && !shouldContinue()) {
+      _rememberReadForm(doc, unconsumed: true);
+      throw const AttendanceWorkerError(
+        'STALE_ATTENDANCE_READ',
+        'Attendance read superseded by a newer class selection.',
+      );
+    }
     final matches = classes
         .where(
           (r) =>
               _classMatches(r, wanted) &&
               (section == null ||
                   section.isEmpty ||
-                  '${r['section']}'.toLowerCase() ==
-                      section.trim().toLowerCase()),
+                  _sectionKey('${r['section']}') == _sectionKey(section)),
         )
         .toList();
     if (matches.isEmpty) {
@@ -811,7 +1061,34 @@ class StudentAttendanceWorker {
       );
     }
     await doc.click(link);
+    _readForm = null; // The older summary envelope is now superseded.
     doc.checkDate(summary['date'] as String?);
+    final entrySection = text(
+      doc.soup.getElementById('ContentPlaceHolder1_lblentrySection'),
+    );
+    String compact(String value) =>
+        _sectionKey(value);
+    if (entrySection.isNotEmpty &&
+        compact(entrySection) != compact('${row['section']}')) {
+      throw const AttendanceWorkerError(
+        'MATCH_MISMATCH',
+        'Portal student list belongs to a different class/section. Nothing was saved.',
+      );
+    }
+    final rawEntryDate = text(
+      doc.soup.getElementById('ContentPlaceHolder1_lbldateofAtt'),
+    );
+    final entryDateMatch = RegExp(
+      r'(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
+    ).firstMatch(rawEntryDate);
+    final entryDate = entryDateMatch?.group(1) ?? rawEntryDate;
+    if (entryDate.isNotEmpty &&
+        validDate(entryDate) != validDate(summary['date'] as String?)) {
+      throw const AttendanceWorkerError(
+        'DATE_MISMATCH',
+        'Portal student list belongs to a different attendance date. Nothing was saved.',
+      );
+    }
     final table = studentRows(doc.soup);
     final students = (table.built['students'] as List)
         .cast<Map<String, dynamic>>();
@@ -819,18 +1096,31 @@ class StudentAttendanceWorker {
       for (final status in statuses)
         status: students.where((s) => s['status'] == status).length,
     };
+    final portalDate = validDate(summary['date'] as String?);
+    final isBackdate =
+        portalDate != null &&
+        !StudentAttendanceParity.canCorrectMarkedAttendance(
+          portalDate: portalDate,
+          indiaToday: indiaNow(),
+        );
     final warnings = <String>[];
-    if (row['done'] == true && students.any((s) => s['status'] == null)) {
-      warnings.add(
-        'Marked attendance contains unselected or unrecognised statuses.',
-      );
+    final identities = students.map(StudentAttendanceParity.identity).toSet();
+    if (identities.length != students.length) {
+      warnings.add('Portal student list contains duplicate student identities. Refresh before saving.');
     }
-    if (row['total'] != null && students.length != row['total']) {
-      warnings.add('Portal summary and student row counts differ.');
-    } else if (row['done'] == true &&
-        row['present'] != null &&
-        counts['Present'] != row['present']) {
-      warnings.add('Portal summary and present count differ.');
+    if (!isBackdate) {
+      if (row['done'] == true && students.any((s) => s['status'] == null)) {
+        warnings.add(
+          'Marked attendance contains unselected or unrecognised statuses.',
+        );
+      }
+      if (row['total'] != null && students.length != row['total']) {
+        warnings.add('Portal summary and student row counts differ.');
+      } else if (row['done'] == true &&
+          row['present'] != null &&
+          counts['Present'] != row['present']) {
+        warnings.add('Portal summary and present count differ.');
+      }
     }
     if (table.built['columnsMapped'] != true) {
       warnings.add('Column headers not fully recognised; read by position.');
@@ -843,6 +1133,7 @@ class StudentAttendanceWorker {
           ..sort();
     final current = lead(row['section']);
     final verified = base['attendance_verified'] == true && warnings.isEmpty;
+    _rememberReadForm(doc); // Retain only the latest validated navigation form.
     return (
       result: {
         ...base,
@@ -865,6 +1156,67 @@ class StudentAttendanceWorker {
       },
       rows: table.rows,
     );
+  }
+
+  void _rememberEntry(
+    _AttendanceDocument doc,
+    Map<String, dynamic> result,
+    List<dom.Element> rows,
+  ) {
+    _entryForm = null;
+    final stamp = activityStamp?.call();
+    if (stamp == null ||
+        !doc.loaded ||
+        result['data_verified'] != true ||
+        rows.isEmpty ||
+        !_freshReadForm(doc.identity, doc.loadedAt) ||
+        !_usableReadForm(doc.url, doc.soup) ||
+        doc.soup.getElementById('ContentPlaceHolder1_upPnl') == null ||
+        _saveButton(doc.soup)?.id != 'ContentPlaceHolder1_btnsubmit' ||
+        text(doc.soup.getElementById('ContentPlaceHolder1_lblentrySection'))
+            .isEmpty ||
+        text(doc.soup.getElementById('ContentPlaceHolder1_lbldateofAtt'))
+            .isEmpty)
+      return;
+    final profiles = <String>{};
+    for (final row in rows) {
+      final profile = row
+          .querySelector(r'input[name$="hdn_StudentProfileId"]')
+          ?.attributes['value'];
+      if (profile == null || profile.isEmpty || !profiles.add(profile)) return;
+    }
+    _entryForm = (
+      doc: doc,
+      result: {
+        ...result,
+        'summary': Map<String, dynamic>.unmodifiable(result['summary'] as Map),
+        'students': List<Map<String, dynamic>>.unmodifiable(
+          (result['students'] as List).map(
+            (s) => Map<String, dynamic>.unmodifiable(s as Map),
+          ),
+        ),
+      },
+      rows: rows,
+      activity: stamp,
+    );
+  }
+
+  static List<String> _portalMessages(dom.Document soup) {
+    final messages = SchoolPortalMessages.fromDocument(soup);
+    final modal = RegExp(
+      r'''(?<![\w.])openModal\s*\(\s*(['"])((?:\\.|(?!\1).)*?)\1\s*\)''',
+      dotAll: true,
+    );
+    for (final script in soup.querySelectorAll('script')) {
+      for (final match in modal.allMatches(script.text)) {
+        for (final message in SchoolPortalMessages.parse(
+          '<script>alert(${match.group(1)}${match.group(2)}${match.group(1)});</script>',
+        )) {
+          if (!messages.contains(message)) messages.add(message);
+        }
+      }
+    }
+    return messages;
   }
 
   static Map<String, dynamic> failure(Object error) {
@@ -890,8 +1242,13 @@ class StudentAttendanceWorker {
     String? attendanceDate,
   }) async {
     try {
-      final parsed = await _AttendanceDocument(this)
-          .summary(validDate(attendanceDate));
+      final doc = _AttendanceDocument(this);
+      final parsed = await doc.summary(validDate(attendanceDate));
+      final classes = (parsed['classes'] as List).cast<Map<String, dynamic>>();
+      if (classes.isNotEmpty) {
+        _recordSummarySnapshot(parsed['date'] as String?, classes);
+        _rememberReadForm(doc, unconsumed: true);
+      }
       return {
         'success': true,
         ...parsed,
@@ -909,17 +1266,25 @@ class StudentAttendanceWorker {
     required String classId,
     String? attendanceDate,
     String? section,
+    bool Function()? shouldContinue,
   }) async {
     try {
+      final doc = _AttendanceDocument(this);
       final fetched = await _fetchList(
-        _AttendanceDocument(this),
+        doc,
         classId,
         validDate(attendanceDate),
         section,
+        shouldContinue: shouldContinue,
+        recordSummary: true,
       );
+      _rememberEntry(doc, fetched.result, fetched.rows);
       return fetched.result;
     } catch (error) {
-      _readForm = null;
+      if (error is! AttendanceWorkerError ||
+          error.code != 'STALE_ATTENDANCE_READ') {
+        _readForm = null;
+      }
       return {...failure(error), 'students': []};
     }
   }
@@ -1044,6 +1409,29 @@ class StudentAttendanceWorker {
     return null;
   }
 
+  bool _liveEntryMatches(String classId, String? date, String? section) {
+    final live = _entryForm;
+    return live != null &&
+        live.activity == activityStamp?.call() &&
+        _freshReadForm(live.doc.identity, live.doc.loadedAt) &&
+        _usableReadForm(live.doc.url, live.doc.soup) &&
+        _classMatches(live.result['summary'] as Map<String, dynamic>, classId) &&
+        validDate(live.result['date'] as String?) == validDate(date) &&
+        (section == null || section.isEmpty ||
+            _sectionKey(section) == _sectionKey('${live.result['section']}'));
+  }
+
+  /// Read-only preparation while the user reviews the confirmation sheet.
+  /// Save still rechecks the envelope and all roster identities before dispatch.
+  Future<void> prepareStudentAttendanceSave({
+    required String classId, String? attendanceDate, String? section,
+  }) async {
+    if (_liveEntryMatches(classId, attendanceDate, section)) return;
+    final doc = _AttendanceDocument(this);
+    final fetched = await _fetchList(doc, classId, attendanceDate, section);
+    _rememberEntry(doc, fetched.result, fetched.rows);
+  }
+
   Future<Map<String, dynamic>> saveStudentAttendance({
     required String classId,
     required List<Map<String, Object?>> students,
@@ -1063,11 +1451,36 @@ class StudentAttendanceWorker {
     var portalMessages = <String>[];
     try {
       final date = validDate(attendanceDate);
-      final doc = _AttendanceDocument(this);
-      final fetched = await PortalDiagnostics.measure(
-        PortalPhase.studentPreflight,
-        () => _fetchList(doc, classId, date, section),
-      );
+      var doc = _AttendanceDocument(this);
+      final live = _entryForm;
+      _entryForm = null; // Single use, including failures before dispatch.
+      ({Map<String, dynamic> result, List<dom.Element> rows})? reusable;
+      if (live != null &&
+          live.activity == activityStamp?.call() &&
+          _freshReadForm(live.doc.identity, live.doc.loadedAt) &&
+          _usableReadForm(live.doc.url, live.doc.soup) &&
+          _classMatches(
+            live.result['summary'] as Map<String, dynamic>,
+            classId,
+          ) &&
+          validDate(live.result['date'] as String?) == date &&
+          (section == null ||
+              section.isEmpty ||
+              _sectionKey(section) == _sectionKey('${live.result['section']}')) &&
+          !(live.result['is_already_marked'] == true &&
+              savedStudentsMatch(
+                students,
+                (live.result['students'] as List).cast<Map<String, Object?>>(),
+              ))) {
+        doc = live.doc;
+        reusable = (result: live.result, rows: live.rows);
+      }
+      final ({Map<String, dynamic> result, List<dom.Element> rows}) fetched =
+          reusable ??
+          await PortalDiagnostics.measure(
+            PortalPhase.studentPreflight,
+            () => _fetchList(doc, classId, date, section),
+          );
       final result = fetched.result;
       if (result['data_verified'] != true) {
         throw const AttendanceWorkerError(
@@ -1097,6 +1510,7 @@ class StudentAttendanceWorker {
         'attendance_verified': true,
         'verified': true,
         'summary': confirmation['summary'],
+        'verified_students': confirmation['students'],
         'updatedCount': unchanged ? 0 : updates.changed,
         'portalMessages': portalMessages,
         if (portalMessages.isNotEmpty) ...{
@@ -1149,8 +1563,7 @@ class StudentAttendanceWorker {
           'Save form missing or disabled.',
         );
       }
-      final beforeMessages = SchoolPortalMessages.fromDocument(doc.soup)
-          .toSet();
+      final beforeMessages = _portalMessages(doc.soup).toSet();
       _readForm = null; // Never carry a pre-SAVE form into verification.
       // Once this starts, neither this worker nor the transport replays it.
       await dispatch.run(
@@ -1159,9 +1572,12 @@ class StudentAttendanceWorker {
           () => doc.click(button, overrides: updates.overrides, mutation: true),
         ),
       );
-      portalMessages = SchoolPortalMessages.fromDocument(doc.soup)
+      portalMessages = _portalMessages(doc.soup)
           .where((message) => !beforeMessages.contains(message))
           .toList();
+      // If a pending register already echoed these statuses before Submit,
+      // matching rows alone cannot prove finalization. Read summary afresh.
+      if (updates.changed == 0) doc.responseUnconsumed = false;
       for (var attempt = 0; attempt < 2; attempt++) {
         final fresh = await PortalDiagnostics.measure(
           PortalPhase.studentVerify,
@@ -1176,8 +1592,10 @@ class StudentAttendanceWorker {
             savedStudentsMatch(
               updates.expected,
               (fresh.result['students'] as List).cast<Map<String, Object?>>(),
-            ))
+            )) {
+          _rememberEntry(doc, fresh.result, fresh.rows);
           return success(fresh.result, unchanged: false);
+        }
         if (attempt == 0)
           await Future<void>.delayed(const Duration(milliseconds: 500));
       }

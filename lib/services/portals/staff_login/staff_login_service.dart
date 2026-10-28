@@ -76,6 +76,7 @@ class StaffLoginService {
   static bool get directReadsEnabled => StudentService.directAttendanceEnabled;
   static Future<Map<String, dynamic>> _directRead({
     bool history = false,
+    bool identityOnly = false,
     String filter = 'all',
     int? page,
     int? pageSize,
@@ -114,6 +115,8 @@ class StaffLoginService {
               pageSize: pageSize,
               refresh: refresh,
             )
+          : identityOnly
+          ? await reads.fetchIdentity(user)
           : await reads.fetchProfile(user);
       final current = await SecureStorageService.getStaffCreds();
       if (!directReadsEnabled ||
@@ -223,6 +226,9 @@ class StaffLoginService {
   // ═════════════════════════════════════════════════════════════════════
   // 1. PROFILE
   // ═════════════════════════════════════════════════════════════════════
+
+  static Future<Map<String, dynamic>> fetchIdentity() =>
+      directReadsEnabled ? _directRead(identityOnly: true) : fetchProfile();
 
   static Future<Map<String, dynamic>> fetchProfile() async {
     if (directReadsEnabled) return _directRead();

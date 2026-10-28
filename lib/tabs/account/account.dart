@@ -130,7 +130,10 @@ class _AccountTabViewState extends State<AccountTabView>
         _checkedAt = _statusFailed ? null : DateTime.now();
       });
       final staff = _portals['staff_login'];
-      if (_name == null && staff is Map && _ready(staff)) await _loadProfile();
+      if ((_name == null || _designation == null) &&
+          staff is Map &&
+          _ready(staff))
+        await _loadProfile();
     } catch (_) {
       if (mounted && epoch == _epoch)
         setState(() {
@@ -160,16 +163,16 @@ class _AccountTabViewState extends State<AccountTabView>
       if (response['success'] == true &&
           profile is Map &&
           profile['staffLoginId']?.toString().trim() == _ids['staff_id']) {
+        setState(() {
+          _name = _text(profile['name']);
+          _designation = _text(profile['designation']);
+        });
         await AccountIdentity.remember(
           widget.schoolId,
           _ids['staff_id'] ?? '',
           profile,
         );
         if (!mounted || epoch != _epoch) return;
-        setState(() {
-          _name = _text(profile['name']);
-          _designation = _text(profile['designation']);
-        });
       }
     } catch (_) {
       // A profile failure must not erase independently observed portal health.
@@ -243,9 +246,13 @@ class _AccountTabViewState extends State<AccountTabView>
       });
       final cached = await AccountIdentity.load(school, allowFetch: false);
       if (!mounted || epoch != _epoch) return;
-      if (cached['name'] != 'Account' && _text(cached['name']) != null)
-        setState(() => _name = _text(cached['name']));
-      await _loadPhoto();
+      if (cached['name'] != 'Account' && _text(cached['name']) != null) {
+        setState(() {
+          _name = _text(cached['name']);
+          _designation = _text(cached['designation']);
+        });
+      }
+      unawaited(_loadPhoto());
       if (!mounted || epoch != _epoch) return;
       final status = await AccountService.connections();
       if (!mounted || epoch != _epoch) return;
@@ -547,8 +554,9 @@ class _AccountTabViewState extends State<AccountTabView>
     'Describe what happened, the screen and the time before sharing this summary.',
   ].join('\n');
 
-  void _aboutApp() => Navigator.of(context)
-      .push(appPageRoute<void>(builder: (_) => const _AboutAppScreen()));
+  void _aboutApp() =>
+      Navigator.of(context)
+          .push(appPageRoute<void>(builder: (_) => const _AboutAppScreen()));
 
   void _openReport() => Navigator.of(context).push(
     appPageRoute<void>(
@@ -804,205 +812,211 @@ class _AccountTabViewState extends State<AccountTabView>
                           ],
                         ),
                       ),
-                      child: PageContentMotion(child: SizedBox.expand(
-                        child: Align(
-                          alignment: Alignment.topCenter,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 620),
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                10,
-                                16,
-                                16,
-                              ),
-                              child: Form(
-                                key: formKey,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Manage your portal logins',
-                                      style: _style(
-                                        12,
-                                        FontWeight.w400,
-                                        _muted,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    pair(
-                                      'Shaladarpan',
-                                      'school_id',
-                                      'school_password',
-                                    ),
-                                    pair(
-                                      'Staff Login',
-                                      'staff_id',
-                                      'staff_password',
-                                    ),
-                                    pair('RajSIMS', 'sso_id', 'sso_password'),
-                                    if (error != null)
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 12,
+                      child: PageContentMotion(
+                        child: SizedBox.expand(
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 620),
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  10,
+                                  16,
+                                  16,
+                                ),
+                                child: Form(
+                                  key: formKey,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Manage your portal logins',
+                                        style: _style(
+                                          12,
+                                          FontWeight.w400,
+                                          _muted,
                                         ),
-                                        child: Text(
-                                          error!,
-                                          style: _style(
-                                            12,
-                                            FontWeight.w400,
-                                            _ink,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      pair(
+                                        'Shaladarpan',
+                                        'school_id',
+                                        'school_password',
+                                      ),
+                                      pair(
+                                        'Staff Login',
+                                        'staff_id',
+                                        'staff_password',
+                                      ),
+                                      pair('RajSIMS', 'sso_id', 'sso_password'),
+                                      if (error != null)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 12,
                                           ),
-                                        ),
-                                      ),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: OutlinedButton(
-                                            onPressed: saving
-                                                ? null
-                                                : () => Navigator.pop(
-                                                    sheetContext,
-                                                    false,
-                                                  ),
-                                            style: OutlinedButton.styleFrom(
-                                              foregroundColor: _ink,
-                                              backgroundColor: Colors.white,
-                                              side: const BorderSide(
-                                                color: _border,
-                                              ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 14,
-                                                  ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(11),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              'Cancel',
-                                              style: _style(
-                                                12,
-                                                FontWeight.w500,
-                                              ),
+                                          child: Text(
+                                            error!,
+                                            style: _style(
+                                              12,
+                                              FontWeight.w400,
+                                              _ink,
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: FilledButton(
-                                            onPressed: saving
-                                                ? null
-                                                : () async {
-                                                    if (!formKey.currentState!
-                                                        .validate())
-                                                      return;
-                                                    if (controls['school_id']!
-                                                            .text
-                                                            .trim() ==
-                                                        controls['staff_id']!
-                                                            .text
-                                                            .trim()) {
-                                                      update(
-                                                        () => error = 'School ID and Staff ID must be different.',
-                                                      );
-                                                      return;
-                                                    }
-                                                    update(() {
-                                                      saving = true;
-                                                      error = null;
-                                                    });
-                                                    try {
-                                                      final current =
-                                                          await SecureStorageService.getAllPortalCreds();
-                                                      if (!_sameAccount(
-                                                        current,
-                                                        saved,
-                                                      ))
-                                                        throw StateError(
-                                                          'Account changed. Reopen login details.',
-                                                        );
-                                                      String password(
-                                                        String key,
-                                                      ) => controls[key]!.text;
-                                                      await SecureStorageService.saveAllPortals(
-                                                        shalaId:
-                                                            controls['school_id']!
-                                                                .text
-                                                                .trim(),
-                                                        shalaPass: password(
-                                                          'school_password',
-                                                        ),
-                                                        staffId:
-                                                            controls['staff_id']!
-                                                                .text
-                                                                .trim(),
-                                                        staffPass: password(
-                                                          'staff_password',
-                                                        ),
-                                                        rajsimsId:
-                                                            controls['sso_id']!
-                                                                .text
-                                                                .trim(),
-                                                        rajsimsPass: password(
-                                                          'sso_password',
-                                                        ),
-                                                      );
-                                                      if (sheetContext.mounted)
-                                                        Navigator.pop(
-                                                          sheetContext,
-                                                          true,
-                                                        );
-                                                    } catch (_) {
-                                                      if (sheetContext.mounted)
-                                                        update(() {
-                                                          saving = false;
-                                                          error = 'Could not save login details. Please try again.';
-                                                        });
-                                                    }
-                                                  },
-                                            style: FilledButton.styleFrom(
-                                              backgroundColor: _ink,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 16,
-                                                  ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(11),
-                                              ),
-                                            ),
-                                            child: saving
-                                                ? const SizedBox(
-                                                    width: 16,
-                                                    height: 16,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                          color: Colors.white,
-                                                        ),
-                                                  )
-                                                : Text(
-                                                    'Save & sign out',
-                                                    style: _style(
-                                                      12,
-                                                      FontWeight.w500,
-                                                      Colors.white,
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: OutlinedButton(
+                                              onPressed: saving
+                                                  ? null
+                                                  : () => Navigator.pop(
+                                                      sheetContext,
+                                                      false,
                                                     ),
-                                                  ),
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: _ink,
+                                                backgroundColor: Colors.white,
+                                                side: const BorderSide(
+                                                  color: _border,
+                                                ),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 14,
+                                                    ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(11),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                'Cancel',
+                                                style: _style(
+                                                  12,
+                                                  FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: FilledButton(
+                                              onPressed: saving
+                                                  ? null
+                                                  : () async {
+                                                      if (!formKey.currentState!
+                                                          .validate())
+                                                        return;
+                                                      if (controls['school_id']!
+                                                              .text
+                                                              .trim() ==
+                                                          controls['staff_id']!
+                                                              .text
+                                                              .trim()) {
+                                                        update(
+                                                          () => error = 'School ID and Staff ID must be different.',
+                                                        );
+                                                        return;
+                                                      }
+                                                      update(() {
+                                                        saving = true;
+                                                        error = null;
+                                                      });
+                                                      try {
+                                                        final current =
+                                                            await SecureStorageService.getAllPortalCreds();
+                                                        if (!_sameAccount(
+                                                          current,
+                                                          saved,
+                                                        ))
+                                                          throw StateError(
+                                                            'Account changed. Reopen login details.',
+                                                          );
+                                                        String password(
+                                                          String key,
+                                                        ) =>
+                                                            controls[key]!.text;
+                                                        await SecureStorageService.saveAllPortals(
+                                                          shalaId:
+                                                              controls['school_id']!
+                                                                  .text
+                                                                  .trim(),
+                                                          shalaPass: password(
+                                                            'school_password',
+                                                          ),
+                                                          staffId:
+                                                              controls['staff_id']!
+                                                                  .text
+                                                                  .trim(),
+                                                          staffPass: password(
+                                                            'staff_password',
+                                                          ),
+                                                          rajsimsId:
+                                                              controls['sso_id']!
+                                                                  .text
+                                                                  .trim(),
+                                                          rajsimsPass: password(
+                                                            'sso_password',
+                                                          ),
+                                                        );
+                                                        if (sheetContext
+                                                            .mounted)
+                                                          Navigator.pop(
+                                                            sheetContext,
+                                                            true,
+                                                          );
+                                                      } catch (_) {
+                                                        if (sheetContext
+                                                            .mounted)
+                                                          update(() {
+                                                            saving = false;
+                                                            error = 'Could not save login details. Please try again.';
+                                                          });
+                                                      }
+                                                    },
+                                              style: FilledButton.styleFrom(
+                                                backgroundColor: _ink,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 16,
+                                                    ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(11),
+                                                ),
+                                              ),
+                                              child: saving
+                                                  ? const SizedBox(
+                                                      width: 16,
+                                                      height: 16,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                            strokeWidth: 2,
+                                                            color: Colors.white,
+                                                          ),
+                                                    )
+                                                  : Text(
+                                                      'Save & sign out',
+                                                      style: _style(
+                                                        12,
+                                                        FontWeight.w500,
+                                                        Colors.white,
+                                                      ),
+                                                    ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      )),
+                      ),
                     ),
                   ),
                 ),
@@ -1885,180 +1899,185 @@ class _HelpCenterScreenState extends State<_HelpCenterScreen> {
             colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)],
           ),
         ),
-        child: PageContentMotion(child: SizedBox.expand(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 640),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextField(
-                      onChanged: (value) => setState(() => _search = value),
-                      style: _AccountTabViewState._style(12.5),
-                      decoration: _AccountTabViewState._input('Search help')
-                          .copyWith(
-                            labelText: null,
-                            hintText: 'Search help',
-                            fillColor: Colors.white,
-                            prefixIcon: const Icon(
-                              CupertinoIcons.search,
-                              size: 17,
-                              color: _muted,
-                            ),
-                          ),
-                    ),
-                    const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 3, bottom: 8),
-                      child: Text(
-                        query.isEmpty ? 'Common questions' : 'Search results',
-                        style: _AccountTabViewState._style(
-                          12,
-                          FontWeight.w600,
-                          _muted,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: _border),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Column(
-                          children: [
-                            if (guides.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.all(18),
-                                child: Text(
-                                  'No matching answers. Try attendance, account or MDM.',
-                                  style: _AccountTabViewState._style(
-                                    12,
-                                    FontWeight.w400,
-                                    _muted,
-                                  ),
-                                ),
+        child: PageContentMotion(
+          child: SizedBox.expand(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        onChanged: (value) => setState(() => _search = value),
+                        style: _AccountTabViewState._style(12.5),
+                        decoration: _AccountTabViewState._input('Search help')
+                            .copyWith(
+                              labelText: null,
+                              hintText: 'Search help',
+                              fillColor: Colors.white,
+                              prefixIcon: const Icon(
+                                CupertinoIcons.search,
+                                size: 17,
+                                color: _muted,
                               ),
-                            for (var i = 0; i < guides.length; i++) ...[
-                              if (i > 0)
-                                const Divider(
-                                  height: 1,
-                                  indent: 16,
-                                  endIndent: 16,
-                                  color: _border,
-                                ),
-                              ExpansionTile(
-                                key: ValueKey(guides[i].question),
-                                shape: const Border(),
-                                collapsedShape: const Border(),
-                                iconColor: _muted,
-                                collapsedIconColor: _muted,
-                                tilePadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 0,
-                                ),
-                                childrenPadding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  14,
-                                ),
-                                title: Text(
-                                  guides[i].question,
-                                  style: _AccountTabViewState._style(
-                                    12,
-                                    FontWeight.w500,
-                                  ),
-                                ),
-                                children: [
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(
-                                      guides[i].answer,
-                                      style: _AccountTabViewState._style(
-                                        11.5,
-                                        FontWeight.w400,
-                                        _muted,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      'Need more help?',
-                      style: _AccountTabViewState._style(12.5, FontWeight.w600),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () => Navigator.of(context).push(
-                          appPageRoute<void>(
-                            builder: (_) => ReportIssueScreen(
-                              connectionSummary: widget.connectionSummary(),
                             ),
-                          ),
-                        ),
-                        icon: const Icon(CupertinoIcons.envelope, size: 16),
-                        label: Text(
-                          'Report app issue',
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 3, bottom: 8),
+                        child: Text(
+                          query.isEmpty ? 'Common questions' : 'Search results',
                           style: _AccountTabViewState._style(
                             12,
-                            FontWeight.w500,
-                            Colors.white,
-                          ),
-                        ),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _ink,
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(11),
+                            FontWeight.w600,
+                            _muted,
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: _copySummary,
-                        icon: const Icon(CupertinoIcons.doc_on_doc, size: 15),
-                        label: Text(
-                          'Copy connection summary',
-                          style: _AccountTabViewState._style(
-                            11.5,
-                            FontWeight.w500,
-                          ),
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _border),
                         ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: _ink,
-                          backgroundColor: Colors.white,
-                          side: const BorderSide(color: _border),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(11),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Column(
+                            children: [
+                              if (guides.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.all(18),
+                                  child: Text(
+                                    'No matching answers. Try attendance, account or MDM.',
+                                    style: _AccountTabViewState._style(
+                                      12,
+                                      FontWeight.w400,
+                                      _muted,
+                                    ),
+                                  ),
+                                ),
+                              for (var i = 0; i < guides.length; i++) ...[
+                                if (i > 0)
+                                  const Divider(
+                                    height: 1,
+                                    indent: 16,
+                                    endIndent: 16,
+                                    color: _border,
+                                  ),
+                                ExpansionTile(
+                                  key: ValueKey(guides[i].question),
+                                  shape: const Border(),
+                                  collapsedShape: const Border(),
+                                  iconColor: _muted,
+                                  collapsedIconColor: _muted,
+                                  tilePadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 0,
+                                  ),
+                                  childrenPadding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    14,
+                                  ),
+                                  title: Text(
+                                    guides[i].question,
+                                    style: _AccountTabViewState._style(
+                                      12,
+                                      FontWeight.w500,
+                                    ),
+                                  ),
+                                  children: [
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        guides[i].answer,
+                                        style: _AccountTabViewState._style(
+                                          11.5,
+                                          FontWeight.w400,
+                                          _muted,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 18),
+                      Text(
+                        'Need more help?',
+                        style: _AccountTabViewState._style(
+                          12.5,
+                          FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: () => Navigator.of(context).push(
+                            appPageRoute<void>(
+                              builder: (_) => ReportIssueScreen(
+                                connectionSummary: widget.connectionSummary(),
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(CupertinoIcons.envelope, size: 16),
+                          label: Text(
+                            'Report app issue',
+                            style: _AccountTabViewState._style(
+                              12,
+                              FontWeight.w500,
+                              Colors.white,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _ink,
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _copySummary,
+                          icon: const Icon(CupertinoIcons.doc_on_doc, size: 15),
+                          label: Text(
+                            'Copy connection summary',
+                            style: _AccountTabViewState._style(
+                              11.5,
+                              FontWeight.w500,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _ink,
+                            backgroundColor: Colors.white,
+                            side: const BorderSide(color: _border),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        )),
+        ),
       ),
     );
   }
@@ -2122,120 +2141,57 @@ class _AboutAppScreenState extends State<_AboutAppScreen> {
           colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9), Color(0xFFFEF3C7)],
         ),
       ),
-      child: PageContentMotion(child: SizedBox.expand(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: _border.withValues(alpha: .65)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(13),
-                          child: Image.asset(
-                            'assets/icons/icon.png',
-                            width: 34,
-                            height: 34,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const SizedBox(
+      child: PageContentMotion(
+        child: SizedBox.expand(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 24),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: _border.withValues(alpha: .65)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(13),
+                            child: Image.asset(
+                              'assets/icons/icon.png',
                               width: 34,
                               height: 34,
-                              child: Icon(
-                                CupertinoIcons.app,
-                                size: 28,
-                                color: _ink,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const SizedBox(
+                                width: 34,
+                                height: 34,
+                                child: Icon(
+                                  CupertinoIcons.app,
+                                  size: 28,
+                                  color: _ink,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Shaladarpan',
-                                style: _AccountTabViewState._style(
-                                  16,
-                                  FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(height: 1, color: _border),
-                    _detail('Developer', 'Ripudaman Singh Jhala'),
-                    const Divider(height: 1, color: _border),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Version',
+                                  'Shaladarpan',
                                   style: _AccountTabViewState._style(
-                                    10.5,
-                                    FontWeight.w400,
-                                    _muted,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                FutureBuilder<PackageInfo>(
-                                  future: _packageInfo,
-                                  builder: (context, snapshot) => Text(
-                                    snapshot.hasData
-                                        ? snapshot.data!.version
-                                        : snapshot.hasError
-                                        ? 'Unavailable'
-                                        : 'Loading…',
-                                    style: _AccountTabViewState._style(
-                                      12,
-                                      FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Build',
-                                  style: _AccountTabViewState._style(
-                                    10.5,
-                                    FontWeight.w400,
-                                    _muted,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                SelectableText(
-                                  _buildId,
-                                  style: _AccountTabViewState._style(
-                                    12,
-                                    FontWeight.w500,
+                                    16,
+                                    FontWeight.w600,
                                   ),
                                 ),
                               ],
@@ -2243,60 +2199,125 @@ class _AboutAppScreenState extends State<_AboutAppScreen> {
                           ),
                         ],
                       ),
-                    ),
-                    const Divider(height: 1, color: _border),
-                    ExpansionTile(
-                      tilePadding: EdgeInsets.zero,
-                      dense: true,
-                      childrenPadding: const EdgeInsets.only(bottom: 14),
-                      shape: const Border(),
-                      collapsedShape: const Border(),
-                      iconColor: _muted,
-                      collapsedIconColor: _muted,
-                      title: Text(
-                        'Terms of use',
-                        style: _AccountTabViewState._style(
-                          12.5,
-                          FontWeight.w500,
+                      const SizedBox(height: 16),
+                      const Divider(height: 1, color: _border),
+                      _detail('Developer', 'Ripudaman Singh Jhala'),
+                      const Divider(height: 1, color: _border),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Version',
+                                    style: _AccountTabViewState._style(
+                                      10.5,
+                                      FontWeight.w400,
+                                      _muted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  FutureBuilder<PackageInfo>(
+                                    future: _packageInfo,
+                                    builder: (context, snapshot) => Text(
+                                      snapshot.hasData
+                                          ? snapshot.data!.version
+                                          : snapshot.hasError
+                                          ? 'Unavailable'
+                                          : 'Loading…',
+                                      style: _AccountTabViewState._style(
+                                        12,
+                                        FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Build',
+                                    style: _AccountTabViewState._style(
+                                      10.5,
+                                      FontWeight.w400,
+                                      _muted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  SelectableText(
+                                    _buildId,
+                                    style: _AccountTabViewState._style(
+                                      12,
+                                      FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Use this app only with school and staff accounts you are authorised to access.\n\n'
-                            'Review employee or student IDs, dates and selected values before submitting attendance, leave or other records. Portal rules and locked records remain applicable.\n\n'
-                            'If a submission is unconfirmed, check the portal before submitting again. Portal availability and delayed responses can affect the app.\n\n'
-                            'Shaladarpan is an independently developed app. It is not an official government app. The external portals retain control of their records and services.\n\n'
-                            'When reporting an issue, remove passwords and unnecessary personal information from descriptions and attachments.',
-                            style: _AccountTabViewState._style(
-                              11.5,
-                              FontWeight.w400,
-                              _muted,
-                            ),
+                      const Divider(height: 1, color: _border),
+                      ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        dense: true,
+                        childrenPadding: const EdgeInsets.only(bottom: 14),
+                        shape: const Border(),
+                        collapsedShape: const Border(),
+                        iconColor: _muted,
+                        collapsedIconColor: _muted,
+                        title: Text(
+                          'Terms of use',
+                          style: _AccountTabViewState._style(
+                            12.5,
+                            FontWeight.w500,
                           ),
                         ),
-                      ],
-                    ),
-                    const Divider(height: 1, color: _border),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Text(
-                        '© 2026 Ripudaman Singh Jhala',
-                        style: _AccountTabViewState._style(
-                          10.5,
-                          FontWeight.w400,
-                          _muted,
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Use this app only with school and staff accounts you are authorised to access.\n\n'
+                              'Review employee or student IDs, dates and selected values before submitting attendance, leave or other records. Portal rules and locked records remain applicable.\n\n'
+                              'If a submission is unconfirmed, check the portal before submitting again. Portal availability and delayed responses can affect the app.\n\n'
+                              'Shaladarpan is an independently developed app. It is not an official government app. The external portals retain control of their records and services.\n\n'
+                              'When reporting an issue, remove passwords and unnecessary personal information from descriptions and attachments.',
+                              style: _AccountTabViewState._style(
+                                11.5,
+                                FontWeight.w400,
+                                _muted,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 1, color: _border),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          '© 2026 Ripudaman Singh Jhala',
+                          style: _AccountTabViewState._style(
+                            10.5,
+                            FontWeight.w400,
+                            _muted,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      )),
+      ),
     ),
   );
 }

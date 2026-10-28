@@ -55,6 +55,28 @@ void main() {
       }
     });
   }
+  test('response-body timeout releases native client ownership for a later read', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final client = SchoolHttpClient(baseUrl: Uri.parse('http://127.0.0.1:${server.port}'),
+      timeout: const Duration(milliseconds: 150), allowUrl: (u) => u.host == '127.0.0.1' && u.port == server.port);
+    final release = Completer<void>();
+    final subscription = server.listen((request) async {
+      await request.drain<void>();
+      if (request.uri.path == '/slow') {
+        request.response.write('partial'); await request.response.flush();
+        await release.future;
+      } else { request.response.write('ready'); }
+      try { await request.response.close(); } catch (_) {}
+    });
+    try {
+      await expectLater(client.get('/slow'), throwsA(isA<TimeoutException>()));
+      expect(client.idleActivityStamp, isNotNull);
+      final reply = await client.get('/ready', timeout: const Duration(seconds: 2));
+      expect(reply.statusCode, 200); expect(reply.text, 'ready');
+    } finally {
+      release.complete(); client.retire(); await subscription.cancel(); await server.close(force: true);
+    }
+  });
   test(
     'READ navigation still supports original 307 redirect behavior',
     () async {

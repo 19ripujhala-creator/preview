@@ -11,6 +11,7 @@ import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 
 import '../../../core/direct/async_primitives.dart';
+import '../../../core/direct/portal_diagnostics.dart';
 import 'school_http.dart';
 import 'server_manager.dart';
 
@@ -81,8 +82,10 @@ class SchoolAuthManager {
   final Map<String, String> _active = {};
   Map<String, String> _cookies = {};
   SchoolHttpClient? _client;
+  Object? get idleActivityStamp => _client?.idleActivityStamp;
   Future<void>? _initialization;
   Future<void> _writes = Future<void>.value();
+  final Map<String, String> _persisted = {};
   (String, String)? _clientIdentity;
 
   String get activeServerBase => _active['server_base'] ?? schoolServers.first;
@@ -168,15 +171,28 @@ class SchoolAuthManager {
     Map<String, String> data, {
     (String, String)? expected,
   }) {
-    final frozen = jsonEncode(Map<String, String>.of(data));
-    final operation = _writes.then((_) async {
-      if (expected != null && sessionIdentity != expected) return;
-      try {
-        await storage.write(key, frozen);
-      } catch (_) {
-        /* Working Python persistence failures are nonfatal. */
-      }
-    });
+    final keys = data.keys.toList()..sort();
+    final frozen = jsonEncode({for (final key in keys) key: data[key]});
+    final previous = _writes;
+    final operation =
+        PortalDiagnostics.measure(
+          PortalPhase.httpStorageQueue,
+          () => previous,
+          source: 'school',
+        ).then((_) async {
+          if (expected != null && sessionIdentity != expected) return;
+          if (_persisted[key] == frozen) return;
+          try {
+            await PortalDiagnostics.measure(
+              PortalPhase.httpStorageWrite,
+              () => storage.write(key, frozen),
+              source: 'school',
+            );
+            _persisted[key] = frozen;
+          } catch (_) {
+            /* Working Python persistence failures are nonfatal. */
+          }
+        });
     _writes = operation;
     return operation;
   }
@@ -213,10 +229,12 @@ class SchoolAuthManager {
     _retireAuthenticatedClient();
     _active.clear();
     _cookies.clear();
+    _persisted.clear();
     final delete = _writes.then((_) async {
       for (final key in [_activeKey, _cookieKey]) {
         try {
           await storage.delete(key);
+          _persisted.remove(key);
         } catch (_) {
           /* Python suppresses. */
         }
@@ -268,7 +286,11 @@ class SchoolAuthManager {
     Future<T> Function(SchoolHttpClient) operation, {
     String? baseUrl,
   }) async {
-    final client = await getAuthenticatedClient(baseUrl: baseUrl);
+    final client = await PortalDiagnostics.measure(
+      PortalPhase.httpClientAcquire,
+      () => getAuthenticatedClient(baseUrl: baseUrl),
+      source: 'school',
+    );
     final pooled = identical(client, _client);
     try {
       return await client.withLease(operation);

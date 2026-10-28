@@ -1,3 +1,6 @@
+import 'package:shaladarpan/experiments/direct_school_session.dart';
+import 'package:shaladarpan/services/portals/shaladarpan/student_service.dart';
+import 'student_worker_test.dart' show FakeAuth, FakePortal;
 import 'dart:convert';
 import 'dart:io';
 
@@ -40,8 +43,47 @@ Future<void> frames(WidgetTester t, [int count = 20]) async {
   }
 }
 
+class PriorityDashboardAuth extends FakeAuth {
+  PriorityDashboardAuth(super.portal);
+  @override String get authenticatedSchoolId => '123456';
+  @override String get schoolSessionIdentity => 'priority-fixture';
+}
 void main() {
   AutomatedTestWidgetsFlutterBinding.ensureInitialized();
+  testWidgets('attendance foreground defers dashboard reads and disposal drops deferred work', (t) async {
+    t.view.devicePixelRatio = 1; t.view.physicalSize = const Size(1440, 1000);
+    await t.runAsync(() async {
+      final loader = FontLoader('PlusJakartaSans');
+      for (final weight in ['Regular', 'SemiBold', 'Bold']) {
+        loader.addFont(Future.value(ByteData.sublistView(
+          File('assets/fonts/PlusJakartaSans-$weight.ttf').readAsBytesSync())));
+      }
+      await loader.load();
+    });
+    SharedPreferences.setMockInitialValues({'saved_school_id': '123456'});
+    const storage = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    t.binding.defaultBinaryMessenger.setMockMethodCallHandler(storage, (call) async => call.method == 'read' ? '{}' : null);
+    final portal = FakePortal();
+    DirectSchoolSession.attach(PriorityDashboardAuth(portal), '123456');
+    StudentService.directAttendanceEnabled = true;
+    final release = DirectSchoolSession.attendance!.acquireForeground();
+    var requests = 0;
+    try {
+      await http.runWithClient(() async {
+        await t.pumpWidget(DefaultAssetBundle(bundle: _Assets(), child: MaterialApp(
+          home: DashboardScreen(schoolId: '123456', onLogoutRequested: () {}))));
+        await frames(t, 40);
+        expect(requests, 0); expect(portal.requests, isEmpty);
+        await t.pumpWidget(const SizedBox()); release(); await frames(t, 20);
+        expect(requests, 0); expect(portal.requests, isEmpty);
+      }, () => MockClient((_) async { requests++; return http.Response('{"success":false}', 503); }));
+      expect(t.takeException(), isNull);
+    } finally {
+      release(); DirectSchoolSession.reset(); StudentService.directAttendanceEnabled = false;
+      t.binding.defaultBinaryMessenger.setMockMethodCallHandler(storage, null);
+      await t.pumpWidget(const SizedBox()); t.view.resetPhysicalSize(); t.view.resetDevicePixelRatio();
+    }
+  });
   testWidgets(
     'dashboard refresh preserves tab work, inputs and navigation during back',
     (t) async {

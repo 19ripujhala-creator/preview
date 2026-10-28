@@ -1,6 +1,7 @@
 import '../rajsims/direct/rajsims_app_service.dart';
 import '../../../experiments/direct_school_session.dart';
 import 'student_service.dart';
+import 'dashboard_mdm_key.dart';
 
 import 'dart:async';
 
@@ -35,8 +36,11 @@ class DashboardBootstrap {
     bool fresh = false,
   }) {
     final now = DateTime.now();
-    final mode = StudentService.directAttendanceEnabled ? 'direct' : 'backend';
-    final key = '$mode/$schoolId/${now.year}-${now.month}-${now.day}';
+    final key = dashboardMdmDayKey(
+      schoolId,
+      now,
+      direct: StudentService.directAttendanceEnabled,
+    );
     if (key == _mdmKey &&
         _mdmRunning &&
         _mdmPending != null &&

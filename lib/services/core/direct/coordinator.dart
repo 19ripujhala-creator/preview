@@ -338,6 +338,7 @@ class PortalCoordinator {
       () => PortalDiagnostics.measure(
         PortalPhase.sessionProbe,
         () => backend.probe(context),
+        deadlineMs: (config.probeTimeout * 1000).round(),
       ),
       zoneValues: {OperationCancellation.zoneKey: cancellation},
     );
