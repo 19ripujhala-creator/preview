@@ -191,7 +191,15 @@ class SchoolReportWorker {
   }
 
   static bool _stop(Map<String, dynamic> result) =>
-      ['SESSION_EXPIRED', 'PAGE_NOT_READY'].contains(result['code']) ||
+      const {
+        'SESSION_EXPIRED',
+        'PAGE_NOT_READY',
+        'BAD_DATE',
+        'BAD_CLASS',
+        'DATE_MISMATCH',
+        'MATCH_MISMATCH',
+        'PORTAL_MESSAGE',
+      }.contains(result['code']) ||
       '${result['message'] ?? ''}'.toLowerCase().contains('closed');
 
   Future<Map<String, dynamic>> readSection(String label, String? date) async {
@@ -282,8 +290,13 @@ class SchoolReportWorker {
           'code': closed
               ? 'SESSION_EXPIRED'
               : lastFail['code'] ?? 'PARTIAL_REPORT',
-          'message':
-              'The following sections could not be read from the portal: ${failed.join(', ')}. Please wait for the portal session synchronization to complete and try again.',
+          'message': _stop(lastFail) && lastFail['message'] != null
+              ? lastFail['message']
+              : 'The following sections could not be read from the portal: ${failed.join(', ')}. Please wait for the portal session synchronization to complete and try again.',
+          if (lastFail['portal_message'] != null)
+            'portal_message': lastFail['portal_message'],
+          if (lastFail['message_source'] != null)
+            'message_source': lastFail['message_source'],
           'failedSections': failed,
         };
       }

@@ -1,4 +1,4 @@
-﻿name: Build iOS IPA
+name: Build iOS IPA
 
 on:
   workflow_dispatch:
@@ -43,7 +43,7 @@ jobs:
       - name: Prepare Flutter build assets
         run: |
           flutter build ios --release --no-codesign --config-only \
-            --dart-define=RAJSHALA_DDDDOCR_VERSION=1.5.6
+            --dart-define=RAJSHALA_DDDDOCR_VERSION=1.5.6 --dart-define=PORTAL_DIAGNOSTICS=true
 
       # Disable Automatic Code Signing so Xcode doesn't demand an Apple ID Team
       - name: Disable Automatic Code Signing in Xcode

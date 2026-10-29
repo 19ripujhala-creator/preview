@@ -150,13 +150,18 @@ class _AttendanceDocument {
   }) async {
     worker._entryForm = null;
     if (mutation) MutationDispatch.current?.enterRequest();
-    final action = mutation ? 'SUBMIT' : fields?['__READ_ONLY_ACTION']?.toString() ?? 'GET_PAGE';
-    final response = await PortalDiagnostics.withAction(action, () => worker.request(
-      target,
-      fields: fields,
-      referer: referer,
-      mutation: mutation,
-    ));
+    final action = mutation
+        ? 'SUBMIT'
+        : fields?['__READ_ONLY_ACTION']?.toString() ?? 'GET_PAGE';
+    final response = await PortalDiagnostics.withAction(
+      action,
+      () => worker.request(
+        target,
+        fields: fields,
+        referer: referer,
+        mutation: mutation,
+      ),
+    );
     url = response.url;
     soup = await PortalDiagnostics.measure(
       PortalPhase.studentParse,
@@ -274,41 +279,26 @@ class _AttendanceDocument {
                 ?.attributes
                 .containsKey('disabled') ==
             true) {
-      String? entryDateVal;
+      // Back uses the latest entry ViewState and omits disabled date fields.
+      // A GET can retain the server-side entry panel; it is not a substitute
+      // for exiting that panel when changing dates. Show selects the new date.
       try {
-        entryDateVal = StudentAttendanceWorker.validDate(
-          soup.getElementById(StudentAttendanceWorker.dateId)?.attributes['value'],
-        );
-      } on AttendanceWorkerError {
-        entryDateVal = null;
-      }
-      final wantedDateVal = date == null
-          ? entryDateVal
-          : StudentAttendanceWorker.validDate(date);
-      if (entryDateVal != null &&
-          wantedDateVal != null &&
-          entryDateVal != wantedDateVal) {
-        worker._readForm = null;
-        reused = false;
-      } else {
-        try {
-          await click(soup.getElementById(StudentAttendanceWorker.backId));
-          returnedToSummary = true;
-          // A different layout cannot authorize a stale-summary shortcut.
-          if (soup
-                      .getElementById(StudentAttendanceWorker.dateId)
-                      ?.attributes
-                      .containsKey('disabled') !=
-                  false ||
-              !worker._usableReadForm(url, soup)) {
-            reused = false;
-          }
-        } on AttendanceWorkerError catch (error) {
-          if (!StudentAttendanceWorker._staleFormError(error)) rethrow;
-          worker._blockedReadIdentity = worker.sessionIdentity?.call();
-          worker._readForm = null;
+        await click(soup.getElementById(StudentAttendanceWorker.backId));
+        returnedToSummary = true;
+        // A different layout cannot authorize a stale-summary shortcut.
+        if (soup
+                    .getElementById(StudentAttendanceWorker.dateId)
+                    ?.attributes
+                    .containsKey('disabled') !=
+                false ||
+            !worker._usableReadForm(url, soup)) {
           reused = false;
         }
+      } on AttendanceWorkerError catch (error) {
+        if (!StudentAttendanceWorker._staleFormError(error)) rethrow;
+        worker._blockedReadIdentity = worker.sessionIdentity?.call();
+        worker._readForm = null;
+        reused = false;
       }
     }
     try {
@@ -466,16 +456,20 @@ class StudentAttendanceWorker {
   final Duration readFormLifetime;
   final Duration Function()? formElapsed;
   final Stopwatch _formClock = Stopwatch()..start();
-  ({Uri url, dom.Document soup, String identity, Duration at, bool unconsumed})? _readForm;
+  ({Uri url, dom.Document soup, String identity, Duration at, bool unconsumed})?
+  _readForm;
   Duration get _formNow => formElapsed?.call() ?? _formClock.elapsed;
   String? _blockedReadIdentity;
   int _summaryRevision = 0;
   ({int revision, String? date, List<Map<String, dynamic>> classes})?
-      _lastSummarySnapshot;
+  _lastSummarySnapshot;
   ({int revision, String? date, List<Map<String, dynamic>> classes})?
-      get lastSummarySnapshot => _lastSummarySnapshot;
+  get lastSummarySnapshot => _lastSummarySnapshot;
 
-  void _recordSummarySnapshot(String? date, List<Map<String, dynamic>> classes) {
+  void _recordSummarySnapshot(
+    String? date,
+    List<Map<String, dynamic>> classes,
+  ) {
     if (classes.isEmpty) return;
     _lastSummarySnapshot = (
       revision: ++_summaryRevision,
@@ -522,7 +516,9 @@ class StudentAttendanceWorker {
       );
     }
     final merged = previous.clone(true);
-    for (final script in merged.querySelectorAll('script[data-attendance-response]')) {
+    for (final script in merged.querySelectorAll(
+      'script[data-attendance-response]',
+    )) {
       script.remove();
     }
     var updated = false;
@@ -578,9 +574,11 @@ class StudentAttendanceWorker {
         merged.querySelector('form')?.attributes['action'] = value;
       } else if (type == 'scriptBlock' || type == 'scriptStartupBlock') {
         // Keep native portal alerts available to the existing message parser.
-        merged.body?.append(dom.Element.tag('script')
-          ..attributes['data-attendance-response'] = 'true'
-          ..text = value);
+        merged.body?.append(
+          dom.Element.tag('script')
+            ..attributes['data-attendance-response'] = 'true'
+            ..text = value,
+        );
       }
     }
     if (!updated) {
@@ -599,7 +597,8 @@ class StudentAttendanceWorker {
   ].any(message.toLowerCase().contains);
 
   static bool _staleFormError(AttendanceWorkerError error) =>
-      error.code == 'PORTAL_RESPONSE_ERROR' &&
+      (error.code == 'PORTAL_RESPONSE_ERROR' ||
+          error.code == 'PORTAL_MESSAGE') &&
       (error.extra['form_state_rejected'] == true ||
           _staleFormText(error.message));
 
@@ -785,7 +784,10 @@ class StudentAttendanceWorker {
         'classId': hidden.attributes['value']?.trim() ?? '',
         'section': link?.text.trim() ?? '',
         'total': _toInt(value('${gridId}_lbl_TotStudent_$n')),
-        'present': (_toInt(value('${gridId}_lbl_P_Web_$n')) ?? 0) > 0 ? _toInt(value('${gridId}_lbl_P_Web_$n')) : (_toInt(value('${gridId}_lbl_P_App_$n')) ?? _toInt(value('${gridId}_lbl_P_Web_$n'))),
+        'present': (_toInt(value('${gridId}_lbl_P_Web_$n')) ?? 0) > 0
+            ? _toInt(value('${gridId}_lbl_P_Web_$n'))
+            : (_toInt(value('${gridId}_lbl_P_App_$n')) ??
+                  _toInt(value('${gridId}_lbl_P_Web_$n'))),
         'absent': _toInt(value('${gridId}_lblA_Web_$n')),
         'status': status,
         'done': status.toLowerCase().startsWith('done'),
@@ -816,9 +818,15 @@ class StudentAttendanceWorker {
         key = 'mother';
       } else if (h.contains('name') || h.contains('नाम')) {
         key = 'name';
-      } else if (['srno', 'sno', 'slno'].contains(norm) && h.contains('.')) {
+      } else if (norm == 'sno' || norm == 'slno') {
         key = 'serial';
-      } else if (norm == 'srno' || h.contains('scholar')) {
+      } else if (norm == 'srno') {
+        // The leading Sr.no. is the ordinal; SR No. beside student details
+        // is the scholar identity. Punctuation alone cannot distinguish them.
+        key = i == 0 && h.contains('.') && !h.startsWith('s.r.')
+            ? 'serial'
+            : 'sr';
+      } else if (h.contains('scholar')) {
         key = 'sr';
       } else if (h.contains('क्रम')) {
         key = 'serial';
@@ -1066,8 +1074,7 @@ class StudentAttendanceWorker {
     final entrySection = text(
       doc.soup.getElementById('ContentPlaceHolder1_lblentrySection'),
     );
-    String compact(String value) =>
-        _sectionKey(value);
+    String compact(String value) => _sectionKey(value);
     if (entrySection.isNotEmpty &&
         compact(entrySection) != compact('${row['section']}')) {
       throw const AttendanceWorkerError(
@@ -1078,9 +1085,8 @@ class StudentAttendanceWorker {
     final rawEntryDate = text(
       doc.soup.getElementById('ContentPlaceHolder1_lbldateofAtt'),
     );
-    final entryDateMatch = RegExp(
-      r'(\d{1,2}[/-]\d{1,2}[/-]\d{4})',
-    ).firstMatch(rawEntryDate);
+    final entryDateMatch = RegExp(r'(\d{1,2}[/-]\d{1,2}[/-]\d{4})')
+        .firstMatch(rawEntryDate);
     final entryDate = entryDateMatch?.group(1) ?? rawEntryDate;
     if (entryDate.isNotEmpty &&
         validDate(entryDate) != validDate(summary['date'] as String?)) {
@@ -1106,7 +1112,9 @@ class StudentAttendanceWorker {
     final warnings = <String>[];
     final identities = students.map(StudentAttendanceParity.identity).toSet();
     if (identities.length != students.length) {
-      warnings.add('Portal student list contains duplicate student identities. Refresh before saving.');
+      warnings.add(
+        'Portal student list contains duplicate student identities. Refresh before saving.',
+      );
     }
     if (!isBackdate) {
       if (row['done'] == true && students.any((s) => s['status'] == null)) {
@@ -1415,16 +1423,22 @@ class StudentAttendanceWorker {
         live.activity == activityStamp?.call() &&
         _freshReadForm(live.doc.identity, live.doc.loadedAt) &&
         _usableReadForm(live.doc.url, live.doc.soup) &&
-        _classMatches(live.result['summary'] as Map<String, dynamic>, classId) &&
+        _classMatches(
+          live.result['summary'] as Map<String, dynamic>,
+          classId,
+        ) &&
         validDate(live.result['date'] as String?) == validDate(date) &&
-        (section == null || section.isEmpty ||
+        (section == null ||
+            section.isEmpty ||
             _sectionKey(section) == _sectionKey('${live.result['section']}'));
   }
 
   /// Read-only preparation while the user reviews the confirmation sheet.
   /// Save still rechecks the envelope and all roster identities before dispatch.
   Future<void> prepareStudentAttendanceSave({
-    required String classId, String? attendanceDate, String? section,
+    required String classId,
+    String? attendanceDate,
+    String? section,
   }) async {
     if (_liveEntryMatches(classId, attendanceDate, section)) return;
     final doc = _AttendanceDocument(this);
@@ -1466,7 +1480,8 @@ class StudentAttendanceWorker {
           validDate(live.result['date'] as String?) == date &&
           (section == null ||
               section.isEmpty ||
-              _sectionKey(section) == _sectionKey('${live.result['section']}')) &&
+              _sectionKey(section) ==
+                  _sectionKey('${live.result['section']}')) &&
           !(live.result['is_already_marked'] == true &&
               savedStudentsMatch(
                 students,

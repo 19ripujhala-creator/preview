@@ -61,6 +61,12 @@ class PortalDiagnostics {
     'PORTAL_RESPONSE_ERROR',
     'SAVE_UNCONFIRMED',
     'NAVIGATION_RACE',
+    'INVALID_ATTENDANCE_READ',
+    'DATE_MISMATCH',
+    'MATCH_MISMATCH',
+    'PAGE_NOT_READY',
+    'NO_STUDENT_TABLE',
+    'PORTAL_MESSAGE',
   };
   static Future<T> withAction<T>(
     String action,

@@ -56,8 +56,9 @@ class StudentService {
 
   /// Local identity only. One cold storage read; warm guards use memory.
   static ({int revision, String? date, List<Map<String, dynamic>> classes})?
-      get lastSummarySnapshot =>
-          directAttendanceEnabled ? DirectSchoolSession.attendance?.lastSummarySnapshot : null;
+  get lastSummarySnapshot => directAttendanceEnabled
+      ? DirectSchoolSession.attendance?.lastSummarySnapshot
+      : null;
 
   static AttendanceReadScope? captureReadScopeNow() {
     final school = SecureStorageService.schoolIdentityNow;
@@ -460,7 +461,11 @@ class StudentService {
           'success': false,
           'code': 'INVALID_ATTENDANCE_READ',
           'message':
-              'Portal class/date/student data did not match this request.',
+              data['data_verified'] != true &&
+                  data['warning'] is String &&
+                  (data['warning'] as String).trim().isNotEmpty
+              ? 'Attendance data could not be verified: ${data['warning']}'
+              : 'Portal class/date/student data did not match this request.',
         };
       }
 
@@ -603,10 +608,7 @@ class StudentService {
         'success': true,
         'resolved': 'applied',
         'message': 'Previous attendance submission is verified on the portal.',
-        'cache_transition': {
-          'before': epoch,
-          'after': _attendanceEpoch,
-        },
+        'cache_transition': {'before': epoch, 'after': _attendanceEpoch},
       };
     }
 
@@ -626,8 +628,7 @@ class StudentService {
       if (metadata == null) continue;
       final sameRoster = metadata['expected'] != null
           ? _sameRoster(metadata['expected'], first['students'])
-          : (metadata['legacy'] == true &&
-                (k == exactKey || k == resolvedKey));
+          : (metadata['legacy'] == true && (k == exactKey || k == resolvedKey));
       if (!sameRoster) continue;
       anyRosterMatches = true;
       final started = metadata['created_at'];
@@ -660,10 +661,7 @@ class StudentService {
       'success': true,
       'resolved': 'manual_review',
       'message': 'Submission hold released after your explicit review. Check portal statuses before a new Save.',
-      'cache_transition': {
-        'before': epoch,
-        'after': _attendanceEpoch,
-      },
+      'cache_transition': {'before': epoch, 'after': _attendanceEpoch},
     };
   }
 
@@ -689,11 +687,15 @@ class StudentService {
   /// The hold stores EXPECTED student identities/statuses before any network I/O.
   /// Best-effort read preparation only; failures retain normal Save preflight.
   static Future<void> prepareAttendanceSave({
-    required String classId, required String date, String? section,
+    required String classId,
+    required String date,
+    String? section,
     required AttendanceReadScope expectedScope,
   }) async {
-    if (!directAttendanceEnabled || _saving ||
-        captureReadScopeNow() != expectedScope) return;
+    if (!directAttendanceEnabled ||
+        _saving ||
+        captureReadScopeNow() != expectedScope)
+      return;
     final service = DirectSchoolSession.attendance;
     if (service == null) return;
     final release = service.acquireForeground();
