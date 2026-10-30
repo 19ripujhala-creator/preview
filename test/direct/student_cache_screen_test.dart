@@ -292,4 +292,35 @@ void main() {
       expect(t.takeException(), isNull);
     },
   );
+  test('StudentRecord maps missing or unrecognised status to Unavailable unless today pending draft default is active', () {
+    final missingDefault = StudentRecord.fromJson(
+      {'serialNo': 1, 'srNo': '101', 'name': 'Alice', 'status': null, 'present': false},
+      'Class 1',
+      'A',
+      1,
+    );
+    expect(missingDefault.attendanceStatus, 'Unavailable');
+    expect(missingDefault.toJson()['status'], 'Unavailable');
+    expect(missingDefault.toJson()['present'], false);
+
+    final pendingDraft = StudentRecord.fromJson(
+      {'serialNo': 1, 'srNo': '101', 'name': 'Alice', 'status': null, 'present': false},
+      'Class 1',
+      'A',
+      1,
+      defaultDraftPresent: true,
+    );
+    expect(pendingDraft.attendanceStatus, 'P');
+    expect(pendingDraft.toJson()['status'], 'Present');
+
+    final unrecognisedInDraft = StudentRecord.fromJson(
+      {'serialNo': 1, 'srNo': '101', 'name': 'Alice', 'status': 'UnknownValue', 'present': true},
+      'Class 1',
+      'A',
+      1,
+      defaultDraftPresent: true,
+    );
+    expect(unrecognisedInDraft.attendanceStatus, 'Unavailable');
+    expect(unrecognisedInDraft.toJson()['status'], 'Unavailable');
+  });
 }

@@ -11,6 +11,7 @@ import 'modules/student_nic/nic_pdf_preview_screen.dart';
 import 'modules/student_nic/nic_download_indicator.dart';
 import 'modules/study_certificate/study_certificate_screen.dart';
 
+import 'modules/student_attendance/attendance_edit_policy.dart';
 import 'modules/student_attendance/screens/daily_attendance_sheet_screen.dart';
 import 'modules/student_attendance/screens/school_report_screen.dart';
 
@@ -39,7 +40,7 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
   double _nicProgress = 0;
   String? _nicError;
   String? _nicSchoolId;
-  DateTime _reportDate = DateUtils.dateOnly(DateTime.now());
+  DateTime _reportDate = attendanceToday();
   int _selectedClassIndex = 0;
   bool _nicExpanded = false;
   bool _reportOpening = false;
@@ -143,7 +144,7 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
     _calendarOpening = true;
     _haptic();
     try {
-      final today = DateUtils.dateOnly(DateTime.now());
+      final today = attendanceToday();
       final picked = await _pickMinimalDate(context,
         _reportDate.isAfter(today) ? today : _reportDate, DateTime(2015), today);
       if (!mounted || picked == null) return;
@@ -595,7 +596,17 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
                                     ),
                                   ),
                               ],
-                              onSelected: (val) => setDialogState(() => displayedMonth = DateTime(year, val)),
+                              onSelected: (val) => setDialogState(() {
+                                displayedMonth = DateTime(year, val);
+                                final maxDay = DateUtils.getDaysInMonth(year, val);
+                                var candidate = DateTime(year, val, selectedDate.day > maxDay ? maxDay : selectedDate.day);
+                                if (candidate.isBefore(DateTime(first.year, first.month, first.day))) {
+                                  candidate = DateTime(first.year, first.month, first.day);
+                                } else if (candidate.isAfter(DateTime(last.year, last.month, last.day))) {
+                                  candidate = DateTime(last.year, last.month, last.day);
+                                }
+                                selectedDate = candidate;
+                              }),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
@@ -636,7 +647,17 @@ class _StudentDashboardViewState extends State<StudentDashboardView> {
                                     ),
                                   ),
                               ],
-                              onSelected: (val) => setDialogState(() => displayedMonth = DateTime(val, month)),
+                              onSelected: (val) => setDialogState(() {
+                                displayedMonth = DateTime(val, month);
+                                final maxDay = DateUtils.getDaysInMonth(val, month);
+                                var candidate = DateTime(val, month, selectedDate.day > maxDay ? maxDay : selectedDate.day);
+                                if (candidate.isBefore(DateTime(first.year, first.month, first.day))) {
+                                  candidate = DateTime(first.year, first.month, first.day);
+                                } else if (candidate.isAfter(DateTime(last.year, last.month, last.day))) {
+                                  candidate = DateTime(last.year, last.month, last.day);
+                                }
+                                selectedDate = candidate;
+                              }),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [

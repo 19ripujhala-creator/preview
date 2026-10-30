@@ -1,5 +1,16 @@
-/// Dart conversion of student/student_attendance_worker.py.
-/// The shared authenticated transport is supplied by the existing session.
+/// Clean Finite-State-Machine Student Attendance Worker for Shala Darpan
+/// (`Home/School/StudentdailyAttendanceStatus_Web_NewVersion.aspx`).
+///
+/// Server-side WebForms State Machine Rules:
+/// - Mode 1 (`_PortalPageMode.summary`):
+///   `#ContentPlaceHolder1_txtdate` and `#ContentPlaceHolder1_btn_Show` are
+///   ENABLED, and `#ContentPlaceHolder1_grd_Student` holds class summary rows.
+///   Allowed transitions: `SHOW` (date change/refresh) or `CLASS_ENTRY`.
+/// - Mode 2 (`_PortalPageMode.entry`):
+///   `#ContentPlaceHolder1_txtdate` and `#ContentPlaceHolder1_btn_Show` are
+///   DISABLED, `#ContentPlaceHolder1_btnback` and `#ContentPlaceHolder1_btnsubmit`
+///   are ENABLED, and the student roster table is rendered inside `#ContentPlaceHolder1_upPnl`.
+///   Allowed transitions: `BACK` (return to summary) or `SUBMIT` (save roster).
 import 'dart:async';
 
 import 'portal_messages.dart';
@@ -21,6 +32,8 @@ typedef AttendanceHttpRequest = Future<AttendanceHttpReply> Function(
   bool mutation,
 });
 
+enum _PortalPageMode { summary, entry }
+
 class AttendanceWorkerError implements Exception {
   const AttendanceWorkerError(this.code, this.message, [this.extra = const {}]);
   final String code, message;
@@ -35,8 +48,8 @@ class AttendanceWorkerError implements Exception {
   String toString() => '$code: $message';
 }
 
-/// Conversion of gender_master.py's shared _show_payload. Repeated form
-/// names and multiple selected values remain lists, as they do with HTTPX.
+/// Pure WebForms form serializer. Repeated form names and multi-select values
+/// remain lists, matching browser and HTTPX form submission semantics.
 class AttendanceForm {
   static dom.Element? enclosing(dom.Element control) {
     dom.Element? form = control;
@@ -46,12 +59,18 @@ class AttendanceForm {
     return form;
   }
 
-  static Map<String, Object?> payload(dom.Element form, dom.Element button) {
+  static Map<String, Object?> payload(
+    dom.Element form,
+    dom.Element button, {
+    bool microsoftAjax = false,
+  }) {
     final fields = <String, Object?>{};
     for (final field in form.querySelectorAll(
       'input[name], select[name], textarea[name]',
     )) {
-      if (field.attributes.containsKey('disabled')) continue;
+      // Captured Microsoft AJAX posts include disabled text/select controls.
+      // Ordinary full-form posts keep their existing successful-control rules.
+      if (!microsoftAjax && field.attributes.containsKey('disabled')) continue;
       final name = field.attributes['name']!;
       final kind = (field.attributes['type'] ?? 'text').toLowerCase();
       Object value;
@@ -60,8 +79,9 @@ class AttendanceForm {
           continue;
         }
         if (['checkbox', 'radio'].contains(kind) &&
-            !field.attributes.containsKey('checked'))
+            !field.attributes.containsKey('checked')) {
           continue;
+        }
         value =
             field.attributes['value'] ??
             (['checkbox', 'radio'].contains(kind) ? 'on' : '');
@@ -132,15 +152,29 @@ class AttendanceForm {
   }
 }
 
+/// Deterministic page state machine for a single attendance operation.
 class _AttendanceDocument {
-  _AttendanceDocument(this.worker);
+  _AttendanceDocument(this.worker, {this.allowSummaryNavigation = false});
+  final bool allowSummaryNavigation;
   final StudentAttendanceWorker worker;
   late Uri url;
   late dom.Document soup;
   bool loaded = false;
   bool responseUnconsumed = false;
+  bool usedRetainedEnvelope = false;
+  bool restoredSummaryNavigation = false;
+  String? navigationClassId, navigationSection;
   String identity = '';
   Duration loadedAt = Duration.zero;
+
+  _PortalPageMode get mode =>
+      soup
+              .getElementById(StudentAttendanceWorker.dateId)
+              ?.attributes
+              .containsKey('disabled') ==
+          true
+      ? _PortalPageMode.entry
+      : _PortalPageMode.summary;
 
   Future<void> request(
     Uri target, {
@@ -149,6 +183,8 @@ class _AttendanceDocument {
     bool mutation = false,
   }) async {
     worker._entryForm = null;
+    restoredSummaryNavigation = false;
+    if (mutation) worker._summaryNavigation = null;
     if (mutation) MutationDispatch.current?.enterRequest();
     final action = mutation
         ? 'SUBMIT'
@@ -170,8 +206,16 @@ class _AttendanceDocument {
         response.html,
       ),
     );
-    if (StudentAttendanceWorker.isLoginRedirect(url) ||
-        soup.querySelector('#bodyContent_txtUName, #txtUserId') != null) {
+    if (soup.querySelector('#bodyContent_txtUName, #txtUserId') != null) {
+      throw const AttendanceWorkerError(
+        'SESSION_EXPIRED',
+        'School portal session expired.',
+      );
+    }
+    if (StudentAttendanceWorker._isPublicDefaultRedirect(url.toString())) {
+      throw StudentAttendanceWorker._publicRedirectError(url.toString());
+    }
+    if (StudentAttendanceWorker.isLoginRedirect(url)) {
       throw const AttendanceWorkerError(
         'SESSION_EXPIRED',
         'School portal session expired.',
@@ -229,7 +273,14 @@ class _AttendanceDocument {
         'Portal form is missing.',
       );
     }
-    final fields = AttendanceForm.payload(form, button)..addAll(overrides);
+    final microsoftAjax =
+        form.querySelector('#ContentPlaceHolder1_upPnl') != null &&
+        (!mutation || button.id == 'ContentPlaceHolder1_btnsubmit');
+    final fields = AttendanceForm.payload(
+      form,
+      button,
+      microsoftAjax: microsoftAjax,
+    )..addAll(overrides);
     final action = url.resolve(form.attributes['action'] ?? url.toString());
     if (action.authority != url.authority || action.scheme != url.scheme) {
       throw const AttendanceWorkerError(
@@ -250,8 +301,7 @@ class _AttendanceDocument {
           : 'CLASS_ENTRY';
     }
     // Native capture proves both Entry and btnsubmit use this AJAX panel.
-    if (form.querySelector('#ContentPlaceHolder1_upPnl') != null &&
-        (!mutation || button.id == 'ContentPlaceHolder1_btnsubmit')) {
+    if (microsoftAjax) {
       final control = '${fields['__EVENTTARGET'] ?? ''}'.isNotEmpty
           ? '${fields['__EVENTTARGET']}'
           : button.attributes['name'];
@@ -264,53 +314,17 @@ class _AttendanceDocument {
     await request(action, fields: fields, referer: url, mutation: mutation);
   }
 
-  Future<Map<String, dynamic>> summary(String? date) async {
-    var base = worker.baseUrl();
-    final target = base.resolve(
-      'Home/School/${StudentAttendanceWorker.pageName}',
-    );
-    var reused = worker._restoreReadForm(this);
-    var returnedToSummary = false;
-    // The real entry panel disables date/class selectors. Its native Back
-    // control returns to the summary using the latest entry ViewState.
-    if (reused &&
-        soup
-                .getElementById(StudentAttendanceWorker.dateId)
-                ?.attributes
-                .containsKey('disabled') ==
-            true) {
-      // Back uses the latest entry ViewState and omits disabled date fields.
-      // A GET can retain the server-side entry panel; it is not a substitute
-      // for exiting that panel when changing dates. Show selects the new date.
-      try {
-        await click(soup.getElementById(StudentAttendanceWorker.backId));
-        returnedToSummary = true;
-        // A different layout cannot authorize a stale-summary shortcut.
-        if (soup
-                    .getElementById(StudentAttendanceWorker.dateId)
-                    ?.attributes
-                    .containsKey('disabled') !=
-                false ||
-            !worker._usableReadForm(url, soup)) {
-          reused = false;
-        }
-      } on AttendanceWorkerError catch (error) {
-        if (!StudentAttendanceWorker._staleFormError(error)) rethrow;
-        worker._blockedReadIdentity = worker.sessionIdentity?.call();
-        worker._readForm = null;
-        reused = false;
-      }
-    }
+  Future<void> _fetchInitialPageWithHomeFallback(Uri base, Uri target) async {
     try {
-      if (!reused) await request(target);
+      await request(target);
     } on AttendanceWorkerError catch (error) {
       if (error.code != 'PORTAL_RESPONSE_ERROR') rethrow;
       await request(base.resolve('Home/School/Home_New.aspx'));
-      base = Uri.parse(
+      final resolvedBase = Uri.parse(
         '${url.scheme}://${url.authority}/'
         '${url.path.split('/').where((p) => p.isNotEmpty).first}/',
       );
-      var entry = base.resolve(
+      var entry = resolvedBase.resolve(
         'Home/School/${StudentAttendanceWorker.pageName}',
       );
       for (final link in soup.querySelectorAll('a[href]')) {
@@ -323,6 +337,60 @@ class _AttendanceDocument {
       }
       await request(entry);
     }
+  }
+
+  /// Exit retained server-side `ENTRY_MODE` if a fresh `GET` still returned
+  /// disabled date/show controls with an enabled native `Back` button.
+  Future<bool> _exitServerRetainedEntryIfPresent() async {
+    if (mode != _PortalPageMode.entry) return false;
+    final backBtn = soup.getElementById(StudentAttendanceWorker.backId);
+    if (backBtn == null || backBtn.attributes.containsKey('disabled')) {
+      return false;
+    }
+    await click(backBtn);
+    return true;
+  }
+
+  Future<Map<String, dynamic>> summary(String? date) async {
+    final base = worker.baseUrl();
+    final target = base.resolve(
+      'Home/School/${StudentAttendanceWorker.pageName}',
+    );
+    var reused = (allowSummaryNavigation && worker._restoreSummaryNavigation(this, date)) ||
+        worker._restoreReadForm(this);
+    usedRetainedEnvelope = reused;
+    var returnedToSummary = false;
+
+    // A scoped summary snapshot can authorize direct read-only Entry navigation.
+    // Without that snapshot, retain native Back using the latest Entry state.
+    if (reused && mode == _PortalPageMode.entry) {
+      try {
+        await click(soup.getElementById(StudentAttendanceWorker.backId));
+        returnedToSummary = true;
+        if (mode != _PortalPageMode.summary ||
+            !worker._usableReadForm(url, soup)) {
+          reused = false;
+          usedRetainedEnvelope = false;
+        }
+      } on AttendanceWorkerError catch (error) {
+        if (!StudentAttendanceWorker._staleFormError(error)) rethrow;
+        worker._summaryNavigation = null;
+      worker._blockedReadIdentity = worker.sessionIdentity?.call();
+        worker._readForm = null;
+        reused = false;
+        usedRetainedEnvelope = false;
+      }
+    }
+
+    // Transition 2: Cold GET when no reusable form is available, plus recovery
+    // if the server's session retained an open ENTRY_MODE panel across GET.
+    if (!reused) {
+      await _fetchInitialPageWithHomeFallback(base, target);
+      if (await _exitServerRetainedEntryIfPresent()) {
+        returnedToSummary = true;
+      }
+    }
+
     final field = soup.getElementById(StudentAttendanceWorker.dateId);
     final button = soup.getElementById(StudentAttendanceWorker.showId);
     if (field == null || field.attributes['name'] == null || button == null) {
@@ -332,8 +400,9 @@ class _AttendanceDocument {
       );
     }
     final selected = date ?? field.attributes['value'];
-    // A fresh GET or native Back response may already contain this date's
-    // summary. Never use cached summary data to skip a fresh server read.
+
+    // Transition 3: Unconsumed summary fast-path (after fresh GET, native Back,
+    // or background summary fetch when date already matches).
     if ((!reused || returnedToSummary || responseUnconsumed) &&
         worker._usableReadForm(url, soup)) {
       String? initialDate;
@@ -342,7 +411,7 @@ class _AttendanceDocument {
           field.attributes['value'],
         );
       } on AttendanceWorkerError {
-        // An unusable initial date still gets the normal explicit Show request.
+        initialDate = null;
       }
       if (initialDate != null &&
           initialDate == StudentAttendanceWorker.validDate(selected)) {
@@ -350,10 +419,13 @@ class _AttendanceDocument {
         if (initial['found'] == true &&
             (initial['classes'] as List).isNotEmpty) {
           worker._rememberReadForm(this);
+          worker._rememberSummaryNavigation(this, initial);
           return initial;
         }
       }
     }
+
+    // Transition 4: Explicit SHOW postback to load the target date's summary.
     final previousDateAttr = field.attributes['value'];
     if (selected != null) {
       field.attributes['value'] = selected;
@@ -367,12 +439,13 @@ class _AttendanceDocument {
       if (previousDateAttr != null) {
         field.attributes['value'] = previousDateAttr;
       }
-      // Only a rejected retained WebForms envelope gets a fresh-page fallback.
-      // This is READ navigation, never a retry of Submit/Save or business errors.
       if (!reused || !StudentAttendanceWorker._staleFormError(error)) rethrow;
+      worker._summaryNavigation = null;
       worker._blockedReadIdentity = worker.sessionIdentity?.call();
       worker._readForm = null;
+      usedRetainedEnvelope = false;
       await request(target);
+      await _exitServerRetainedEntryIfPresent();
       final freshDate = soup.getElementById(StudentAttendanceWorker.dateId);
       final freshShow = soup.getElementById(StudentAttendanceWorker.showId);
       if (freshDate?.attributes['name'] == null || freshShow == null) {
@@ -389,12 +462,21 @@ class _AttendanceDocument {
         overrides: {freshDate!.attributes['name']!: selected ?? ''},
       );
     }
+
     checkDate(selected);
     final parsed = StudentAttendanceWorker.parseClassSummary(
       soup,
       date: selected,
     );
     if (parsed['found'] != true) {
+      final messages = StudentAttendanceWorker._portalMessages(soup);
+      if (messages.isNotEmpty) {
+        final joined = messages.join('\n');
+        throw AttendanceWorkerError('PORTAL_MESSAGE', joined, {
+          'portal_message': joined,
+          'message_source': 'portal',
+        });
+      }
       final content = StudentAttendanceWorker.text(soup.body).toLowerCase();
       if (!['no record found', 'रिकॉर्ड उपलब्ध नहीं'].any(content.contains)) {
         throw const AttendanceWorkerError(
@@ -404,6 +486,7 @@ class _AttendanceDocument {
       }
     }
     worker._rememberReadForm(this);
+    worker._rememberSummaryNavigation(this, parsed);
     return parsed;
   }
 
@@ -431,6 +514,8 @@ class StudentAttendanceWorker {
     this.observeUrl,
     this.sessionIdentity,
     this.readFormLifetime = const Duration(seconds: 45),
+    this.retainSummaryNavigation = false,
+    this.summaryNavigationLifetime = const Duration(minutes: 2),
     this.formElapsed,
     this.activityStamp,
     DateTime Function()? indiaNow,
@@ -439,6 +524,12 @@ class StudentAttendanceWorker {
            (() => DateTime.now().toUtc().add(
              const Duration(hours: 5, minutes: 30),
            ));
+
+  final bool retainSummaryNavigation;
+  final Duration summaryNavigationLifetime;
+  // Separate read-navigation tokens from the single latest Entry/save form.
+  ({Uri url, String html, String identity, Duration at, String date})?
+      _summaryNavigation;
 
   final Object? Function()? activityStamp;
   ({
@@ -530,9 +621,13 @@ class StudentAttendanceWorker {
         });
       }
       if (type == 'pageRedirect') {
-        throw const AttendanceWorkerError(
+        if (_isPublicDefaultRedirect(value)) {
+          throw _publicRedirectError(value);
+        }
+        throw AttendanceWorkerError(
           'SESSION_EXPIRED',
           'School session changed during attendance navigation.',
+          {'page_redirect': value},
         );
       }
       if (type == 'updatePanel') {
@@ -568,7 +663,9 @@ class StudentAttendanceWorker {
               }),
           );
         } else {
-          for (final input in matches) input.attributes['value'] = value;
+          for (final input in matches) {
+            input.attributes['value'] = value;
+          }
         }
       } else if (type == 'formAction') {
         merged.querySelector('form')?.attributes['action'] = value;
@@ -582,6 +679,14 @@ class StudentAttendanceWorker {
       }
     }
     if (!updated) {
+      final messages = _portalMessages(merged);
+      if (messages.isNotEmpty) {
+        final joined = messages.join('\n');
+        throw AttendanceWorkerError('PORTAL_MESSAGE', joined, {
+          'portal_message': joined,
+          'message_source': 'portal',
+        });
+      }
       throw const AttendanceWorkerError(
         'PAGE_NOT_READY',
         'Attendance AJAX response contains no updated panel.',
@@ -607,26 +712,30 @@ class StudentAttendanceWorker {
     if (url.query.isNotEmpty ||
         url.scheme != target.scheme ||
         url.authority != target.authority ||
-        url.path.toLowerCase() != target.path.toLowerCase())
+        url.path.toLowerCase() != target.path.toLowerCase()) {
       return false;
+    }
     final show = soup.getElementById(showId);
     final date = soup.getElementById(dateId);
     if (date == null || date.attributes['name'] == null) return false;
     final navigation = date.attributes.containsKey('disabled')
         ? soup.getElementById(backId)
         : show;
-    if (navigation == null || navigation.attributes.containsKey('disabled'))
+    if (navigation == null || navigation.attributes.containsKey('disabled')) {
       return false;
+    }
     final form = AttendanceForm.enclosing(navigation);
-    if (form == null || !identical(AttendanceForm.enclosing(date), form))
+    if (form == null || !identical(AttendanceForm.enclosing(date), form)) {
       return false;
+    }
     for (final name in ['__VIEWSTATE', '__EVENTVALIDATION']) {
       if (form
               .querySelector('input[name="$name"]')
               ?.attributes['value']
               ?.isNotEmpty !=
-          true)
+          true) {
         return false;
+      }
     }
     final action = url.resolve(form.attributes['action'] ?? url.toString());
     return action.query.isEmpty &&
@@ -645,6 +754,70 @@ class StudentAttendanceWorker {
         age < readFormLifetime;
   }
 
+  Map<String, dynamic>? freshDashboardSummary(String date) {
+    final cached = _summaryNavigation;
+    if (cached == null || !_freshReadForm(cached.identity, cached.at) ||
+        _formNow - cached.at >= const Duration(seconds: 30) ||
+        validDate(date) != cached.date) return null;
+    final soup = html.parse(cached.html);
+    if (!_usableReadForm(cached.url, soup)) return null;
+    final parsed = parseClassSummary(soup, date: cached.date);
+    if (parsed['found'] != true || (parsed['classes'] as List).isEmpty) return null;
+    return {'success': true, ...parsed};
+  }
+
+  bool _restoreSummaryNavigation(_AttendanceDocument doc, String? wanted) {
+    if (!retainSummaryNavigation || doc.loaded || wanted == null) return false;
+    final cached = _summaryNavigation;
+    if (cached == null) return false;
+    final age = _formNow - cached.at;
+    if (!_freshReadForm(cached.identity, cached.at) || age >= summaryNavigationLifetime) {
+      _summaryNavigation = null;
+      return false;
+    }
+    if (validDate(wanted) != cached.date) return false;
+    final soup = html.parse(cached.html);
+    if (!_usableReadForm(cached.url, soup) ||
+        soup.getElementById(dateId)?.attributes.containsKey('disabled') == true ||
+        soup.getElementById(gridId) == null) {
+      _summaryNavigation = null;
+      return false;
+    }
+    final wantedClass = doc.navigationClassId;
+    if (wantedClass != null) {
+      final parsed = parseClassSummary(soup, date: cached.date);
+      final matches = (parsed['classes'] as List).cast<Map<String, dynamic>>()
+          .where((row) => _classMatches(row, wantedClass) &&
+              (doc.navigationSection == null || doc.navigationSection!.isEmpty ||
+               _sectionMatches(row, doc.navigationSection!)));
+      // Pending first-Save branches were not established by the live fast-path
+      // captures. Preserve the native summary refresh for those classes.
+      if (matches.isEmpty || matches.first['done'] != true) return false;
+    }
+    doc.url = cached.url;
+    doc.soup = soup; // Clone: Entry response merging must not mutate the snapshot.
+    doc.identity = cached.identity;
+    doc.loadedAt = cached.at; // Reuse never extends the original snapshot age.
+    doc.loaded = true;
+    doc.responseUnconsumed = true;
+    doc.restoredSummaryNavigation = true;
+    return true;
+  }
+
+  void _rememberSummaryNavigation(
+    _AttendanceDocument doc, Map<String, dynamic> parsed,
+  ) {
+    if (!retainSummaryNavigation || !doc.loaded ||
+        doc.mode != _PortalPageMode.summary || parsed['found'] != true ||
+        (parsed['classes'] as List).isEmpty ||
+        !_freshReadForm(doc.identity, doc.loadedAt) ||
+        !_usableReadForm(doc.url, doc.soup)) return;
+    final date = validDate(parsed['date'] as String?);
+    if (date == null) return;
+    _summaryNavigation = (url: doc.url, html: doc.soup.outerHtml,
+      identity: doc.identity, at: doc.loadedAt, date: date);
+  }
+
   bool _restoreReadForm(_AttendanceDocument doc) {
     // Reuse only the navigation envelope, never its roster or marked status.
     // Each invocation reads a fresh summary (Show or native Back) and roster.
@@ -652,12 +825,14 @@ class StudentAttendanceWorker {
     _readForm = null; // Consume once: a rejected form is not silently retried.
     if (doc.loaded &&
         _freshReadForm(doc.identity, doc.loadedAt) &&
-        _usableReadForm(doc.url, doc.soup))
+        _usableReadForm(doc.url, doc.soup)) {
       return true;
+    }
     if (cached == null ||
         !_freshReadForm(cached.identity, cached.at) ||
-        !_usableReadForm(cached.url, cached.soup))
+        !_usableReadForm(cached.url, cached.soup)) {
       return false;
+    }
     doc.url = cached.url;
     doc.soup = cached.soup;
     doc.loaded = true;
@@ -708,6 +883,29 @@ class StudentAttendanceWorker {
     walk(element);
     return parts.join(' ');
   }
+
+  // A native 28-Oct Class 1 read redirects here while later protected
+  // reads still work. This public landing page alone cannot prove expiry.
+  static bool _isPublicDefaultRedirect(String value) {
+    final uri = Uri.tryParse(value);
+    return uri != null &&
+        RegExp(
+          r'(?:^|/)Public2/Default\.aspx$',
+          caseSensitive: false,
+        ).hasMatch(uri.path);
+  }
+
+  static AttendanceWorkerError _publicRedirectError(String destination) =>
+      AttendanceWorkerError(
+        'PORTAL_RESPONSE_ERROR',
+        'The portal redirected to its public page instead of returning '
+            'the requested attendance. This class/date could not be loaded.',
+        {
+          'page_redirect': destination,
+          'attendance_public_redirect': true,
+          'session_expiry_confirmed': false,
+        },
+      );
 
   static bool isLoginRedirect(Uri url) => RegExp(
     r'(officelogin|login\.aspx|default\.aspx|/public)',
@@ -809,8 +1007,12 @@ class StudentAttendanceWorker {
   static Map<String, int> _mapColumns(List<String> headers) {
     final result = <String, int>{};
     for (var i = 0; i < headers.length; i++) {
-      final h = headers[i].trim().toLowerCase();
+      final raw = headers[i].trim();
+      final h = raw.toLowerCase();
       final norm = h.replaceAll(RegExp(r'[\s.\-_]'), '');
+      final compact = raw.replaceAll(RegExp(r'\s+'), '');
+      final dottedSrOrdinal = RegExp(r'^[Ss][Rr]\.[Nn][Oo]\.?$')
+          .hasMatch(compact);
       String? key;
       if (h.contains('father') || h.contains('पिता')) {
         key = 'father';
@@ -818,15 +1020,14 @@ class StudentAttendanceWorker {
         key = 'mother';
       } else if (h.contains('name') || h.contains('नाम')) {
         key = 'name';
-      } else if (norm == 'sno' || norm == 'slno') {
+      } else if (['sno', 'slno'].contains(norm) ||
+          (i == 0 && dottedSrOrdinal)) {
         key = 'serial';
-      } else if (norm == 'srno') {
-        // The leading Sr.no. is the ordinal; SR No. beside student details
-        // is the scholar identity. Punctuation alone cannot distinguish them.
-        key = i == 0 && h.contains('.') && !h.startsWith('s.r.')
-            ? 'serial'
-            : 'sr';
-      } else if (h.contains('scholar')) {
+      } else if (['srno', 'sr', 'srnumber'].contains(norm) ||
+          h.contains('scholar') ||
+          h.contains('प्रवेशांक') ||
+          norm.contains('एसआर') ||
+          h.contains('स्कॉलर')) {
         key = 'sr';
       } else if (h.contains('क्रम')) {
         key = 'serial';
@@ -902,6 +1103,7 @@ class StudentAttendanceWorker {
     final studentSet = rows.toSet();
     final labels = _labels(soup);
     var headers = <String>[];
+    var bestHeaderScore = -1;
     var encounteredStudent = false;
     for (final tr in best.querySelectorAll('tr')) {
       if (_nearestTable(tr) != best) continue;
@@ -909,12 +1111,21 @@ class StudentAttendanceWorker {
         encounteredStudent = true;
         continue;
       }
+      if (encounteredStudent) continue;
       final cells = tr.children
           .where((c) => ['td', 'th'].contains(c.localName))
           .map(text)
           .toList();
-      if (headers.isEmpty && !encounteredStudent && cells.length > 1) {
-        headers = cells;
+      if (cells.length > 1) {
+        final mappedCols = _mapColumns(cells);
+        final score =
+            mappedCols.length +
+            (mappedCols.containsKey('name') ? 10 : 0) +
+            (mappedCols.containsKey('sr') ? 10 : 0);
+        if (headers.isEmpty || score > bestHeaderScore) {
+          headers = cells;
+          bestHeaderScore = score;
+        }
       }
     }
     final columns = _mapColumns(headers);
@@ -959,9 +1170,13 @@ class StudentAttendanceWorker {
       }
       final status = StudentAttendanceParity.normalizeStatus(label, index);
       final roll = mapped ? cell(columns['roll']) : '';
+      var srVal = cell(mapped ? columns['sr'] : 4);
+      if (srVal.isEmpty && !columns.containsKey('sr') && cells.length > 4) {
+        srVal = cell(4);
+      }
       students.add({
         'serialNo': _toInt(serial) == 0 ? n + 1 : _toInt(serial) ?? n + 1,
-        'srNo': cell(mapped ? columns['sr'] : 4),
+        'srNo': srVal,
         'rollNo': roll.isEmpty ? serial : roll,
         'nicCode': mapped ? cell(columns['nic']) : '',
         'name': name,
@@ -984,16 +1199,26 @@ class StudentAttendanceWorker {
   }
 
   static String _sectionKey(String value) =>
-      value.trim().toLowerCase().replaceAll(RegExp(r'[\s_-]+'), '');
+      value.trim().toLowerCase().replaceAll(RegExp(r'[\s_\-()\[\]]+'), '');
 
   static bool _classMatches(Map<String, dynamic> row, String wanted) {
-    final cid = '${row['classId'] ?? ''}'.trim().toLowerCase();
+    final cid = _sectionKey('${row['classId'] ?? ''}');
     final section = _sectionKey('${row['section'] ?? ''}');
+    final combined = '$cid$section';
     final w = _sectionKey(wanted);
     return cid == w ||
         section == w ||
+        combined == w ||
         (int.tryParse(cid) != null && int.tryParse(cid) == int.tryParse(w)) ||
         RegExp(r'^\d+').firstMatch(section)?.group(0) == w;
+  }
+
+  static bool _sectionMatches(Map<String, dynamic> row, String wantedSection) {
+    final w = _sectionKey(wantedSection);
+    if (w.isEmpty) return true;
+    final sec = _sectionKey('${row['section'] ?? ''}');
+    final cid = _sectionKey('${row['classId'] ?? ''}');
+    return sec == w || '$cid$sec' == w;
   }
 
   Future<({Map<String, dynamic> result, List<dom.Element> rows})> _fetchList(
@@ -1008,9 +1233,12 @@ class StudentAttendanceWorker {
     if (wanted.isEmpty) {
       throw const AttendanceWorkerError('BAD_CLASS', 'class_id is required.');
     }
-    final summary = await doc.summary(date);
-    final classes = (summary['classes'] as List).cast<Map<String, dynamic>>();
-    if (recordSummary && classes.isNotEmpty) {
+    doc.navigationClassId = classId;
+    doc.navigationSection = section;
+    var summary = await doc.summary(date);
+    final usedSummaryNavigation = doc.restoredSummaryNavigation;
+    var classes = (summary['classes'] as List).cast<Map<String, dynamic>>();
+    if (recordSummary && !doc.restoredSummaryNavigation && classes.isNotEmpty) {
       _recordSummarySnapshot(summary['date'] as String?, classes);
     }
     if (shouldContinue != null && !shouldContinue()) {
@@ -1020,24 +1248,25 @@ class StudentAttendanceWorker {
         'Attendance read superseded by a newer class selection.',
       );
     }
-    final matches = classes
+    var matches = classes
         .where(
           (r) =>
               _classMatches(r, wanted) &&
               (section == null ||
                   section.isEmpty ||
-                  _sectionKey('${r['section']}') == _sectionKey(section)),
+                  _sectionMatches(r, section)),
         )
         .toList();
     if (matches.isEmpty) {
+      _rememberReadForm(doc, unconsumed: true);
       throw AttendanceWorkerError('BAD_CLASS', "Class '$wanted' not listed.", {
         'available': classes
             .map((r) => {'classId': r['classId'], 'section': r['section']})
             .toList(),
       });
     }
-    final row = matches.first;
-    final base = <String, dynamic>{
+    var row = matches.first;
+    Map<String, dynamic> currentBase() => <String, dynamic>{
       'success': true,
       'date': summary['date'],
       'classId': row['classId'],
@@ -1046,12 +1275,13 @@ class StudentAttendanceWorker {
       ...submissionFields(row),
     };
     if (row['total'] == 0) {
+      _rememberReadForm(doc, unconsumed: true);
       return (
         result: {
-          ...base,
+          ...currentBase(),
           'students': <Map<String, dynamic>>[],
           'total': 0,
-          'verified': base['attendance_verified'],
+          'verified': currentBase()['attendance_verified'],
           'data_verified': true,
           'warning': null,
           'columnsMapped': true,
@@ -1059,24 +1289,79 @@ class StudentAttendanceWorker {
         rows: <dom.Element>[],
       );
     }
-    final link = row['entryLinkId'] == null
+    dom.Element? resolveEntryLink() => row['entryLinkId'] == null
         ? null
         : doc.soup.getElementById('${row['entryLinkId']}');
+    var link = resolveEntryLink();
     if (link == null) {
       throw const AttendanceWorkerError(
         'NO_ENTRY_LINK',
         'Class entry link missing.',
       );
     }
-    await doc.click(link);
+    try {
+      await doc.click(link);
+    } on AttendanceWorkerError catch (error) {
+      if (!doc.usedRetainedEnvelope || !_staleFormError(error)) rethrow;
+      _summaryNavigation = null;
+      _blockedReadIdentity = sessionIdentity?.call();
+      _readForm = null;
+      doc.loaded = false;
+      doc.usedRetainedEnvelope = false;
+      summary = await doc.summary(date);
+      classes = (summary['classes'] as List).cast<Map<String, dynamic>>();
+      if (recordSummary && !doc.restoredSummaryNavigation && classes.isNotEmpty) {
+        _recordSummarySnapshot(summary['date'] as String?, classes);
+      }
+      if (shouldContinue != null && !shouldContinue()) {
+        _rememberReadForm(doc, unconsumed: true);
+        throw const AttendanceWorkerError(
+          'STALE_ATTENDANCE_READ',
+          'Attendance read superseded by a newer class selection.',
+        );
+      }
+      matches = classes
+          .where(
+            (r) =>
+                _classMatches(r, wanted) &&
+                (section == null ||
+                    section.isEmpty ||
+                    _sectionMatches(r, section)),
+          )
+          .toList();
+      if (matches.isEmpty) {
+        throw AttendanceWorkerError(
+          'BAD_CLASS',
+          "Class '$wanted' not listed.",
+          {
+            'available': classes
+                .map((r) => {'classId': r['classId'], 'section': r['section']})
+                .toList(),
+          },
+        );
+      }
+      row = matches.first;
+      link = resolveEntryLink();
+      if (link == null) {
+        throw const AttendanceWorkerError(
+          'NO_ENTRY_LINK',
+          'Class entry link missing.',
+        );
+      }
+      await doc.click(link);
+    }
+    // A rejected Entry can require a new summary. Build all response metadata
+    // from the row that actually authorized the final successful Entry.
+    final base = currentBase();
     _readForm = null; // The older summary envelope is now superseded.
     doc.checkDate(summary['date'] as String?);
     final entrySection = text(
       doc.soup.getElementById('ContentPlaceHolder1_lblentrySection'),
     );
-    String compact(String value) => _sectionKey(value);
     if (entrySection.isNotEmpty &&
-        compact(entrySection) != compact('${row['section']}')) {
+        _sectionKey(entrySection) != _sectionKey('${row['section']}') &&
+        _sectionKey(entrySection) !=
+            _sectionKey('${row['classId']}${row['section']}')) {
       throw const AttendanceWorkerError(
         'MATCH_MISMATCH',
         'Portal student list belongs to a different class/section. Nothing was saved.',
@@ -1095,7 +1380,22 @@ class StudentAttendanceWorker {
         'Portal student list belongs to a different attendance date. Nothing was saved.',
       );
     }
-    final table = studentRows(doc.soup);
+    late final ({Map<String, dynamic> built, List<dom.Element> rows}) table;
+    try {
+      table = studentRows(doc.soup);
+    } on AttendanceWorkerError catch (error) {
+      if (error.code == 'NO_STUDENT_TABLE') {
+        final messages = _portalMessages(doc.soup);
+        if (messages.isNotEmpty) {
+          final joined = messages.join('\n');
+          throw AttendanceWorkerError('PORTAL_MESSAGE', joined, {
+            'portal_message': joined,
+            'message_source': 'portal',
+          });
+        }
+      }
+      rethrow;
+    }
     final students = (table.built['students'] as List)
         .cast<Map<String, dynamic>>();
     final counts = {
@@ -1129,6 +1429,23 @@ class StudentAttendanceWorker {
           counts['Present'] != row['present']) {
         warnings.add('Portal summary and present count differ.');
       }
+    } else {
+      if (row['total'] != null && students.length != row['total']) {
+        warnings.add('Portal summary and student row counts differ.');
+      } else if (row['done'] == true) {
+        if (students.isNotEmpty && students.any((s) => s['status'] == null)) {
+          warnings.add(
+            'Marked attendance contains unselected or unrecognised statuses.',
+          );
+        } else if (row['present'] != null) {
+          final pCount = counts['Present'] ?? 0;
+          final lCount = (counts['OnLeave'] ?? 0) + (counts['OnMedical'] ?? 0);
+          final summaryPresent = row['present'] as int;
+          if (pCount != summaryPresent && (pCount + lCount) != summaryPresent) {
+            warnings.add('Portal summary and present count differ.');
+          }
+        }
+      }
     }
     if (table.built['columnsMapped'] != true) {
       warnings.add('Column headers not fully recognised; read by position.');
@@ -1141,6 +1458,17 @@ class StudentAttendanceWorker {
           ..sort();
     final current = lead(row['section']);
     final verified = base['attendance_verified'] == true && warnings.isEmpty;
+    if (usedSummaryNavigation && warnings.isNotEmpty) {
+      // External portal changes can make a short-lived summary's totals stale.
+      // Refresh once before returning unverified data or preparing a mutation.
+      _summaryNavigation = null;
+      _readForm = null;
+      doc.loaded = false;
+      doc.usedRetainedEnvelope = false;
+      doc.restoredSummaryNavigation = false;
+      return _fetchList(doc, classId, date, section,
+        shouldContinue: shouldContinue, recordSummary: recordSummary);
+    }
     _rememberReadForm(doc); // Retain only the latest validated navigation form.
     return (
       result: {
@@ -1184,8 +1512,9 @@ class StudentAttendanceWorker {
         text(doc.soup.getElementById('ContentPlaceHolder1_lblentrySection'))
             .isEmpty ||
         text(doc.soup.getElementById('ContentPlaceHolder1_lbldateofAtt'))
-            .isEmpty)
+            .isEmpty) {
       return;
+    }
     final profiles = <String>{};
     for (final row in rows) {
       final profile = row
@@ -1270,6 +1599,69 @@ class StudentAttendanceWorker {
     }
   }
 
+  Future<Map<String, dynamic>> _verifyAttendanceReadRedirect(
+    AttendanceWorkerError error, {
+    bool Function()? shouldContinue,
+  }) async {
+    _readForm = null;
+    _summaryNavigation = null;
+    _entryForm = null;
+    Map<String, dynamic> failed() => {...error.asResult(), 'students': []};
+    if (shouldContinue != null && !shouldContinue()) {
+      return {
+        ...failure(const AttendanceWorkerError(
+          'STALE_ATTENDANCE_READ',
+          'Attendance read superseded by a newer class selection.',
+        )),
+        'students': [],
+      };
+    }
+    final originalIdentity = sessionIdentity?.call() ?? '';
+    final check = _AttendanceDocument(this);
+    try {
+      // One protected GET verifies the session, without following the public
+      // destination, repeating the failing class, or dispatching any Save.
+      await PortalDiagnostics.measure(
+        PortalPhase.sessionProbe,
+        () => check.request(baseUrl().resolve('Home/School/$pageName')),
+      );
+      if ((sessionIdentity?.call() ?? '') != originalIdentity) {
+        return {
+          ...failure(const AttendanceWorkerError(
+            'ACCOUNT_CHANGED',
+            'School session changed. Fetch the data again.',
+          )),
+          'students': [],
+        };
+      }
+      if (_usableReadForm(check.url, check.soup)) {
+        _rememberReadForm(check, unconsumed: true);
+        if (shouldContinue != null && !shouldContinue()) {
+          return {
+            ...failure(const AttendanceWorkerError(
+              'STALE_ATTENDANCE_READ',
+              'Attendance read superseded by a newer class selection.',
+            )),
+            'students': [],
+          };
+        }
+        return {
+          ...failed(),
+          'portal_session_alive': true,
+          'message': '${error.message} The school session is still active; '
+              'you can open another class or date.',
+        };
+      }
+    } on AttendanceWorkerError catch (checkError) {
+      if (checkError.code == 'SESSION_EXPIRED') {
+        return {...checkError.asResult(), 'students': []};
+      }
+    } catch (_) {
+      // An unavailable verification read proves neither alive nor expired.
+    }
+    return failed();
+  }
+
   Future<Map<String, dynamic>> fetchStudentAttendanceList({
     required String classId,
     String? attendanceDate,
@@ -1277,7 +1669,7 @@ class StudentAttendanceWorker {
     bool Function()? shouldContinue,
   }) async {
     try {
-      final doc = _AttendanceDocument(this);
+      final doc = _AttendanceDocument(this, allowSummaryNavigation: true);
       final fetched = await _fetchList(
         doc,
         classId,
@@ -1289,9 +1681,18 @@ class StudentAttendanceWorker {
       _rememberEntry(doc, fetched.result, fetched.rows);
       return fetched.result;
     } catch (error) {
+      if (error is AttendanceWorkerError &&
+          error.extra['attendance_public_redirect'] == true) {
+        return _verifyAttendanceReadRedirect(
+          error,
+          shouldContinue: shouldContinue,
+        );
+      }
       if (error is! AttendanceWorkerError ||
-          error.code != 'STALE_ATTENDANCE_READ') {
+          (error.code != 'STALE_ATTENDANCE_READ' &&
+              error.code != 'BAD_CLASS')) {
         _readForm = null;
+        _summaryNavigation = null;
       }
       return {...failure(error), 'students': []};
     }
@@ -1411,10 +1812,48 @@ class StudentAttendanceWorker {
               .toLowerCase();
       if (!label.contains('back') &&
           !label.contains('btn_show') &&
-          ['save', 'submit', 'सुरक्षित', 'दर्ज'].any(label.contains))
+          ['save', 'submit', 'सुरक्षित', 'दर्ज'].any(label.contains)) {
         return candidate;
+      }
     }
     return null;
+  }
+
+  bool _submitReturnedDoneSummary(
+    _AttendanceDocument doc,
+    Map<String, dynamic> result,
+  ) {
+    if (!doc.loaded ||
+        doc.mode != _PortalPageMode.summary ||
+        !_usableReadForm(doc.url, doc.soup)) {
+      return false;
+    }
+    final wantedDate = validDate(result['date'] as String?);
+    final fieldDate = doc.soup.getElementById(dateId)?.attributes['value'];
+    try {
+      if (wantedDate == null || validDate(fieldDate) != wantedDate) {
+        return false;
+      }
+    } on AttendanceWorkerError {
+      return false;
+    }
+    final parsed = parseClassSummary(doc.soup, date: wantedDate);
+    if (parsed['found'] != true ||
+        validDate(parsed['date'] as String?) != wantedDate) {
+      return false;
+    }
+    final classes = (parsed['classes'] as List).cast<Map<String, dynamic>>();
+    final wantedClass = '${result['classId'] ?? ''}'.trim();
+    final wantedSection = '${result['section'] ?? ''}'.trim();
+    final matches = classes
+        .where(
+          (r) =>
+              _classMatches(r, wantedClass) &&
+              (wantedSection.isEmpty || _sectionMatches(r, wantedSection)),
+        )
+        .toList();
+    return matches.isNotEmpty &&
+        submissionFields(matches.first)['attendance_verified'] == true;
   }
 
   bool _liveEntryMatches(String classId, String? date, String? section) {
@@ -1430,7 +1869,10 @@ class StudentAttendanceWorker {
         validDate(live.result['date'] as String?) == validDate(date) &&
         (section == null ||
             section.isEmpty ||
-            _sectionKey(section) == _sectionKey('${live.result['section']}'));
+            _sectionMatches(
+              live.result['summary'] as Map<String, dynamic>,
+              section,
+            ));
   }
 
   /// Read-only preparation while the user reviews the confirmation sheet.
@@ -1441,7 +1883,7 @@ class StudentAttendanceWorker {
     String? section,
   }) async {
     if (_liveEntryMatches(classId, attendanceDate, section)) return;
-    final doc = _AttendanceDocument(this);
+    final doc = _AttendanceDocument(this, allowSummaryNavigation: true);
     final fetched = await _fetchList(doc, classId, attendanceDate, section);
     _rememberEntry(doc, fetched.result, fetched.rows);
   }
@@ -1480,8 +1922,10 @@ class StudentAttendanceWorker {
           validDate(live.result['date'] as String?) == date &&
           (section == null ||
               section.isEmpty ||
-              _sectionKey(section) ==
-                  _sectionKey('${live.result['section']}')) &&
+              _sectionMatches(
+                live.result['summary'] as Map<String, dynamic>,
+                section,
+              )) &&
           !(live.result['is_already_marked'] == true &&
               savedStudentsMatch(
                 students,
@@ -1591,8 +2035,12 @@ class StudentAttendanceWorker {
           .where((message) => !beforeMessages.contains(message))
           .toList();
       // If a pending register already echoed these statuses before Submit,
-      // matching rows alone cannot prove finalization. Read summary afresh.
-      if (updates.changed == 0) doc.responseUnconsumed = false;
+      // matching rows alone cannot prove finalization. Consume the returned
+      // Submit response directly only when it is already a usable same-date
+      // Done summary for this class; otherwise force a fresh Show.
+      if (updates.changed == 0 && !_submitReturnedDoneSummary(doc, result)) {
+        doc.responseUnconsumed = false;
+      }
       for (var attempt = 0; attempt < 2; attempt++) {
         final fresh = await PortalDiagnostics.measure(
           PortalPhase.studentVerify,
@@ -1611,10 +2059,12 @@ class StudentAttendanceWorker {
           _rememberEntry(doc, fresh.result, fresh.rows);
           return success(fresh.result, unchanged: false);
         }
-        if (attempt == 0)
+        if (attempt == 0) {
           await Future<void>.delayed(const Duration(milliseconds: 500));
+        }
       }
       _readForm = null;
+      _summaryNavigation = null;
       return {
         'success': false,
         'code': 'SAVE_UNCONFIRMED',
@@ -1630,6 +2080,7 @@ class StudentAttendanceWorker {
       };
     } catch (error) {
       _readForm = null;
+      _summaryNavigation = null;
       if (dispatch.mayHaveStarted) {
         return {
           'success': false,

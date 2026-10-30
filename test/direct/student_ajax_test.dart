@@ -1,4 +1,7 @@
 import 'dart:io';
+import 'dart:async';
+import 'package:shaladarpan/experiments/direct_student_attendance_service.dart';
+import 'package:shaladarpan/services/core/direct/coordinator.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html;
@@ -6,7 +9,7 @@ import 'package:shaladarpan/experiments/direct_portal_auth.dart';
 import 'package:shaladarpan/services/portals/shaladarpan/direct/student_attendance_worker.dart';
 
 import 'attendance_form_reuse_test.dart' show FormPortal;
-import 'student_worker_test.dart' show date, students;
+import 'student_worker_test.dart' show date, students, FakeAuth;
 
 String frame(String type, String name, String content) =>
     '${content.length}|$type|$name|$content|';
@@ -71,6 +74,79 @@ class AjaxPortal extends FormPortal {
   }
 }
 
+
+// Sanitized contract from the 29-Oct native browser capture:
+// all five Back posts retain disabled txtdate and ddlClass.
+class CapturedDisabledAjaxPortal extends AjaxPortal {
+  @override
+  String entry() => super.entry().replaceFirst('</form>', r'''
+    <select disabled="disabled" name="ctl00$ContentPlaceHolder1$ddlClass">
+      <option selected="selected" value="0">All</option>
+    </select>
+    <input disabled="disabled" type="checkbox" name="unchecked" value="on">
+    <input disabled="disabled" type="radio" name="unselected" value="2">
+    </form>''');
+}
+
+
+// Protocol fixture derived from the observed sequence, without private tokens:
+// 28-Oct Entry -> SD4 public default -> protected GET -> 27-Oct Entry succeeds.
+class PublicDefaultPortal extends AjaxPortal {
+  String selected = date;
+  bool redirected = false, deltaRedirect = false, expired = false, unknown = false;
+  bool probeTimeout = false, changeAccount = false;
+  int entries = 0, protectedGets = 0;
+  String identity = 'school/original';
+  final defaultPage = Uri.parse('https://rajshaladarpan.rajasthan.gov.in/sd4/Home/Public2/Default.aspx');
+  @override String summary() => super.summary().replaceAll(date, selected);
+  @override String entry() => super.entry().replaceAll(date, selected);
+  @override Future<AttendanceHttpReply> request(Uri url, {Map<String,Object?>? fields, Uri? referer, bool mutation=false}) async {
+    if (fields == null) {
+      protectedGets++;
+      expect(url.path, '/SD1/Home/School/StudentdailyAttendanceStatus_Web_NewVersion.aspx');
+      if (redirected) {
+        if (changeAccount) identity = 'school/another';
+        if (probeTimeout) throw TimeoutException('synthetic recovery read timeout');
+        if (expired) return (url:url.resolve('../Public2/OfficeLoginNew.aspx'),status:200,html:'<input id="txtUserId">');
+        if (unknown) return (url:url,status:200,html:'<html>unavailable</html>');
+      }
+      selected = date;
+    }
+    if (fields?['__READ_ONLY_ACTION'] == 'SHOW') selected = fields![r'ctl00$ContentPlaceHolder1$txtdate'] as String;
+    if (fields?['__READ_ONLY_ACTION'] == 'CLASS_ENTRY') {
+      entries++;
+      if (selected == '28/10/2026') {
+        redirected = true;
+        requests.add({'url':url.toString(),'fields':fields,'mutation':mutation});
+        if(deltaRedirect) return (url:url,status:200,html:frame('pageRedirect','',defaultPage.toString()));
+        return (url:defaultPage,status:200,html:'<html><title>Portal public page</title></html>');
+      }
+    }
+    return super.request(url,fields:fields,referer:referer,mutation:mutation);
+  }
+}
+class RedirectBackend implements PortalBackend {
+  int authentications = 0, probes = 0;
+  final context=Object();
+  @override Object? currentContext()=>context;
+  @override Future<Probe> probe(Object context) async {probes++;return Probe.alive;}
+  @override Future<Map<String,dynamic>> authenticate(String u,String p,bool f) async {authentications++;return {'success':true};}
+}
+class RedirectAuth extends FakeAuth {
+  RedirectAuth(super.portal,this.co);
+  final PortalCoordinator co;
+  @override PortalCoordinator? get coordinator=>co;
+  @override String get schoolSessionIdentity=>(portal as PublicDefaultPortal).identity;
+}
+
+class RedirectAfterSubmitPortal extends AjaxPortal {
+  @override Future<AttendanceHttpReply> request(Uri url, {Map<String,Object?>? fields,Uri? referer,bool mutation=false}) async {
+    final reply=await super.request(url,fields:fields,referer:referer,mutation:mutation);
+    if(!mutation)return reply;
+    return (url:Uri.parse('https://rajshaladarpan.rajasthan.gov.in/sd4/Home/Public2/Default.aspx'),status:200,html:'<html>public landing</html>');
+  }
+}
+
 class VerifiedReadAuth extends DirectPortalAuth {
   @override
   bool get isVerified => true;
@@ -93,6 +169,111 @@ class CaptureClient implements HttpClient {
   @override dynamic noSuchMethod(Invocation invocation) => null;
 }
 void main() {
+
+  StudentAttendanceWorker redirectWorker(PublicDefaultPortal portal) => StudentAttendanceWorker(
+    request:portal.request,
+    baseUrl:()=>Uri.parse('https://rajshaladarpan.rajasthan.gov.in/SD1/'),
+    sessionIdentity:()=>portal.identity,
+    indiaNow:()=>DateTime(2026,10,29),
+  );
+
+  test('superseded public redirect does not add a session verification request',() async {
+    final portal=PublicDefaultPortal();
+    final result=await redirectWorker(portal).fetchStudentAttendanceList(
+      classId:'1',attendanceDate:'28/10/2026',shouldContinue:()=>!portal.redirected);
+    expect(result['code'],'STALE_ATTENDANCE_READ');expect(portal.protectedGets,1);expect(portal.entries,1);
+  });
+  test('public redirect after Submit stays unconfirmed and never repeats Submit or probes during mutation',() async {
+    final portal=RedirectAfterSubmitPortal();
+    final worker=StudentAttendanceWorker(request:portal.request,
+      baseUrl:()=>Uri.parse('https://rajshaladarpan.rajasthan.gov.in/SD1/'),
+      sessionIdentity:()=> 'one/session',activityStamp:()=>0,indiaNow:()=>DateTime(2026,10,10));
+    expect((await worker.fetchStudentAttendanceList(classId:'1',attendanceDate:date))['success'],true);
+    final before=portal.requests.length;
+    final result=await worker.saveStudentAttendance(classId:'1',attendanceDate:date,students:students,userConfirmed:true);
+    expect(result['code'],'SAVE_UNCONFIRMED');expect(result['submission_attempted'],true);
+    final saving=portal.requests.skip(before).toList();
+    expect(portal.saves,1);expect(saving.where((r)=>r['mutation']==true),hasLength(1));
+    // This generic fixture requires a legitimate preflight. The dispatched
+    // Submit must be the final request: no replay or verification after it.
+    expect(saving.last['mutation'],true);expect(worker.hasFreshSessionForm,false);
+  });
+
+  for(final deltaRedirect in [false,true]) {
+    test('28-Oct public default redirect ($deltaRedirect AJAX) does not expire an active school session',() async {
+      final portal=PublicDefaultPortal()..deltaRedirect=deltaRedirect;
+      final worker=redirectWorker(portal);
+      final result=await worker.fetchStudentAttendanceList(classId:'1',attendanceDate:'28/10/2026');
+      expect(result['success'],false);expect(result['code'],'PORTAL_RESPONSE_ERROR');
+      expect(result['portal_session_alive'],true);expect(result['students'],isEmpty);
+      expect(portal.entries,1);expect(portal.protectedGets,2);expect(portal.saves,0);
+      expect(worker.hasFreshSessionForm,true);
+      final otherDate=await worker.fetchStudentAttendanceList(classId:'1',attendanceDate:'27/10/2026');
+      expect(otherDate['success'],true,reason:'$otherDate');expect(otherDate['date'],'27/10/2026');
+      expect((otherDate['students'] as List).map((s)=>s['status']),['Present','Absent']);
+      expect(portal.protectedGets,2);expect(portal.saves,0);
+    });
+  }
+  test('public redirect followed by a real login form retains actual session-expiry recovery',() async {
+    final portal=PublicDefaultPortal()..expired=true;
+    final result=await redirectWorker(portal).fetchStudentAttendanceList(classId:'1',attendanceDate:'28/10/2026');
+    expect(result['code'],'SESSION_EXPIRED');expect(portal.entries,1);expect(portal.protectedGets,2);
+  });
+  for(final timeout in [false,true]) {
+    test('public redirect with an unknown recovery read ($timeout timeout) never claims the session is alive or expired',() async {
+      final portal=PublicDefaultPortal()..unknown=!timeout..probeTimeout=timeout;
+      final worker=redirectWorker(portal);
+      final result=await worker.fetchStudentAttendanceList(classId:'1',attendanceDate:'28/10/2026');
+      expect(result['code'],'PORTAL_RESPONSE_ERROR');expect(result['portal_session_alive'],isNull);
+      expect(worker.hasFreshSessionForm,false);expect(portal.entries,1);expect(portal.protectedGets,2);
+    });
+  }
+  test('account change during public redirect verification cannot authorize the previous read',() async {
+    final portal=PublicDefaultPortal()..changeAccount=true;
+    final worker=redirectWorker(portal);
+    final result=await worker.fetchStudentAttendanceList(classId:'1',attendanceDate:'28/10/2026');
+    expect(result['code'],'ACCOUNT_CHANGED');expect(result['portal_session_alive'],isNull);
+    expect(worker.hasFreshSessionForm,false);expect(portal.saves,0);
+  });
+  test('real coordinator does not relogin or repeat the failing class when a protected read succeeds',() async {
+    final portal=PublicDefaultPortal(),backend=RedirectBackend();
+    final co=PortalCoordinator(name:'sd',backend:backend);
+    final auth=RedirectAuth(portal,co);
+    try {
+      await co.authenticate('offline-school','fixture-password');
+      final service=DirectStudentAttendanceService(auth);
+      final bad=await service.fetchStudentsResponse(classId:'1',date:'28/10/2026');
+      expect(bad['code'],'PORTAL_RESPONSE_ERROR');expect(bad['portal_session_alive'],true);
+      expect(backend.authentications,1);expect(portal.entries,1);
+      final good=await service.fetchStudentsResponse(classId:'1',date:'27/10/2026');
+      expect(good['success'],true);expect(backend.authentications,1);expect(portal.saves,0);
+    } finally {await co.shutdown();auth.close();}
+  });
+
+
+  test('29-Oct captured AJAX Back retains disabled date and class controls', () async {
+    final portal = CapturedDisabledAjaxPortal();
+    final worker = StudentAttendanceWorker(
+      request: portal.request,
+      baseUrl: () => Uri.parse('https://rajshaladarpan.rajasthan.gov.in/SD1/'),
+      sessionIdentity: () => 'captured/session',
+    );
+    expect((await worker.fetchStudentAttendanceList(classId: '1', attendanceDate: date))['success'], true);
+    final start = portal.requests.length;
+    expect((await worker.fetchStudentAttendanceList(classId: '1', attendanceDate: date))['success'], true);
+    final posted = portal.requests.skip(start).map((r) => r['fields'] as Map).toList();
+    expect(posted, hasLength(2));
+    final back = posted.first;
+    expect(back['__READ_ONLY_ACTION'], 'BACK');
+    expect(back['__ASYNCPOST'], 'true');
+    expect(back['__VIEWSTATE'], 'ENTRY_VIEWSTATE_1');
+    expect(back[r'ctl00$ContentPlaceHolder1$txtdate'], date);
+    expect(back[r'ctl00$ContentPlaceHolder1$ddlClass'], ['0']);
+    expect(back.containsKey('unchecked'), false);
+    expect(back.containsKey('unselected'), false);
+    expect(portal.saves, 0);
+  });
+
   test('native attendance read transport sets captured Microsoft AJAX headers', () async {
     final client = CaptureClient();
     await HttpOverrides.runZoned(() async {

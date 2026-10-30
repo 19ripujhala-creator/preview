@@ -349,14 +349,14 @@ void main() {
     },
   );
   test(
-    'warm SAVE uses five requests and fresh independent post-SAVE roster',
+    'warm SAVE consumes returned Done summary directly and reads independent post-SAVE roster',
     () async {
       await read();
       final initial = portal.requests.length;
       final result = await save();
       expect(result['success'], true);
       expect(result['attendance_verified'], true);
-      expect(portal.requests.length - initial, 5);
+      expect(portal.requests.length - initial, 4);
       expect(portal.saves, 1);
       expect(
         portal.requests
@@ -366,7 +366,7 @@ void main() {
                   ? 'SAVE'
                   : (r['fields'] as Map)['__READ_ONLY_ACTION'],
             ),
-        ['SHOW', 'CLASS_ENTRY', 'SAVE', 'SHOW', 'CLASS_ENTRY'],
+        ['SHOW', 'CLASS_ENTRY', 'SAVE', 'CLASS_ENTRY'],
       );
     },
   );

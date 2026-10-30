@@ -13,16 +13,24 @@ import 'student_worker_test.dart' show date, portalBase;
 class StatefulDatePortal extends ReportPortal {
   String selected = date;
   bool entryOpen = false;
+  bool unselectedOnMarked = false;
   final navigation = <String>[];
   @override
   String summary() => super.summary().replaceAll(date, selected);
   @override
-  String entry() => super.entry().replaceFirst('</form>', '''
+  String entry() {
+    var base = super.entry();
+    if (unselectedOnMarked) {
+      base = base.replaceAll('value="P" checked', 'value="P"');
+    }
+    return base.replaceFirst('</form>', '''
     <input disabled="disabled" id="ContentPlaceHolder1_txtdate" name="ctl00\$ContentPlaceHolder1\$txtdate" value="$selected">
     <input disabled="disabled" id="ContentPlaceHolder1_btn_Show" name="ctl00\$ContentPlaceHolder1\$btn_Show" type="submit" value="Show">
     <input id="ContentPlaceHolder1_btnback" name="ctl00\$ContentPlaceHolder1\$btnback" type="submit" value="Back">
     <span id="ContentPlaceHolder1_lbldateofAtt">$selected</span>
     <span id="ContentPlaceHolder1_lblentrySection">1A</span></form>''');
+  }
+
   @override
   Future<AttendanceHttpReply> request(
     Uri url, {
@@ -65,6 +73,7 @@ StudentAttendanceWorker worker(StatefulDatePortal p) => StudentAttendanceWorker(
   sessionIdentity: () => 'fixture-session',
   indiaNow: () => DateTime(2026, 10, 10),
 );
+
 void main() {
   test(
     'date change exits retained disabled entry with native Back before Show',
@@ -92,6 +101,20 @@ void main() {
       );
       expect(today['success'], true);
       expect(today['date'], date);
+    },
+  );
+  test(
+    'fresh GET returning server-retained disabled entry exits via native Back before Show',
+    () async {
+      final p = StatefulDatePortal()..entryOpen = true;
+      final w = worker(p);
+      final old = await w.fetchStudentAttendanceList(
+        classId: '1',
+        attendanceDate: '09/10/2026',
+      );
+      expect(old['success'], true, reason: '$old');
+      expect(old['date'], '09/10/2026');
+      expect(p.navigation, ['GET', 'BACK', 'SHOW', 'CLASS_ENTRY']);
     },
   );
   test(
@@ -127,6 +150,26 @@ void main() {
       final result = await r.fetchSchoolReport(attendanceDate: '09/10/2026');
       expect(result['success'], true, reason: '$result');
       expect(result['date'], '09/10/2026');
+    },
+  );
+  test(
+    'historical marked roster still enforces unselected-status verification',
+    () async {
+      final p = StatefulDatePortal()
+        ..marked = true
+        ..unselectedOnMarked = true;
+      final w = worker(p);
+      final result = await w.fetchStudentAttendanceList(
+        classId: '1',
+        attendanceDate: '09/10/2026',
+      );
+      expect(result['success'], true);
+      expect(result['data_verified'], false);
+      expect(result['attendance_verified'], false);
+      expect(
+        result['warning'],
+        contains('unselected or unrecognised statuses'),
+      );
     },
   );
 }

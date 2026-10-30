@@ -20,6 +20,7 @@ class ReportPortal extends attendance.FakePortal {
   int sectionEntries = 0;
   bool failSection = false;
   bool expireSection = false;
+  bool publicRedirectSection = false;
   bool emptyGender = false;
   bool badLogo = false;
 
@@ -52,6 +53,14 @@ class ReportPortal extends attendance.FakePortal {
     }
     if (fields?['__READ_ONLY_ACTION'] == 'CLASS_ENTRY') {
       sectionEntries++;
+      if (publicRedirectSection)
+        return (
+          url: Uri.parse(
+            'https://rajshaladarpan.rajasthan.gov.in/sd4/Home/Public2/Default.aspx',
+          ),
+          status: 200,
+          html: '<html><title>Public page</title></html>',
+        );
       if (expireSection)
         return (
           url: Uri.parse(
@@ -207,6 +216,17 @@ void main() {
     final result = await report(portal)
         .fetchSchoolReport(attendanceDate: attendance.date);
     expect(result['code'], 'SESSION_EXPIRED');
+    expect(result['failedSections'], ['1A']);
+    expect(portal.sectionEntries, 1);
+    expect(portal.genderShows, 0);
+  });
+
+  test('class-specific public redirect stops section retry immediately without repeating three times', () async {
+    final portal = ReportPortal()..publicRedirectSection = true;
+    final result = await report(portal)
+        .fetchSchoolReport(attendanceDate: attendance.date);
+    expect(result['success'], false);
+    expect(result['code'], 'PORTAL_RESPONSE_ERROR');
     expect(result['failedSections'], ['1A']);
     expect(portal.sectionEntries, 1);
     expect(portal.genderShows, 0);

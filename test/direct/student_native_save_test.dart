@@ -164,4 +164,35 @@ void main() {
     final r=await w.saveStudentAttendance(classId:'1',attendanceDate:date,students:students,userConfirmed:false);
     expect(r['submission_attempted'],false);expect(p.requests.length,n);
   });
+  test('no-change Pending Submit consumes returned Done summary directly without extra Show', () async {
+    p.saved = true;
+    expect((await read())['success'], true);
+    final n = p.requests.length;
+    final result = await save();
+    expect(result['success'], true);
+    expect(result['attendance_verified'], true);
+    expect(p.requests.length - n, 2);
+    expect(p.requests[n]['mutation'], true);
+    expect((p.requests[n + 1]['fields'] as Map)['__READ_ONLY_ACTION'], 'CLASS_ENTRY');
+    expect(p.saves, 1);
+  });
+  test('status change from Present to Absent preserves portal hdnIsPresent baseline', () async {
+    expect((await read())['success'], true);
+    final flipped = <Map<String, Object?>>[
+      {'srNo': '00101', 'serialNo': 1, 'name': 'Alice', 'status': 'Absent'},
+      {'srNo': '102', 'serialNo': 2, 'name': 'Bob', 'status': 'Absent'},
+    ];
+    final result = await w.saveStudentAttendance(
+      classId: '1',
+      attendanceDate: date,
+      section: '1A',
+      students: flipped,
+      userConfirmed: true,
+    );
+    expect(result['submission_attempted'], true);
+    final saveReq = p.requests.singleWhere((r) => r['mutation'] == true)['fields'] as Map;
+    expect(saveReq[r'old1$hdnIsPresent'], '2');
+    expect(saveReq[r'old2$hdnIsPresent'], '2');
+    expect(p.saves, 1);
+  });
 }

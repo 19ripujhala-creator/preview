@@ -54,12 +54,13 @@ class DirectStudentKpiService {
   }
 
   Future<Map<String, dynamic>> fetchDashboard() async {
+    final now = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
+    final date = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+    final cached = attendance.freshDashboardSummary(date);
+    if (cached != null) return StudentKpiWorker.dashboard(cached);
     await attendance.waitForForeground();
     final school = auth.authenticatedSchoolId;
     try {
-      if (attendance.hasFreshSessionForm) {
-        auth.coordinator?.markAlive();
-      }
       await auth.coordinator?.ensureReady(Kind.read);
     } on CoordinatorError catch (e) {
       return {'success': false, 'code': e.kind.code, 'message': e.message};
@@ -77,12 +78,11 @@ class DirectStudentKpiService {
         'code': 'SESSION_EXPIRED',
         'message': 'Direct school session unavailable.',
       };
-    final now = DateTime.now().toUtc().add(
-      const Duration(hours: 5, minutes: 30),
-    );
-    final date =
-        '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
-    final summary = await attendance.fetchClassSummaryResponse(date: date, background: true);
+    // A foreground operation may have produced a fresh summary while we waited.
+    final current = DateTime.now().toUtc().add(const Duration(hours: 5, minutes: 30));
+    final currentDate = '${current.day.toString().padLeft(2, '0')}/${current.month.toString().padLeft(2, '0')}/${current.year}';
+    final summary = attendance.freshDashboardSummary(currentDate) ??
+        await attendance.fetchClassSummaryResponse(date: currentDate, background: true);
     if (!auth.isVerified ||
         school != auth.authenticatedSchoolId ||
         key != auth.schoolSessionIdentity) {

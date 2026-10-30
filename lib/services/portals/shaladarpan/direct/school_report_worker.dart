@@ -191,6 +191,7 @@ class SchoolReportWorker {
   }
 
   static bool _stop(Map<String, dynamic> result) =>
+      result['attendance_public_redirect'] == true ||
       const {
         'SESSION_EXPIRED',
         'PAGE_NOT_READY',

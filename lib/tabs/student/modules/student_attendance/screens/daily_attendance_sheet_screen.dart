@@ -36,6 +36,12 @@ const String kSubmitIcon = 'assets/icons/student_Attendance.png';
 /// false = icon apne original colours me dikhega
 const bool kSubmitIconTint = true;
 
+/// Page ki width AppAdaptive.contentWidth se aati hai (account.dart jaisi).
+/// Snackbar bhi usi width ko follow karta hai; dialog / bottom sheet
+/// account.dart ke sheets ki tarah fixed max width par rehte hain.
+const double kMaxDialogWidth = 380; // confirm dialogs
+const double kMaxSheetWidth = 520; // bottom sheet (Confirm Attendance)
+
 // ==========================================
 // DESIGN TOKENS
 // ==========================================
@@ -121,20 +127,29 @@ class StudentRecord {
     required this.className,
     required this.section,
     this.gender = '',
-    this.attendanceStatus = 'P',
+    this.attendanceStatus = 'Unavailable',
   }) : originalStatus = attendanceStatus;
 
   bool get isChanged => attendanceStatus != originalStatus;
 
-  static String _code(Map<String, dynamic> j) {
-    final st = (j['status'] ?? '').toString().toLowerCase().replaceAll(' ', '');
+  static String _code(
+    Map<String, dynamic> j, {
+    bool defaultDraftPresent = false,
+  }) {
+    final raw = (j['status'] ?? '').toString().trim();
+    final st = raw.toLowerCase().replaceAll(' ', '');
 
     if (st.contains('medical') || st == 'm' || st == 'ml') return 'M';
     if (st.contains('leave') || st == 'l') return 'L';
     if (st.contains('absent') || st == 'a') return 'A';
     if (st.contains('present') || st == 'p') return 'P';
 
-    return j['present'] == false ? 'A' : 'P';
+    if (raw.isEmpty && !j.containsKey('status')) {
+      if (j['present'] == true) return 'P';
+      if (j['present'] == false) return 'A';
+    }
+    if (raw.isEmpty && defaultDraftPresent) return 'P';
+    return 'Unavailable';
   }
 
   /// Portal/backend ke alag-alag gender formats ko 'B' / 'G' me badalta hai.
@@ -166,8 +181,9 @@ class StudentRecord {
     Map<String, dynamic> j,
     String className,
     String section,
-    int fallbackSerial,
-  ) {
+    int fallbackSerial, {
+    bool defaultDraftPresent = false,
+  }) {
     String s(dynamic v) => (v ?? '').toString().trim();
 
     return StudentRecord(
@@ -179,7 +195,7 @@ class StudentRecord {
       className: className,
       section: section,
       gender: _genderCode(j['gender'] ?? j['sex']),
-      attendanceStatus: _code(j),
+      attendanceStatus: _code(j, defaultDraftPresent: defaultDraftPresent),
     );
   }
 
@@ -196,7 +212,7 @@ class StudentRecord {
       'serialNo': serialNo,
       'name': name,
       'section': section,
-      'status': map[attendanceStatus] ?? 'Present',
+      'status': map[attendanceStatus] ?? 'Unavailable',
       'present': attendanceStatus == 'P',
     };
   }
@@ -208,6 +224,8 @@ class _Entry {
   final List<StudentRecord> students;
   final String letter;
   final List<String> sections;
+  final String portalStatus;
+  final String entrySource;
   bool marked;
   bool verified;
   bool dataVerified;
@@ -224,6 +242,8 @@ class _Entry {
     required this.verified,
     required this.dataVerified,
     required this.held,
+    this.portalStatus = '',
+    this.entrySource = '',
   });
 }
 
@@ -254,12 +274,15 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
   List<String> _sections = [];
 
   static const _pendingCacheTtl = Duration(seconds: 90);
-  final _cache = AttendanceReadCache<_Entry>(
+  static final _cache = AttendanceReadCache<_Entry>(
     ttl: const Duration(minutes: 10),
     maxEntries: 48,
   );
+  static AttendanceReadScope? _cacheScope;
+  static int _lastSyncedSummaryRevision = 0;
+  static String? _cachedClassesSchool;
+  static List<String> _cachedPortalClasses = const [];
   AttendanceReadScope? _loadedScope;
-  int _lastSyncedSummaryRevision = 0;
 
   int _currentLoadId = 0;
   int _pendingUncachedLoadId = 0;
@@ -321,12 +344,22 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
   }
 
   Future<void> _init() async {
+    final warmScope = StudentService.captureReadScopeNow();
+    if (warmScope != null &&
+        _cachedClassesSchool == warmScope.school &&
+        _cachedPortalClasses.isNotEmpty) {
+      _classes = List<String>.from(_cachedPortalClasses);
+      if (!_classes.contains(_activeClass)) {
+        _activeClass = _classes.first;
+      }
+    }
     await _loadCachedPortalClasses();
     if (mounted) _loadClassData();
   }
 
   @override
   void dispose() {
+    if (_dirty) _revertAll();
     WidgetsBinding.instance.removeObserver(this);
     _dayBoundaryTimer?.cancel();
     _releaseForeground?.call();
@@ -357,7 +390,9 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
       if (afterScope != scope) return;
 
       if (cached != null && cached.isNotEmpty && mounted) {
-        _classes = cached;
+        _cachedClassesSchool = scope.school;
+        _cachedPortalClasses = List<String>.unmodifiable(cached);
+        _classes = List<String>.from(cached);
         if (!_classes.contains(_activeClass)) {
           _activeClass = _classes.first;
         }
@@ -437,6 +472,11 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
   }
 
   void _syncCacheWithLatestPortalSummary(DateTime targetDate) {
+    final currentScope = StudentService.captureReadScopeNow();
+    if (currentScope != null && _cacheScope != currentScope) {
+      _cacheScope = currentScope;
+      _lastSyncedSummaryRevision = 0;
+    }
     final snapshot = StudentService.lastSummarySnapshot;
     if (snapshot == null || snapshot.revision == _lastSyncedSummaryRevision) {
       return;
@@ -452,7 +492,9 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
       if (digits.isEmpty) continue;
       final cls = 'Class $digits';
       final letter = _secLetter(secText);
-      final status = '${raw['status'] ?? ''}'.trim().toLowerCase();
+      final statusRaw = '${raw['status'] ?? ''}'.trim();
+      final status = statusRaw.toLowerCase();
+      final sourceRaw = '${raw['entrySource'] ?? ''}'.trim();
       final pending = [
         'pending',
         'unmarked',
@@ -466,6 +508,7 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
       final portalPresent = raw['present'] is int
           ? raw['present'] as int
           : null;
+      final portalAbsent = raw['absent'] is int ? raw['absent'] as int : null;
       final exactKey = '${cls}_${letter}_$targetDateStr';
       final defaultKey = '${cls}__$targetDateStr';
       _cache.removeWhere((key, entry) {
@@ -473,6 +516,16 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
           return false;
         }
         if (entry.marked != portalDone) return true;
+        if (entry.portalStatus.isNotEmpty &&
+            statusRaw.isNotEmpty &&
+            entry.portalStatus != statusRaw) {
+          return true;
+        }
+        if (entry.entrySource.isNotEmpty &&
+            sourceRaw.isNotEmpty &&
+            entry.entrySource != sourceRaw) {
+          return true;
+        }
         if (portalTotal != null && entry.students.length != portalTotal) {
           return true;
         }
@@ -481,6 +534,19 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
               .where((s) => s.attendanceStatus == 'P')
               .length;
           if (cachedPresent != portalPresent) return true;
+        }
+        if (portalDone && portalAbsent != null) {
+          final cachedAbsent = entry.students
+              .where((s) => s.attendanceStatus == 'A')
+              .length;
+          final cachedLeaveOrMedical = entry.students
+              .where(
+                (s) => s.attendanceStatus == 'L' || s.attendanceStatus == 'M',
+              )
+              .length;
+          if (cachedLeaveOrMedical == 0 && cachedAbsent != portalAbsent) {
+            return true;
+          }
         }
         return false;
       });
@@ -641,6 +707,7 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
       final result = await StudentService.fetchAttendance(
         classId: classId,
         date: _fmtPortal(requestedDate),
+        section: reqPortalSection.isNotEmpty ? reqPortalSection : null,
         shouldContinue: () =>
             mounted &&
             (loadId == _currentLoadId || _pendingUncachedLoadId <= loadId),
@@ -675,6 +742,16 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
             : requestedSection;
 
         final rawList = result['students'] as List<dynamic>? ?? [];
+        final rawDataVerified = result['data_verified'] == true;
+        final isHistorical = isHistoricalAttendanceUpdateLocked(
+          requestedDate,
+          attendanceIndiaNow(),
+        );
+        final defaultDraftPresent =
+            !isHistorical &&
+            !portalVerified &&
+            result['is_already_marked'] != true &&
+            rawDataVerified;
         var i = 0;
 
         final loaded = rawList
@@ -684,6 +761,7 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
                 requestedClass,
                 letter,
                 ++i,
+                defaultDraftPresent: defaultDraftPresent,
               ),
             )
             .toList();
@@ -696,6 +774,8 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
               .toList();
 
           if (parsed.contains(requestedClass)) {
+            _cachedClassesSchool = completedScope.school;
+            _cachedPortalClasses = List<String>.unmodifiable(parsed);
             _classes = parsed;
             SharedPreferences.getInstance()
                 .then(
@@ -722,17 +802,25 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
         }
         if (letter.isNotEmpty) found.add(letter);
 
-        final marked = portalVerified;
+        final allStatusesRecognised = loaded.every(
+          (s) => const {'P', 'A', 'L', 'M'}.contains(s.attendanceStatus),
+        );
+        final marked = portalVerified && allStatusesRecognised;
 
-        final dataVerified = result['data_verified'] == true;
+        final dataVerified = rawDataVerified && allStatusesRecognised;
+        final summaryMap = result['summary'] is Map
+            ? Map<String, dynamic>.from(result['summary'] as Map)
+            : const <String, dynamic>{};
         final entry = _Entry(
           students: loaded,
           letter: letter,
           sections: found.toList()..sort(),
           marked: marked,
-          verified: portalVerified,
+          verified: portalVerified && allStatusesRecognised,
           dataVerified: dataVerified,
           held: result['submission_on_hold'] == true,
+          portalStatus: '${summaryMap['status'] ?? ''}'.trim(),
+          entrySource: '${summaryMap['entrySource'] ?? ''}'.trim(),
         );
 
         _writeCacheEntry(
@@ -902,6 +990,7 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 26),
         child: Container(
+          constraints: const BoxConstraints(maxWidth: kMaxDialogWidth),
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -989,6 +1078,7 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
 
   void _setStatus(StudentRecord s, String code) {
     if (_historicalUpdateIsLocked ||
+        !_portalDataVerified ||
         _isSaving ||
         _isConfirming ||
         _isLoading ||
@@ -1003,6 +1093,7 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
 
   Future<void> _markAll(String code) async {
     if (_historicalUpdateIsLocked ||
+        !_portalDataVerified ||
         _students.isEmpty ||
         _isSaving ||
         _isConfirming ||
@@ -1226,6 +1317,7 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
+        constraints: const BoxConstraints(maxWidth: kMaxSheetWidth),
         builder: (_) => _ConfirmSheet(
           className: _classTitle,
           date: _fmtDisplayDate(_selectedDate),
@@ -1309,6 +1401,16 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
             transition['after'] as int,
           );
       if (!preserve) _cache.clear();
+      if (preserve) {
+        // The Save already advanced this same session's cache revision. The
+        // published summary can still be the Pending snapshot read before
+        // Submit, so do not process it again as a newly received summary.
+        _cacheScope = savedScope;
+        final snapshot = StudentService.lastSummarySnapshot;
+        if (snapshot?.date == _fmtPortal(_selectedDate)) {
+          _lastSyncedSummaryRevision = snapshot!.revision;
+        }
+      }
       _loadedScope = savedScope;
       if (savedScope == null ||
           savedScope.school != scope.school ||
@@ -1408,13 +1510,18 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
   }
 
   void _snack(String msg, {bool error = false, bool success = false}) {
+    // Snackbar page ki responsive width (AppAdaptive.contentWidth) follow karta hai.
+    final screenW = MediaQuery.of(context).size.width;
+    final snackW = AppAdaptive.contentWidth(screenW) - 32;
+    final wideScreen = snackW < screenW - 32;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           backgroundColor: error ? _C.rose : _C.ink,
           behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          width: wideScreen ? snackW : null,
+          margin: wideScreen ? null : const EdgeInsets.fromLTRB(16, 0, 16, 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -1522,7 +1629,7 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
             body: PageContentMotion(
               child: LayoutBuilder(
                 builder: (context, box) {
-                  final wide = box.maxWidth >= 900;
+                  final wide = box.maxWidth >= AppAdaptive.twoPane;
                   return Align(
                     alignment: Alignment.topCenter,
                     child: SizedBox(
@@ -2113,7 +2220,9 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
     final divColor = dark ? Colors.white.withOpacity(0.10) : _C.line;
 
     final bool showVerified =
-        (_isPortalVerified || _isAlreadyMarked) && !_dirty;
+        (_isPortalVerified || _isAlreadyMarked) &&
+        _portalDataVerified &&
+        !_dirty;
 
     Widget stat(String label, int value, Color dot) {
       return Expanded(
@@ -2526,9 +2635,11 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
     final bool isLast = index == totalCount;
 
     Color rowBg = Colors.white.withOpacity(0.92);
-    Color dot = _C.green;
+    Color dot = _C.muted;
 
-    if (st == 'A') {
+    if (st == 'P') {
+      dot = _C.green;
+    } else if (st == 'A') {
       rowBg = _C.roseBg;
       dot = _C.rose;
     } else if (st == 'L') {
@@ -2537,6 +2648,8 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
     } else if (st == 'M') {
       rowBg = _C.medicalBg;
       dot = _C.medicalGrey;
+    } else {
+      rowBg = _C.fillLight;
     }
 
     final sno = s.serialNo.length == 1
@@ -2628,6 +2741,7 @@ class _DailyAttendanceSheetScreenState extends State<DailyAttendanceSheetScreen>
                 status: st,
                 isSaving:
                     _historicalUpdateIsLocked ||
+                    !_portalDataVerified ||
                     _isSaving ||
                     _isConfirming ||
                     _isLoading ||
@@ -2830,6 +2944,28 @@ class _StatusSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!const {'P', 'A', 'L', 'M'}.contains(status)) {
+      return Container(
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: _C.fillLight,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _C.line, width: 0.8),
+        ),
+        alignment: Alignment.center,
+        child: const Text(
+          'Unavailable',
+          style: TextStyle(
+            fontFamily: kAppFont,
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: _C.slate,
+          ),
+        ),
+      );
+    }
+
     Widget item(String code, String label, Color color) {
       final sel = status == code;
 

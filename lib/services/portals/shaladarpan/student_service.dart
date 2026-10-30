@@ -35,6 +35,9 @@ class StudentService {
   static final Map<(AttendanceReadScope, String), List<bool Function()>>
   _attendanceReadWaiters = {};
 
+  static final Map<(AttendanceReadScope, String), Future<Map<String, dynamic>>> _reportReads = {};
+  static final Map<(AttendanceReadScope, String), List<void Function(int, int)>> _reportProgress = {};
+
   static dynamic _cloneValue(dynamic value) {
     if (value is Map) {
       return <String, dynamic>{
@@ -107,12 +110,18 @@ class StudentService {
 
   static String _classNumberKey(String classId) {
     final cls = classId.trim();
-    return RegExp(r'\d+').firstMatch(cls)?.group(0) ?? cls.toLowerCase();
+    final digits = RegExp(r'\d+').firstMatch(cls)?.group(0);
+    if (digits != null) {
+      return '${int.tryParse(digits) ?? digits}';
+    }
+    return cls.toLowerCase();
   }
 
   static String _sectionSuffix(String classId, String? section) {
-    final cls = classId.trim();
-    final sectionText = (section ?? '').trim();
+    final cls = classId.trim().replaceAll(RegExp(r'[()\[\]\s]+'), '');
+    final sectionText = (section ?? '')
+        .trim()
+        .replaceAll(RegExp(r'[()\[\]\s]+'), '');
     final suffix =
         RegExp(r'[A-Za-z]+$').firstMatch(sectionText)?.group(0) ??
         RegExp(r'[A-Za-z]+$').firstMatch(cls)?.group(0) ??
@@ -192,20 +201,33 @@ class StudentService {
         ((data['students'] as List).isEmpty && !isVerifiedEmptyClass(data))) {
       return false;
     }
-    final requestedNumber = RegExp(r'\d+').firstMatch(classId)?.group(0);
-    final receivedNumber = RegExp(r'\d+')
-        .firstMatch('${data['classId']}')
-        ?.group(0);
-    if (requestedNumber == null ||
-        requestedNumber != receivedNumber ||
-        _dateKey('${data['date']}') != _dateKey(date)) {
+    final requestedDigits = RegExp(r'\d+').firstMatch(classId)?.group(0);
+    final requestedNumber = requestedDigits == null
+        ? null
+        : '${int.tryParse(requestedDigits) ?? requestedDigits}';
+    final classDigits = RegExp(r'\d+').firstMatch('${data['classId'] ?? ''}');
+    final sectionDigits = RegExp(
+      r'^\s*(\d+)',
+    ).firstMatch('${data['section'] ?? ''}');
+    final receivedClassNum = classDigits == null
+        ? null
+        : '${int.tryParse(classDigits.group(0)!) ?? classDigits.group(0)!}';
+    final receivedSectionNum = sectionDigits == null
+        ? null
+        : '${int.tryParse(sectionDigits.group(1)!) ?? sectionDigits.group(1)!}';
+    final numberMatches =
+        requestedNumber != null &&
+        (requestedNumber == receivedClassNum ||
+            requestedNumber == receivedSectionNum);
+    if (!numberMatches || _dateKey('${data['date']}') != _dateKey(date)) {
       return false;
     }
-    final requested = _classKey(classId, section);
-    final hasSection = RegExp(r'[A-Za-z]$').hasMatch(requested);
-    return !hasSection ||
-        requested ==
-            _classKey('${data['classId']}', '${data['section'] ?? ''}');
+    final requestedSuffix = _sectionSuffix(classId, section);
+    final receivedSuffix = _sectionSuffix(
+      '${data['classId'] ?? ''}',
+      '${data['section'] ?? ''}',
+    );
+    return requestedSuffix.isEmpty || requestedSuffix == receivedSuffix;
   }
 
   static bool _markedOnPortal(Map<String, dynamic> data) =>
@@ -271,6 +293,33 @@ class StudentService {
   static bool _sameStudents(dynamic left, dynamic right) {
     final a = _snapshot(left);
     final b = _snapshot(right);
+    if (a == null || b == null || a.length != b.length) return false;
+    for (final key in a.keys) {
+      if (a[key] != b[key]) return false;
+    }
+    return true;
+  }
+
+  static Map<String, String>? _portalReadSnapshot(dynamic students) {
+    if (students is! List || students.isEmpty) return null;
+    final snapshot = <String, String>{};
+    for (final item in students) {
+      if (item is! Map) return null;
+      final row = Map<String, dynamic>.from(item);
+      final identity = _studentKey(row).trim();
+      if (identity.isEmpty || snapshot.containsKey(identity)) return null;
+      final raw = row['status'];
+      final rawText = '${raw ?? ''}'.trim();
+      final status = rawText.isEmpty ? 'unselected' : _status(row);
+      if (status == null) return null;
+      snapshot[identity] = status;
+    }
+    return snapshot;
+  }
+
+  static bool _samePortalReadState(dynamic left, dynamic right) {
+    final a = _portalReadSnapshot(left);
+    final b = _portalReadSnapshot(right);
     if (a == null || b == null || a.length != b.length) return false;
     for (final key in a.keys) {
       if (a[key] != b[key]) return false;
@@ -352,12 +401,9 @@ class StudentService {
     );
     try {
       final result = await flight;
-      if (!waiter()) {
-        return {
-          'success': false,
-          'code': 'STALE_ATTENDANCE_READ',
-          'message': 'Attendance read superseded by a newer class selection.',
-        };
+      if (!waiter() && result['success'] != true) {
+        return {'success': false, 'code': 'STALE_ATTENDANCE_READ',
+          'message': 'Attendance read superseded by a newer class selection.'};
       }
       if (result['success'] == true && await captureReadScope() != scope) {
         return {
@@ -368,7 +414,7 @@ class StudentService {
       }
       // Each screen owns its editable copy; sharing a Future must never share
       // mutable student maps between callers.
-      return _cloneMap(result);
+      return {..._cloneMap(result), if (!waiter()) '_superseded': true};
     } finally {
       waiters.remove(waiter);
       if (identical(_attendanceReads[key], flight)) {
@@ -430,13 +476,6 @@ class StudentService {
         final response = await http.get(uri).timeout(_timeout);
         statusCode = response.statusCode;
         data = _parseResponseBody(response.body);
-      }
-      if (shouldContinue != null && !shouldContinue()) {
-        return {
-          'success': false,
-          'code': 'STALE_ATTENDANCE_READ',
-          'message': 'Attendance read superseded by a newer class selection.',
-        };
       }
       final after = await SecureStorageService.getShaladarpanIdentity();
       if (readEpoch != _attendanceEpoch || _saving) {
@@ -556,7 +595,7 @@ class StudentService {
       section: section,
     );
     if (!_validRead(second, classId, date, section) ||
-        !_sameStudents(first['students'], second['students']) ||
+        !_samePortalReadState(first['students'], second['students']) ||
         first['is_already_marked'] != second['is_already_marked']) {
       return {
         'success': false,
@@ -998,6 +1037,38 @@ class StudentService {
   /// 4. School-wide report (class/section wise Boys, Girls, Absent, Leave, Total)
   /// Response: { success, date, schoolName, rows: [...], unknownGender, failedSections }
   static Future<Map<String, dynamic>> fetchSchoolReport({
+    required String date,
+    void Function(int completed, int total)? onProgress,
+  }) async {
+    if (!directAttendanceEnabled) return _fetchSchoolReport(date: date, onProgress: onProgress);
+    final scope = captureReadScopeNow() ?? await captureReadScope();
+    if (scope == null) return _fetchSchoolReport(date: date, onProgress: onProgress);
+    final key = (scope, _dateKey(date));
+    final listeners = _reportProgress.putIfAbsent(key, () => []);
+    void notify(int completed, int total) {
+      for (final listener in List<void Function(int, int)>.from(_reportProgress[key] ?? [])) {
+        try { listener(completed, total); } catch (_) { /* Caller UI must not break the shared read. */ }
+      }
+    }
+    if (onProgress != null) listeners.add(onProgress);
+    final flight = _reportReads.putIfAbsent(key, () =>
+      _fetchSchoolReport(date: _dateKey(date), onProgress: notify));
+    try {
+      final result = await flight;
+      if (await captureReadScope() != scope) {
+        return {'success': false, 'code': 'STALE_ATTENDANCE_READ',
+          'message': 'School session or attendance changed during report fetch. Refresh the report.'};
+      }
+      return _cloneMap(result);
+    } finally {
+      if (onProgress != null) listeners.remove(onProgress);
+      if (identical(_reportReads[key], flight)) {
+        _reportReads.remove(key); _reportProgress.remove(key);
+      }
+    }
+  }
+
+  static Future<Map<String, dynamic>> _fetchSchoolReport({
     required String date,
     void Function(int completed, int total)? onProgress,
   }) async {

@@ -156,9 +156,6 @@ class DirectStudentAttendanceService {
       'STALE_ATTENDANCE_READ',
     };
     try {
-      if (_worker.hasFreshSessionForm) {
-        coordinator.markAlive();
-      }
       final result = await coordinator.run(
         resource: 'sd.student',
         kind: mutation ? Kind.mutation : Kind.read,
@@ -273,6 +270,12 @@ class DirectStudentAttendanceService {
     }
   }
 
+  Map<String, dynamic>? freshDashboardSummary(String date) {
+    if (_busy || _preparation != null || !auth.isVerified ||
+        (auth.authenticatedSchoolId ?? '').isEmpty || auth.schoolSessionIdentity.isEmpty) return null;
+    return _worker.freshDashboardSummary(date);
+  }
+
   bool get hasFreshSessionForm => _worker.hasFreshSessionForm;
   ({int revision, String? date, List<Map<String, dynamic>> classes})?
       get lastSummarySnapshot => _worker.lastSummarySnapshot;
@@ -283,6 +286,7 @@ class DirectStudentAttendanceService {
     sessionIdentity: () => auth.schoolSessionIdentity,
     activityStamp: () => auth.schoolIdleActivityStamp,
     readFormLifetime: const Duration(minutes: 10),
+    retainSummaryNavigation: true,
     request: (url, {fields, referer, mutation = false}) {
       if (mutation) {
         return auth.submitStudentAttendanceOnce(
