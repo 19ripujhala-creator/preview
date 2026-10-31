@@ -2034,13 +2034,9 @@ class StudentAttendanceWorker {
       portalMessages = _portalMessages(doc.soup)
           .where((message) => !beforeMessages.contains(message))
           .toList();
-      // If a pending register already echoed these statuses before Submit,
-      // matching rows alone cannot prove finalization. Consume the returned
-      // Submit response directly only when it is already a usable same-date
-      // Done summary for this class; otherwise force a fresh Show.
-      if (updates.changed == 0 && !_submitReturnedDoneSummary(doc, result)) {
-        doc.responseUnconsumed = false;
-      }
+      // A successful-looking SAVE response only confirms submission. Never
+      // use its summary as proof; verification must perform a fresh portal read.
+      doc.responseUnconsumed = false;
       for (var attempt = 0; attempt < 2; attempt++) {
         final fresh = await PortalDiagnostics.measure(
           PortalPhase.studentVerify,

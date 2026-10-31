@@ -229,7 +229,10 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
       Uint8List? dateIcon;
       Uint8List? integratedLogo;
       Uint8List? schoolLogo;
-      leaveIcon = await _loadFirstAsset(['assets/icons/report.png']);
+      leaveIcon = await _loadFirstAsset([
+        'assets/icons/diary.png',
+        'assets/icons/report.png',
+      ]);
       dateIcon = await _loadFirstAsset(['assets/icons/leave.png']);
       // Header logos intentionally omitted: retain readable school identity.
       if (!mounted) return;
@@ -316,34 +319,6 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
     final tLeave = sum((r) => r.leave);
     final tPresent = tBoys + tGirls + unknownPresent;
     final tTotal = tBoys + tGirls + tAbsent + tLeave;
-    final attPct = tTotal == 0
-        ? '0.0%'
-        : '${(tPresent * 100.0 / tTotal).toStringAsFixed(1)}%';
-
-    // Consistent, Sober Slate & Ink Palette
-    const cInk = PdfColor.fromInt(0xFF0F172A);
-    const cSlate = PdfColor.fromInt(0xFF475569);
-    const cMuted = PdfColor.fromInt(0xFF64748B);
-    const cLine = PdfColor.fromInt(0xFFCBD5E1);
-    const cSoftLine = PdfColor.fromInt(0xFFE2E8F0);
-    const cSurface = PdfColor.fromInt(0xFFF8FAFC);
-    const cHeaderFill = PdfColor.fromInt(0xFFF1F5F9);
-    const cTotalFill = PdfColor.fromInt(0xFFE2E8F0);
-
-    // Crisp Vector SVG Icons (Never blurry on zoom or print)
-    const registerSvgIcon =
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">'
-        '<rect width="24" height="24" rx="6" fill="#e2e8f0"/>'
-        '<path d="M9 5H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" fill="none" stroke="#0f172a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
-        '<rect x="9" y="3" width="6" height="4" rx="1" fill="none" stroke="#0f172a" stroke-width="1.7"/>'
-        '<path d="M9 13l2 2 4-4" fill="none" stroke="#059669" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>'
-        '</svg>';
-
-    const calendarSvgIcon =
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20">'
-        '<rect x="2.5" y="4" width="15" height="13.5" rx="2.5" fill="none" stroke="#475569" stroke-width="1.6"/>'
-        '<path d="M2.5 8h15M6.5 2.5v3M13.5 2.5v3" fill="none" stroke="#475569" stroke-width="1.6" stroke-linecap="round"/>'
-        '</svg>';
 
     const enrolledSvgIcon =
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">'
@@ -364,13 +339,13 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
       'Leave',
       'Total',
     ];
-    final border = pw.TableBorder.all(color: cLine, width: 0.55);
+    final border = pw.TableBorder.all(color: PdfColors.grey500, width: 0.6);
 
     pw.Widget cell(
       String text, {
       bool bold = false,
       PdfColor? color,
-      double size = 10.0,
+      double size = 11.0,
       double horizontal = 6,
       double vertical = 7.5,
     }) {
@@ -385,20 +360,17 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
           style: pw.TextStyle(
             fontSize: size,
             fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
-            color: color ?? cInk,
+            color: color ?? PdfColors.black,
           ),
         ),
       );
     }
 
-    pw.TableRow dataRow(_ReportRow r, int index) {
+    pw.TableRow dataRow(_ReportRow r) {
       return pw.TableRow(
-        decoration: pw.BoxDecoration(
-          color: index.isOdd ? cSurface : PdfColors.white,
-        ),
         children: [
-          cell(r.className, bold: true),
-          cell(r.section.isEmpty ? '-' : r.section, color: cSlate),
+          cell(r.className),
+          cell(r.section.isEmpty ? '-' : r.section),
           cell('${r.boys}'),
           cell('${r.girls}'),
           cell('${r.absent}'),
@@ -408,7 +380,7 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
       );
     }
 
-    // Merged Total Row (6 columns matching the 7-column geometry above)
+    // Merged Total Row (Class + Section combined into one cell)
     final totalTable = pw.Table(
       border: border,
       columnWidths: {
@@ -421,58 +393,23 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
       },
       children: [
         pw.TableRow(
-          decoration: const pw.BoxDecoration(color: cTotalFill),
+          decoration: const pw.BoxDecoration(color: PdfColors.grey300),
           children: [
-            cell('Total', bold: true, size: 10.5),
-            cell('$tBoys', bold: true, size: 10.5),
-            cell('$tGirls', bold: true, size: 10.5),
-            cell('$tAbsent', bold: true, size: 10.5),
-            cell('$tLeave', bold: true, size: 10.5),
-            cell('$tTotal', bold: true, size: 10.5),
+            cell('Total', bold: true, size: 11.5),
+            cell('$tBoys', bold: true, size: 11.5),
+            cell('$tGirls', bold: true, size: 11.5),
+            cell('$tAbsent', bold: true, size: 11.5),
+            cell('$tLeave', bold: true, size: 11.5),
+            cell('$tTotal', bold: true, size: 11.5),
           ],
         ),
       ],
     );
 
+    const headerHeight = 64.0;
     final schoolTitle = nic.isEmpty || schoolName.contains('($nic)')
         ? schoolName
         : '$schoolName ($nic)';
-
-    pw.Widget metaColumn(
-      String label,
-      String value, {
-      bool showRightBorder = false,
-    }) {
-      return pw.Expanded(
-        child: pw.Container(
-          padding: const pw.EdgeInsets.symmetric(vertical: 5.5, horizontal: 8),
-          decoration: showRightBorder
-              ? const pw.BoxDecoration(
-                  border: pw.Border(
-                    right: pw.BorderSide(color: cSoftLine, width: 0.7),
-                  ),
-                )
-              : null,
-          child: pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.center,
-            children: [
-              pw.Text(
-                '$label: ',
-                style: const pw.TextStyle(fontSize: 8.5, color: cSlate),
-              ),
-              pw.Text(
-                value.isEmpty ? '-' : value,
-                style: pw.TextStyle(
-                  fontSize: 9,
-                  fontWeight: pw.FontWeight.bold,
-                  color: cInk,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
 
     pw.Widget summaryItem(
       String label,
@@ -487,7 +424,7 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
           decoration: showRightDivider
               ? const pw.BoxDecoration(
                   border: pw.Border(
-                    right: pw.BorderSide(color: cSoftLine, width: 0.7),
+                    right: pw.BorderSide(color: PdfColors.grey300, width: 0.7),
                   ),
                 )
               : null,
@@ -501,14 +438,14 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
                       label,
                       style: const pw.TextStyle(
                         fontSize: 8.5,
-                        color: cSlate,
+                        color: PdfColors.grey700,
                       ),
                     ),
                     pw.SizedBox(height: 3),
                     pw.Text(
                       value,
                       style: pw.TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 14,
                         fontWeight: pw.FontWeight.bold,
                         color: color,
                       ),
@@ -524,221 +461,181 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
       );
     }
 
+    // Slightly enlarged Verified / Pending badge for crisp visibility
     final verifiedBadge = attendanceVerified
-        ? pw.Container(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-            decoration: pw.BoxDecoration(
-              color: const PdfColor.fromInt(0xFFECFDF5),
-              borderRadius: pw.BorderRadius.circular(5),
-              border: pw.Border.all(
-                color: const PdfColor.fromInt(0xFFA7F3D0),
-                width: 0.6,
+        ? pw.Row(
+            mainAxisSize: pw.MainAxisSize.min,
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              pw.SvgImage(
+                svg:
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path d="M10.00 1.00 L11.99 2.56 L14.50 2.21 L15.44 4.56 L17.79 5.50 L17.44 8.01 L19.00 10.00 L17.44 11.99 L17.79 14.50 L15.44 15.44 L14.50 17.79 L11.99 17.44 L10.00 19.00 L8.01 17.44 L5.50 17.79 L4.56 15.44 L2.21 14.50 L2.56 11.99 L1.00 10.00 L2.56 8.01 L2.21 5.50 L4.56 4.56 L5.50 2.21 L8.01 2.56 Z" fill="#10b981"/><path d="M5.7 10l2.8 2.8 5.8-5.8" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+                width: 17,
+                height: 17,
               ),
-            ),
-            child: pw.Row(
-              mainAxisSize: pw.MainAxisSize.min,
-              children: [
-                pw.SvgImage(
-                  svg:
-                      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><path d="M10.00 1.00 L11.99 2.56 L14.50 2.21 L15.44 4.56 L17.79 5.50 L17.44 8.01 L19.00 10.00 L17.44 11.99 L17.79 14.50 L15.44 15.44 L14.50 17.79 L11.99 17.44 L10.00 19.00 L8.01 17.44 L5.50 17.79 L4.56 15.44 L2.21 14.50 L2.56 11.99 L1.00 10.00 L2.56 8.01 L2.21 5.50 L4.56 4.56 L5.50 2.21 L8.01 2.56 Z" fill="#10b981"/><path d="M5.7 10l2.8 2.8 5.8-5.8" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-                  width: 12,
-                  height: 12,
+              pw.SizedBox(width: 5),
+              pw.Text(
+                'Verified',
+                style: pw.TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.green700,
                 ),
-                pw.SizedBox(width: 4),
-                pw.Text(
-                  'Verified',
-                  style: pw.TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.green700,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           )
-        : pw.Container(
-            padding: const pw.EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-            decoration: pw.BoxDecoration(
-              color: const PdfColor.fromInt(0xFFFFFBEB),
-              borderRadius: pw.BorderRadius.circular(5),
-              border: pw.Border.all(
-                color: const PdfColor.fromInt(0xFFFDE68A),
-                width: 0.6,
+        : pw.Row(
+            mainAxisSize: pw.MainAxisSize.min,
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              pw.Container(
+                width: 6,
+                height: 6,
+                decoration: const pw.BoxDecoration(
+                  color: PdfColors.orange700,
+                  shape: pw.BoxShape.circle,
+                ),
               ),
-            ),
-            child: pw.Row(
-              mainAxisSize: pw.MainAxisSize.min,
-              children: [
-                pw.Container(
-                  width: 5,
-                  height: 5,
-                  decoration: const pw.BoxDecoration(
-                    color: PdfColors.orange700,
-                    shape: pw.BoxShape.circle,
-                  ),
+              pw.SizedBox(width: 5),
+              pw.Text(
+                'Pending',
+                style: pw.TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.orange700,
                 ),
-                pw.SizedBox(width: 5),
-                pw.Text(
-                  'Pending',
-                  style: pw.TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.orange700,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           );
 
     try {
       doc.addPage(
         pw.MultiPage(
           pageFormat: PdfPageFormat.a4,
-          margin: const pw.EdgeInsets.fromLTRB(36, 32, 36, 32),
+          margin: const pw.EdgeInsets.fromLTRB(36, 36, 36, 36),
           build: (ctx) => [
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.end,
+              children: [verifiedBadge],
+            ),
+            pw.SizedBox(height: 6),
             // -----------------------------------------------------------
-            // 1. INTEGRATED SCHOOL HEADER CARD
+            // SCHOOL HEADER (Exact layout as PDF: Blue Name, Village, UDISE)
             // -----------------------------------------------------------
             pw.Container(
+              padding: const pw.EdgeInsets.all(8),
               decoration: pw.BoxDecoration(
                 color: PdfColors.white,
-                borderRadius: pw.BorderRadius.circular(7),
-                border: pw.Border.all(color: cLine, width: 0.7),
+                borderRadius: pw.BorderRadius.circular(6),
+                border: pw.Border.all(color: PdfColors.grey300, width: 0.7),
               ),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+              child: pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
-                  // Top Header Strip: Portal Tag + Verified Badge
-                  pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                  if (schoolLogo != null) ...[
+                    pw.Image(
+                      pw.MemoryImage(schoolLogo),
+                      width: 48,
+                      height: 48,
+                      fit: pw.BoxFit.contain,
                     ),
-                    decoration: const pw.BoxDecoration(
-                      color: cSurface,
-                      borderRadius: pw.BorderRadius.vertical(
-                        top: pw.Radius.circular(6.5),
-                      ),
-                      border: pw.Border(
-                        bottom: pw.BorderSide(color: cSoftLine, width: 0.6),
-                      ),
-                    ),
-                    child: pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: pw.CrossAxisAlignment.center,
-                      children: [
-                        pw.Text(
-                          'SHALA DARPAN  •  SCHOOL ATTENDANCE STATEMENT',
-                          style: pw.TextStyle(
-                            fontSize: 7.5,
-                            fontWeight: pw.FontWeight.bold,
-                            color: cMuted,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        verifiedBadge,
-                      ],
-                    ),
-                  ),
-                  // Center: School Name & Village
-                  pw.Padding(
-                    padding: const pw.EdgeInsets.fromLTRB(16, 12, 16, 12),
-                    child: pw.Column(
-                      children: [
-                        pw.SizedBox(
-                          height: 19,
-                          child: pw.FittedBox(
-                            fit: pw.BoxFit.scaleDown,
-                            alignment: pw.Alignment.center,
-                            child: pw.Text(
-                              schoolTitle.isEmpty ? '-' : schoolTitle,
-                              style: pw.TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: pw.FontWeight.bold,
-                                color: cInk,
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (village.isNotEmpty) ...[
-                          pw.SizedBox(height: 4),
-                          pw.SizedBox(
-                            height: 14,
-                            child: pw.FittedBox(
-                              fit: pw.BoxFit.scaleDown,
-                              alignment: pw.Alignment.center,
-                              child: pw.Text(
-                                village,
-                                style: const pw.TextStyle(
-                                  fontSize: 10.5,
-                                  color: cSlate,
+                    pw.SizedBox(width: 8),
+                  ],
+                  pw.Expanded(
+                    child: pw.Padding(
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 8),
+                      child: pw.SizedBox(
+                        height: headerHeight,
+                        child: pw.Column(
+                          crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+                          mainAxisAlignment: pw.MainAxisAlignment.center,
+                          children: [
+                            pw.SizedBox(
+                              height: 18,
+                              child: pw.FittedBox(
+                                fit: pw.BoxFit.scaleDown,
+                                alignment: pw.Alignment.center,
+                                child: pw.Text(
+                                  schoolTitle.isEmpty ? '-' : schoolTitle,
+                                  style: pw.TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: PdfColors.blue800,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ],
+                            pw.SizedBox(height: 5),
+                            pw.SizedBox(
+                              height: 16,
+                              child: pw.FittedBox(
+                                fit: pw.BoxFit.scaleDown,
+                                alignment: pw.Alignment.center,
+                                child: pw.Text(
+                                  village.isEmpty ? '-' : village,
+                                  style: const pw.TextStyle(
+                                    fontSize: 12,
+                                    color: PdfColors.grey700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            pw.SizedBox(height: 5),
+                            pw.SizedBox(
+                              height: 14,
+                              child: pw.FittedBox(
+                                fit: pw.BoxFit.scaleDown,
+                                alignment: pw.Alignment.center,
+                                child: pw.Text(
+                                  'UDISE: ${udise.isEmpty ? "-" : udise}  |  NIC: ${nic.isEmpty ? "-" : nic}  |  Office ID: ${officeId.isEmpty ? "-" : officeId}',
+                                  style: const pw.TextStyle(
+                                    fontSize: 11,
+                                    color: PdfColors.black,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  // Bottom Strip: 3-Column Metadata Grid
-                  pw.Container(
-                    decoration: const pw.BoxDecoration(
-                      color: cSurface,
-                      borderRadius: pw.BorderRadius.vertical(
-                        bottom: pw.Radius.circular(6.5),
-                      ),
-                      border: pw.Border(
-                        top: pw.BorderSide(color: cSoftLine, width: 0.6),
-                      ),
+                  if (integratedLogo != null) ...[
+                    pw.SizedBox(width: 8),
+                    pw.Image(
+                      pw.MemoryImage(integratedLogo),
+                      width: 48,
+                      height: 48,
+                      fit: pw.BoxFit.contain,
                     ),
-                    child: pw.Row(
-                      children: [
-                        metaColumn('UDISE', udise, showRightBorder: true),
-                        metaColumn('NIC', nic, showRightBorder: true),
-                        metaColumn('Office ID', officeId),
-                      ],
-                    ),
-                  ),
+                  ],
                 ],
               ),
             ),
-            pw.SizedBox(height: 12),
+            pw.SizedBox(height: 14),
             if (!attendanceVerified) ...[
-              pw.Container(
-                padding: const pw.EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: pw.BoxDecoration(
-                  color: const PdfColor.fromInt(0xFFFFFBEB),
-                  borderRadius: pw.BorderRadius.circular(5),
-                  border: pw.Border.all(
-                    color: const PdfColor.fromInt(0xFFFDE68A),
-                    width: 0.6,
-                  ),
-                ),
-                child: pw.Text(
-                  'Attendance is not verified as submitted on the portal. Counts below are provisional.',
-                  style: const pw.TextStyle(
-                    fontSize: 8.5,
-                    color: PdfColors.orange700,
-                  ),
+              pw.Text(
+                'Attendance is not verified as submitted on the portal. Counts below are provisional.',
+                style: const pw.TextStyle(
+                  fontSize: 9,
+                  color: PdfColors.orange700,
                 ),
               ),
-              pw.SizedBox(height: 10),
+              pw.SizedBox(height: 8),
             ],
             // -----------------------------------------------------------
-            // 2. REPORT TITLE + DATE BAR (With Crisp Vector SVG Icons)
+            // REPORT TITLE + DATE (diary.png + original dateIcon)
             // -----------------------------------------------------------
             pw.Container(
               padding: const pw.EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 7.5,
+                horizontal: 8,
+                vertical: 7,
               ),
               decoration: pw.BoxDecoration(
-                color: cHeaderFill,
-                borderRadius: pw.BorderRadius.circular(6),
-                border: pw.Border.all(color: cLine, width: 0.6),
+                border: pw.Border.all(
+                  color: PdfColors.grey400,
+                  width: 0.6,
+                ),
               ),
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -748,18 +645,20 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
                     mainAxisSize: pw.MainAxisSize.min,
                     crossAxisAlignment: pw.CrossAxisAlignment.center,
                     children: [
-                      pw.SvgImage(
-                        svg: registerSvgIcon,
-                        width: 15,
-                        height: 15,
-                      ),
-                      pw.SizedBox(width: 7),
+                      if (leaveIcon != null) ...[
+                        pw.Image(
+                          pw.MemoryImage(leaveIcon),
+                          width: 13,
+                          height: 13,
+                          fit: pw.BoxFit.contain,
+                        ),
+                        pw.SizedBox(width: 6),
+                      ],
                       pw.Text(
                         'Daily Attendance Record',
                         style: pw.TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 12.5,
                           fontWeight: pw.FontWeight.bold,
-                          color: cInk,
                         ),
                       ),
                     ],
@@ -768,18 +667,20 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
                     mainAxisSize: pw.MainAxisSize.min,
                     crossAxisAlignment: pw.CrossAxisAlignment.center,
                     children: [
-                      pw.SvgImage(
-                        svg: calendarSvgIcon,
-                        width: 11.5,
-                        height: 11.5,
-                      ),
-                      pw.SizedBox(width: 5),
+                      if (dateIcon != null) ...[
+                        pw.Image(
+                          pw.MemoryImage(dateIcon),
+                          width: 11,
+                          height: 11,
+                          fit: pw.BoxFit.contain,
+                        ),
+                        pw.SizedBox(width: 5),
+                      ],
                       pw.Text(
                         date,
                         style: pw.TextStyle(
                           fontSize: 10.5,
                           fontWeight: pw.FontWeight.bold,
-                          color: cInk,
                         ),
                       ),
                     ],
@@ -789,7 +690,7 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
             ),
             pw.SizedBox(height: 8),
             // -----------------------------------------------------------
-            // 3. ATTENDANCE TABLE
+            // ATTENDANCE TABLE (Exact PDF layout with 11pt readable font)
             // -----------------------------------------------------------
             pw.Table(
               border: border,
@@ -800,28 +701,22 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
               },
               children: [
                 pw.TableRow(
-                  decoration: const pw.BoxDecoration(color: cHeaderFill),
-                  children: [
-                    for (final h in headers)
-                      cell(h, bold: true, size: 10.0, vertical: 8),
-                  ],
+                  decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+                  children: [for (final h in headers) cell(h, bold: true)],
                 ),
-                for (var i = 0; i < rows.length; i++) dataRow(rows[i], i),
+                ...rows.map(dataRow),
               ],
             ),
-            // -----------------------------------------------------------
-            // 4. MERGED TOTAL ROW
-            // -----------------------------------------------------------
             totalTable,
             pw.SizedBox(height: 12),
             // -----------------------------------------------------------
-            // 5. 4-COLUMN SUMMARY CARD (Enrolled + Present + Absent + Leave)
+            // NEW 4-COLUMN BOTTOM SUMMARY CARD (Total Students, Present, Absent, Leave - NO %)
             // -----------------------------------------------------------
             pw.Container(
               decoration: pw.BoxDecoration(
                 color: PdfColors.white,
                 borderRadius: pw.BorderRadius.circular(6),
-                border: pw.Border.all(color: cLine, width: 0.6),
+                border: pw.Border.all(color: PdfColors.grey300, width: 0.7),
               ),
               child: pw.Column(
                 children: [
@@ -830,12 +725,12 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
                       summaryItem(
                         'Total Students',
                         '$tTotal',
-                        cInk,
+                        PdfColors.black,
                         pw.SvgImage(svg: enrolledSvgIcon),
                         showRightDivider: true,
                       ),
                       summaryItem(
-                        'Present ($attPct)',
+                        'Present',
                         '$tPresent',
                         const PdfColor.fromInt(0xFF059669),
                         pw.SvgImage(svg: attendancePresentPdfIcon),
@@ -862,31 +757,22 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
                       vertical: 5.5,
                     ),
                     decoration: const pw.BoxDecoration(
-                      color: cSurface,
+                      color: PdfColors.grey100,
                       borderRadius: pw.BorderRadius.vertical(
                         bottom: pw.Radius.circular(5.5),
                       ),
                       border: pw.Border(
-                        top: pw.BorderSide(color: cSoftLine, width: 0.6),
+                        top: pw.BorderSide(color: PdfColors.grey300, width: 0.6),
                       ),
                     ),
                     child: pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
                         pw.Text(
-                          'Present Breakdown: $tBoys Boys + $tGirls Girls${unknownPresent > 0 ? ' + $unknownPresent Unclassified' : ''} = $tPresent Students',
+                          'Present Breakdown: $tBoys boys + $tGirls girls${unknownPresent > 0 ? " + $unknownPresent unclassified" : ""} = $tPresent students',
                           style: pw.TextStyle(
                             fontSize: 8.5,
                             fontWeight: pw.FontWeight.bold,
-                            color: cSlate,
-                          ),
-                        ),
-                        pw.Text(
-                          'Attendance Rate: $attPct',
-                          style: pw.TextStyle(
-                            fontSize: 8.5,
-                            fontWeight: pw.FontWeight.bold,
-                            color: cInk,
+                            color: PdfColors.grey700,
                           ),
                         ),
                       ],
@@ -895,14 +781,19 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
                 ],
               ),
             ),
-            pw.SizedBox(height: 6),
+            pw.SizedBox(height: 5),
+            pw.Text(
+              'Present: $tBoys boys + $tGirls girls${unknownPresent > 0 ? " + $unknownPresent gender unclassified" : ""} = $tPresent students',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+            ),
+            pw.SizedBox(height: 8),
             pw.Text(
               'Boys / Girls represent present students. '
               'Leave includes On Leave and On Medical. '
               'Total = Boys + Girls + Absent + Leave.',
               style: const pw.TextStyle(
-                fontSize: 8,
-                color: cMuted,
+                fontSize: 8.5,
+                color: PdfColors.grey700,
               ),
             ),
             if (unknownPresent > 0) ...[
@@ -913,8 +804,8 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
                 'portal master. They are included in the Present summary '
                 'and excluded from the Boys/Girls breakdown.',
                 style: const pw.TextStyle(
-                  fontSize: 8,
-                  color: cMuted,
+                  fontSize: 8.5,
+                  color: PdfColors.grey700,
                 ),
               ),
             ],
@@ -946,7 +837,6 @@ class _SchoolReportScreenState extends State<SchoolReportScreen> {
       );
     }
   }
-
   Future<void> _share() async {
     final b = _bytes;
     if (b == null) return;

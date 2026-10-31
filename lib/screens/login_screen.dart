@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:shaladarpan/experiments/direct_portal_probe.dart';
 import 'package:shaladarpan/experiments/direct_portal_auth.dart';
 import 'package:shaladarpan/services/portals/staff_login/direct/staff_runtime.dart';
@@ -24,6 +25,7 @@ import 'package:flutter/services.dart';
 
 import 'package:video_player/video_player.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shaladarpan/services/core/secure_storage_service.dart';
 
 import 'package:shaladarpan/services/core/ecosystem_service.dart';
@@ -64,6 +66,8 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
   bool _isLoggedOutState = false;
 
   bool _credentialsReady = false;
+
+  String? _consentedSchoolId;
 
   bool get _hasSavedAccount => [
     _shalaIdController.text.trim(),
@@ -661,6 +665,15 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
         return;
       }
 
+      final hasConsent = await _ensureDataPrivacyConsent(
+        schoolId: schoolId,
+        staffId: staffId,
+        ssoId: ssoId,
+      );
+      if (!mounted || !hasConsent) {
+        return;
+      }
+
       setState(() {
         _isLoading = true;
 
@@ -910,6 +923,8 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
       _isLoggedOutState = false;
 
       _currentStep = 0;
+
+      _consentedSchoolId = null;
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -2308,4 +2323,718 @@ class LoginDesignScreenState extends State<LoginDesignScreen>
       ),
     );
   }
+
+  Future<bool> _ensureDataPrivacyConsent({
+    required String schoolId,
+    required String staffId,
+    required String ssoId,
+  }) async {
+    final trimmedSchool = schoolId.trim();
+    final consentKey = 'data_privacy_consent_v1_$trimmedSchool';
+    if (_consentedSchoolId == trimmedSchool) {
+      return true;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(consentKey) == true) {
+        _consentedSchoolId = trimmedSchool;
+        return true;
+      }
+    } catch (_) {}
+
+    if (!mounted) return false;
+
+    final accepted = await showGeneralDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      // Transparent barrier + identical gradient background = the login
+      // content simply cross-fades into the consent content.
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 420),
+      pageBuilder: (dialogCtx, anim1, anim2) {
+        return _DataPrivacyConsentScreen(
+          schoolId: schoolId,
+          staffId: staffId,
+          ssoId: ssoId,
+          onAccept: () => Navigator.of(dialogCtx).pop(true),
+          onDecline: () => Navigator.of(dialogCtx).pop(false),
+        );
+      },
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: anim,
+            curve: Curves.easeInOut,
+            reverseCurve: Curves.easeInOut,
+          ),
+          child: child,
+        );
+      },
+    );
+
+    if (accepted == true) {
+      _consentedSchoolId = trimmedSchool;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(consentKey, true);
+        await prefs.setString(
+          'data_privacy_consent_timestamp_$trimmedSchool',
+          DateTime.now().toIso8601String(),
+        );
+      } catch (_) {}
+      return true;
+    }
+
+    return false;
+  }
+}
+
+class _DataPrivacyConsentScreen extends StatefulWidget {
+  final String schoolId;
+  final String staffId;
+  final String ssoId;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  const _DataPrivacyConsentScreen({
+    required this.schoolId,
+    required this.staffId,
+    required this.ssoId,
+    required this.onAccept,
+    required this.onDecline,
+  });
+
+  @override
+  State<_DataPrivacyConsentScreen> createState() =>
+      _DataPrivacyConsentScreenState();
+}
+
+class _DataPrivacyConsentScreenState extends State<_DataPrivacyConsentScreen>
+    with SingleTickerProviderStateMixin {
+  static const String _font = 'PlusJakartaSans';
+  static const Color _ink = Color(0xFF0F172A);
+  static const Color _body = Color(0xFF1E293B);
+  static const Color _blue = Color(0xFF2563EB);
+
+  late final AnimationController _intro;
+  late final Animation<double> _fadeTop;
+  late final Animation<double> _fadeText;
+  late final Animation<double> _fadeActions;
+  late final TapGestureRecognizer _learnMoreTap;
+
+  @override
+  void initState() {
+    super.initState();
+    _intro = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..forward();
+    // Soft staggered fade-in only (no sliding), so it feels like the
+    // other setup screens instead of a panel dropping in.
+    Animation<double> fadeAt(double start, double end) => CurvedAnimation(
+      parent: _intro,
+      curve: Interval(start, end, curve: Curves.easeInOut),
+    );
+    _fadeTop = fadeAt(0.0, 0.55);
+    _fadeText = fadeAt(0.15, 0.75);
+    _fadeActions = fadeAt(0.35, 1.0);
+    _learnMoreTap = TapGestureRecognizer()..onTap = _showLearnMoreSheet;
+  }
+
+  @override
+  void dispose() {
+    _learnMoreTap.dispose();
+    _intro.dispose();
+    super.dispose();
+  }
+
+  void _showLearnMoreSheet() {
+    HapticFeedback.selectionClick();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      constraints: const BoxConstraints(maxWidth: 520),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCBD5E1),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'How this app uses & protects your data',
+                  style: TextStyle(
+                    fontFamily: _font,
+                    fontSize: 17.5,
+                    fontWeight: FontWeight.w700,
+                    color: _ink,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _buildDetailItem(
+                  icon: Icons.verified_user_outlined,
+                  title: 'Portal Authentication & Session Sync',
+                  subtitle:
+                      'Your ShalaDarpan (${widget.schoolId}), Staff Corner (${widget.staffId}), and RajSIMS (${widget.ssoId}) credentials are used to authenticate your official sessions and load dashboard metrics.',
+                ),
+                const SizedBox(height: 12),
+                _buildDetailItem(
+                  icon: Icons.bug_report_outlined,
+                  title: 'Beta Testing & Diagnostics',
+                  subtitle:
+                      'During user testing, account identifiers, setup details, and portal response logs are used to verify synchronization accuracy and resolve login or attendance issues.',
+                ),
+                const SizedBox(height: 12),
+                _buildDetailItem(
+                  icon: Icons.lock_outline_rounded,
+                  title: 'Device Security & Control',
+                  subtitle:
+                      'Credentials are stored in encrypted device storage. You can switch accounts or clear your saved setup anytime from the login screen.',
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(sheetCtx).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _ink,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(23),
+                      ),
+                    ),
+                    child: const Text(
+                      'Got it',
+                      style: TextStyle(
+                        fontFamily: _font,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static Widget _buildDetailItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF6FF),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: _blue, size: 19),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: _font,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: _ink,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontFamily: _font,
+                  fontSize: 12,
+                  height: 1.4,
+                  color: Color(0xFF475569),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPrimaryButton(double height, double fontSize) {
+    final radius = height / 2;
+    return Container(
+      width: double.infinity,
+      height: height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF27272A), Color(0xFF18181B), Color(0xFF000000)],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.26),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(radius),
+          splashColor: Colors.transparent,
+          highlightColor: Colors.white.withValues(alpha: 0.06),
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            widget.onAccept();
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                const SizedBox(width: 30),
+                Expanded(
+                  child: Text(
+                    'Yes, agree & continue',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: _font,
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.black,
+                    size: 17,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: MediaQuery.withClampedTextScaling(
+        minScaleFactor: 1.0,
+        maxScaleFactor: 1.2,
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: Stack(
+            children: [
+              // Identical to the login screen background, so the switch
+              // between the two is a pure cross-fade of the content.
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0.0, 0.35, 0.75, 1.0],
+                      colors: [
+                        Colors.white,
+                        Colors.white,
+                        Color(0xFFE8EEF2),
+                        Color(0xFFF9E7BA),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final screenW = constraints.maxWidth;
+                    final screenH = constraints.maxHeight;
+
+                    // Sizes follow the rest of the app (18.5 headings,
+                    // 12-14 body, 44-46 high pill buttons), scaled a little
+                    // on tablets / desktop.
+                    final isWide = screenW >= 600;
+                    final isShort = screenH < 620;
+                    final hPad = isWide ? 32.0 : 24.0;
+
+                    final illoW = isShort ? 88.0 : (isWide ? 132.0 : 108.0);
+                    final titleSize = isWide ? 30.0 : (isShort ? 23.0 : 26.0);
+                    final introSize = isWide ? 15.0 : 13.5;
+                    final questionSize = isWide ? 19.5 : 17.0;
+                    final bodySize = isWide ? 14.0 : 12.8;
+                    final buttonH = isWide ? 50.0 : 46.0;
+                    final buttonFont = isWide ? 15.5 : 14.5;
+
+                    final bodyStyle = TextStyle(
+                      fontFamily: _font,
+                      fontSize: bodySize,
+                      height: 1.5,
+                      fontWeight: FontWeight.w500,
+                      color: _body,
+                    );
+                    final boldStyle = bodyStyle.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: _ink,
+                    );
+                    final linkStyle = bodyStyle.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: _blue,
+                    );
+
+                    return Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 528),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                hPad - 6,
+                                10,
+                                hPad,
+                                0,
+                              ),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: FadeTransition(
+                                  opacity: _fadeTop,
+                                  child: SizedBox(
+                                    width: 40,
+                                    height: 40,
+                                    child: IconButton(
+                                      tooltip: 'Close',
+                                      onPressed: () {
+                                        HapticFeedback.lightImpact();
+                                        widget.onDecline();
+                                      },
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        size: 19,
+                                      ),
+                                      style: IconButton.styleFrom(
+                                        foregroundColor: _ink,
+                                        backgroundColor: Colors.white
+                                            .withValues(alpha: 0.95),
+                                        side: const BorderSide(
+                                          color: Color(0xFFE2E8F0),
+                                        ),
+                                        shadowColor: _ink.withValues(
+                                          alpha: 0.08,
+                                        ),
+                                        elevation: 2,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: LayoutBuilder(
+                                builder: (context, box) {
+                                  return SingleChildScrollView(
+                                    physics: const ClampingScrollPhysics(),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: hPad,
+                                      vertical: 8,
+                                    ),
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        minHeight: box.maxHeight - 16,
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          FadeTransition(
+                                            opacity: _fadeTop,
+                                            child: Column(
+                                              children: [
+                                                SizedBox(
+                                                  width: illoW,
+                                                  height:
+                                                      illoW /
+                                                      _PrivacyHandshakePainter
+                                                          .aspect,
+                                                  child: const CustomPaint(
+                                                    painter:
+                                                        _PrivacyHandshakePainter(),
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  height: isShort ? 14 : 20,
+                                                ),
+                                                Semantics(
+                                                  header: true,
+                                                  child: Text(
+                                                    'Data & Privacy',
+                                                    textAlign:
+                                                        TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontFamily: _font,
+                                                      fontSize: titleSize,
+                                                      height: 1.15,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color: _ink,
+                                                      letterSpacing: -0.5,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          SizedBox(height: isShort ? 14 : 26),
+                                          FadeTransition(
+                                            opacity: _fadeText,
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  'We care about your privacy and data security. We keep this app reliable during testing by verifying your portal setup.',
+                                                  textAlign: TextAlign.center,
+                                                  style: bodyStyle.copyWith(
+                                                    fontSize: introSize,
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  height: isShort ? 14 : 22,
+                                                ),
+                                                Text(
+                                                  'Can we continue to use your account & credential details to sync portals for you?',
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontFamily: _font,
+                                                    fontSize: questionSize,
+                                                    height: 1.3,
+                                                    fontWeight:
+                                                        FontWeight.w800,
+                                                    color: _ink,
+                                                    letterSpacing: -0.2,
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  height: isShort ? 12 : 18,
+                                                ),
+                                                Text.rich(
+                                                  TextSpan(
+                                                    style: bodyStyle,
+                                                    children: [
+                                                      const TextSpan(
+                                                        text:
+                                                            'You can change or clear your saved account ',
+                                                      ),
+                                                      TextSpan(
+                                                        text:
+                                                            'anytime on the login screen',
+                                                        style: boldStyle,
+                                                      ),
+                                                      const TextSpan(
+                                                        text:
+                                                            '. During testing, account identifiers and credential details are used to authenticate ',
+                                                      ),
+                                                      TextSpan(
+                                                        text:
+                                                            'ShalaDarpan, Staff Corner, and RajSIMS',
+                                                        style: boldStyle,
+                                                      ),
+                                                      const TextSpan(
+                                                        text: ' sessions. ',
+                                                      ),
+                                                      TextSpan(
+                                                        text:
+                                                            'Learn how this app collects and uses data.',
+                                                        style: linkStyle,
+                                                        recognizer:
+                                                            _learnMoreTap,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            FadeTransition(
+                              opacity: _fadeActions,
+                              child: Padding(
+                                padding: EdgeInsets.fromLTRB(
+                                  hPad,
+                                  8,
+                                  hPad,
+                                  14,
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildPrimaryButton(buttonH, buttonFont),
+                                    const SizedBox(height: 4),
+                                    TextButton(
+                                      onPressed: () {
+                                        HapticFeedback.lightImpact();
+                                        widget.onDecline();
+                                      },
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: _blue,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                          vertical: 12,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'No, go back to setup',
+                                        style: TextStyle(
+                                          fontFamily: _font,
+                                          fontSize: buttonFont - 0.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: _blue,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Flat two-tone handshake illustration, traced from the reference design.
+/// Draw it inside a box with aspect ratio 1.2556 : 1 (width : height).
+class _PrivacyHandshakePainter extends CustomPainter {
+  const _PrivacyHandshakePainter();
+
+  static const double aspect = 1.2556;
+  static const Color _dark = Color(0xFF4575EC);
+  static const Color _light = Color(0xFFAAC8F6);
+
+  static const List<Offset> _darkBody = <Offset>[
+    Offset(0.5303, 0.8906), Offset(0.4782, 0.8958), Offset(0.4110, 0.8812),
+    Offset(0.3229, 0.8341), Offset(0.3159, 0.8502), Offset(0.3164, 0.9691),
+    Offset(0.3040, 0.9946), Offset(0.0227, 0.9958), Offset(0.0078, 0.9893),
+    Offset(-0.0003, 0.9727), Offset(-0.0004, 0.8585), Offset(0.0218, 0.6468),
+    Offset(0.0496, 0.5303), Offset(0.0860, 0.4471), Offset(0.1203, 0.4036),
+    Offset(0.1676, 0.3845), Offset(0.2131, 0.3869), Offset(0.2509, 0.4102),
+    Offset(0.2851, 0.4625), Offset(0.3174, 0.5850), Offset(0.3561, 0.6709),
+    Offset(0.4063, 0.7206), Offset(0.4797, 0.7479), Offset(0.4865, 0.7586),
+    Offset(0.4915, 0.7974), Offset(0.5319, 0.8121), Offset(0.5354, 0.8692),
+  ];
+
+  static const List<Offset> _lightBody = <Offset>[
+    Offset(0.9983, 0.9822), Offset(0.9896, 0.9953), Offset(0.9763, 1.0005),
+    Offset(0.6903, 0.9991), Offset(0.6806, 0.9810), Offset(0.6812, 0.8763),
+    Offset(0.6759, 0.8419), Offset(0.6676, 0.8397), Offset(0.5938, 0.8809),
+    Offset(0.5407, 0.8931), Offset(0.5350, 0.8835), Offset(0.5336, 0.8157),
+    Offset(0.4911, 0.7872), Offset(0.4859, 0.7491), Offset(0.4934, 0.7428),
+    Offset(0.5455, 0.7387), Offset(0.5919, 0.7181), Offset(0.6344, 0.6766),
+    Offset(0.6610, 0.6337), Offset(0.7149, 0.4507), Offset(0.7443, 0.4067),
+    Offset(0.7973, 0.3815), Offset(0.8523, 0.3880), Offset(0.8835, 0.4046),
+    Offset(0.9064, 0.4328), Offset(0.9342, 0.4816), Offset(0.9577, 0.5422),
+    Offset(0.9792, 0.6433), Offset(1.0004, 0.8704),
+  ];
+
+  static Path _smoothClosed(List<Offset> pts, double w, double h) {
+    Offset s(Offset o) => Offset(o.dx * w, o.dy * h);
+    Offset mid(Offset a, Offset b) =>
+        Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+    final n = pts.length;
+    final path = Path();
+    final start = mid(s(pts[n - 1]), s(pts[0]));
+    path.moveTo(start.dx, start.dy);
+    for (var i = 0; i < n; i++) {
+      final c = s(pts[i]);
+      final e = mid(c, s(pts[(i + 1) % n]));
+      path.quadraticBezierTo(c.dx, c.dy, e.dx, e.dy);
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final darkPaint = Paint()
+      ..color = _dark
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+    final lightPaint = Paint()
+      ..color = _light
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+    final headR = w * 0.1319;
+
+    canvas.drawPath(_smoothClosed(_darkBody, w, h), darkPaint);
+    canvas.drawCircle(Offset(w * 0.2211, h * 0.1653), headR, darkPaint);
+
+    canvas.drawPath(_smoothClosed(_lightBody, w, h), lightPaint);
+    canvas.drawCircle(Offset(w * 0.7817, h * 0.1665), headR, lightPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
